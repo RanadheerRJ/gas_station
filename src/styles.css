@@ -513,17 +513,242 @@ tr.total td {
   width: 10px;
 }
 
-@media (max-width: 760px) {
+/* ---------------- motion ----------------
+   Movement is used to explain a change, never to decorate one. Everything
+   is short, eased, and disabled outright for anyone who asks for less. */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* Page content settles in rather than snapping. */
+.content > * {
+  animation: rise 240ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+.content > *:nth-child(2) { animation-delay: 30ms; }
+.content > *:nth-child(3) { animation-delay: 60ms; }
+.content > *:nth-child(4) { animation-delay: 90ms; }
+.content > *:nth-child(n + 5) { animation-delay: 110ms; }
+
+button,
+.panel,
+.tank-card,
+.pump-tile,
+.sidebar nav a,
+input,
+select {
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms ease;
+}
+
+/* A pressed control should feel like it took the press. */
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--petrol);
+  outline-offset: 1px;
+}
+
+/* Loading: a hairline that sweeps, in keeping with the flat rules. */
+.loading-bar {
+  position: relative;
+  height: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+.loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  background: var(--amber);
+  animation: sweep 1100ms ease-in-out infinite;
+}
+
+.live-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------- offline banner ---------------- */
+
+.conn-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 24px;
+  font-size: 12.5px;
+  background: var(--rust);
+  color: #fff;
+  animation: rise 200ms ease both;
+}
+
+.conn-banner.restored {
+  background: var(--green);
+}
+
+/* ---------------- install prompt ---------------- */
+
+.install-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: var(--graphite);
+  color: #e7ebee;
+  font-size: 13px;
+  animation: rise 240ms ease both;
+}
+
+.install-bar button {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #1b1b18;
+  font-weight: 500;
+  padding: 5px 12px;
+}
+
+.install-bar button.ghost {
+  background: transparent;
+  border-color: #47555f;
+  color: #aab6bd;
+}
+
+/* ---------------- mobile: a real app shell ----------------
+   Below 860px the sidebar becomes a fixed bottom tab bar, the way a
+   forecourt phone is actually held, with the safe-area inset respected
+   for the home indicator. */
+
+@media (max-width: 860px) {
   .shell {
     grid-template-columns: 1fr;
   }
+
   .sidebar {
-    position: static;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
     height: auto;
+    z-index: 40;
+    border-right: none;
+    border-top: 1px solid #33424d;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
+
+  .sidebar .brand,
+  .sidebar .foot {
+    display: none;
+  }
+
   .sidebar nav {
     flex-direction: row;
-    flex-wrap: wrap;
+    padding: 0;
+    gap: 0;
+    justify-content: space-around;
+  }
+
+  .sidebar nav a {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 2px 7px;
+    font-size: 10.5px;
+    text-align: center;
+    border-left: none;
+    border-top: 2px solid transparent;
+    min-height: 52px;
+  }
+
+  .sidebar nav a.active {
+    border-left: none;
+    border-top: 2px solid var(--amber);
+  }
+
+  .sidebar nav a span {
+    line-height: 1.1;
+  }
+
+  /* Clear the tab bar so the last row is never trapped under it. */
+  .main {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0));
+  }
+
+  .content {
+    padding: 14px 14px 20px;
+  }
+
+  .topbar {
+    padding: 14px;
+  }
+
+  /* Tables reflow badly on a phone; let them scroll rather than squash. */
+  .panel table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tank-farm {
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  }
+
+  /* Touch targets: 44px is the smallest a thumb reliably hits. */
+  button {
+    min-height: 40px;
+  }
+
+  input,
+  select {
+    min-height: 40px;
+    font-size: 16px; /* stops iOS zooming the viewport on focus */
+  }
+}
+
+/* Standalone (installed) mode: reclaim the browser chrome's space. */
+@media (display-mode: standalone) {
+  .main {
+    padding-top: env(safe-area-inset-top, 0);
   }
 }
 
@@ -762,23 +987,18 @@ tr.total td {
   left: 0;
   right: 0;
   bottom: 0;
-  transition: height 220ms ease;
+  /* Long and heavily eased: fuel finding its level, not a progress bar. */
+  transition: height 760ms cubic-bezier(0.22, 0.75, 0.3, 1);
 }
 
-/* The unpumpable heel at the bottom, hatched so it reads as unavailable. */
-.tank-vessel__dead {
+/* A brighter line where the fuel meets air, so the level reads at a glance. */
+.tank-vessel__surface {
   position: absolute;
+  top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background-image: repeating-linear-gradient(
-    45deg,
-    rgba(31, 42, 51, 0.28) 0,
-    rgba(31, 42, 51, 0.28) 2px,
-    transparent 2px,
-    transparent 5px
-  );
-  border-top: 1px solid rgba(31, 42, 51, 0.4);
+  height: 2px;
+  background: rgba(255, 255, 255, 0.55);
 }
 
 /* Fill-level ticks at quarter marks, like a sight glass. */
@@ -814,8 +1034,18 @@ tr.total td {
 .tank-fill--premium { background: rgba(232, 163, 61, 0.55); }
 .tank-fill--cng { background: rgba(122, 107, 168, 0.5); }
 
-.tank-vessel.low { border-color: var(--rust); }
-.tank-vessel.dry { border-color: var(--rust); background: #faeeec; }
+.tank-vessel.low { border-color: var(--amber); }
+.tank-vessel.critical { border-color: var(--rust); background: #faeeec; }
+
+.tank-vessel.retired {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+/* Tapping a tank should feel like picking it up. */
+.tank-card:active {
+  transform: scale(0.985);
+}
 
 /* Temperature chip: reads as an instrument, not a badge. */
 .temp-chip {

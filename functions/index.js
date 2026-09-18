@@ -845,12 +845,22 @@ exports.reviseShift = onCall(async (request) => {
 });
 
 /* ------------------------------------------------------------------ */
-/* deleteStation — owner only, permanent                               */
+/* station lifecycle — archive, never delete                           */
 /* ------------------------------------------------------------------ */
 
-exports.deleteStation = onCall(async (request) => {
+/**
+ * Archive a station or bring it back. There is deliberately no delete: a
+ * station's shifts, ledger and credit balances are the business's records,
+ * and one mis-tap must not be able to destroy years of them. Archiving hides
+ * the station from day-to-day screens and is fully reversible.
+ */
+exports.setStationState = onCall(async (request) => {
   const ownerUid = assertOwner(request);
   const stationId = requireString(request.data?.stationId, "stationId");
+  const state = requireString(request.data?.state, "state", { max: 16 });
+  if (state !== "active" && state !== "archived") {
+    throw new HttpsError("invalid-argument", "Unknown station state.");
+  }
 
   const stationRef = db.collection("stations").doc(stationId);
   const snap = await stationRef.get();
@@ -858,45 +868,80 @@ exports.deleteStation = onCall(async (request) => {
     throw new HttpsError("permission-denied", "That station is not yours.");
   }
 
-  const openSnap = await db
-    .collection("shifts")
-    .doc(stationId)
-    .collection("records")
-    .where("status", "==", "open")
-    .limit(1)
-    .get();
-  if (!openSnap.empty) {
-    throw new HttpsError(
-      "failed-precondition",
-      "Close the open shift before deleting this station."
-    );
+  if (state === "archived") {
+    const openSnap = await db
+      .collection("shifts")
+      .doc(stationId)
+      .collection("records")
+      .where("status", "==", "open")
+      .limit(1)
+      .get();
+    if (!openSnap.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Close the open shift before archiving this station."
+      );
+    }
+
+    // Archiving a station with money still owed would bury the debt.
+    const custSnap = await db
+      .collection("creditCustomers")
+      .doc(stationId)
+      .collection("customers")
+      .where("outstandingBalance", ">", 0)
+      .limit(1)
+      .get();
+    if (!custSnap.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This station has credit outstanding. Settle it before archiving."
+      );
+    }
   }
 
-  // Recursively clear the station's subcollections, then the station itself.
-  const subcollections = ["pumps", "nozzles", "prices"];
-  for (const name of subcollections) {
-    // eslint-disable-next-line no-await-in-loop
-    const docs = await stationRef.collection(name).get();
-    // eslint-disable-next-line no-await-in-loop
-    await Promise.all(docs.docs.map((d) => d.ref.delete()));
+  await stationRef.update({
+    state,
+    stateChangedBy: request.auth.uid,
+    stateChangedByName: request.auth.token.name || "",
+    stateChangedAt: FieldValue.serverTimestamp(),
+  });
+  return { ok: true, state };
+});
+
+/** Take a pump out of service, or return it. Its nozzles follow it. */
+exports.setPumpState = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const pumpId = requireString(request.data?.pumpId, "pumpId");
+  const state = requireString(request.data?.state, "state", { max: 16 });
+  if (state !== "active" && state !== "retired") {
+    throw new HttpsError("invalid-argument", "Unknown pump state.");
   }
-  for (const path of [
-    db.collection("shifts").doc(stationId).collection("records"),
-    db.collection("creditCustomers").doc(stationId).collection("customers"),
-  ]) {
-    // eslint-disable-next-line no-await-in-loop
-    const docs = await path.get();
-    // eslint-disable-next-line no-await-in-loop
-    await Promise.all(docs.docs.map((d) => d.ref.delete()));
+  await assertStationAccess(request, stationId);
+  if (request.auth?.token?.role !== "owner") {
+    throw new HttpsError("permission-denied", "Only an owner can change plant.");
   }
 
-  await stationRef.delete();
-  await db
-    .collection("users")
-    .doc(ownerUid)
-    .update({ stationIds: FieldValue.arrayRemove(stationId) });
+  if (state === "retired") {
+    const openSnap = await db
+      .collection("shifts")
+      .doc(stationId)
+      .collection("records")
+      .where("status", "==", "open")
+      .get();
+    let busy = false;
+    openSnap.forEach((d) => {
+      if ((d.get("nozzles") || []).some((n) => n.pumpId === pumpId)) busy = true;
+    });
+    if (busy) throw new HttpsError("failed-precondition", "This pump is in an open shift.");
+  }
 
-  return { ok: true };
+  const stationRef = db.collection("stations").doc(stationId);
+  const batch = db.batch();
+  batch.update(stationRef.collection("pumps").doc(pumpId), { state });
+  const nozzles = await stationRef.collection("nozzles").where("pumpId", "==", pumpId).get();
+  nozzles.forEach((n) => batch.update(n.ref, { state }));
+  await batch.commit();
+  return { ok: true, state };
 });
 
 /* ------------------------------------------------------------------ */
@@ -921,10 +966,6 @@ exports.addTank = onCall(async (request) => {
   if (!Number.isFinite(capacity) || capacity <= 0) {
     throw new HttpsError("invalid-argument", "Give the tank a capacity in litres.");
   }
-  const deadStock = Number(request.data?.deadStock) || 0;
-  if (deadStock >= capacity) {
-    throw new HttpsError("invalid-argument", "Dead stock cannot exceed capacity.");
-  }
   const currentStock = Number(request.data?.currentStock) || 0;
   if (currentStock > capacity) {
     throw new HttpsError("invalid-argument", "Opening stock is more than the tank holds.");
@@ -934,8 +975,8 @@ exports.addTank = onCall(async (request) => {
     name,
     fuelType,
     capacity,
-    deadStock,
     currentStock,
+    state: "active",
     temperatureC: null,
     waterCm: null,
     lastDipAt: null,
@@ -945,7 +986,46 @@ exports.addTank = onCall(async (request) => {
   return { tankId: ref.id };
 });
 
-exports.removeTank = onCall(async (request) => {
+/**
+ * Retire a tank or return it to service. Tanks are never deleted: their dip
+ * history is part of the station's stock record, and a tank pulled for
+ * cleaning routinely comes back.
+ */
+exports.setTankState = onCall(async (request) => {
+  const ownerUid = assertOwner(request);
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const tankId = requireString(request.data?.tankId, "tankId");
+  const state = requireString(request.data?.state, "state", { max: 16 });
+  if (state !== "active" && state !== "retired") {
+    throw new HttpsError("invalid-argument", "Unknown tank state.");
+  }
+
+  const stationSnap = await db.collection("stations").doc(stationId).get();
+  if (!stationSnap.exists || stationSnap.get("ownerId") !== ownerUid) {
+    throw new HttpsError("permission-denied", "That station is not yours.");
+  }
+
+  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
+  const tank = await tankRef.get();
+  if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
+  if (state === "retired" && Number(tank.get("currentStock")) > 0) {
+    throw new HttpsError(
+      "failed-precondition",
+      "This tank still holds stock. Draw it down before taking it out of service."
+    );
+  }
+
+  await tankRef.update({
+    state,
+    stateChangedBy: request.auth.uid,
+    stateChangedByName: request.auth.token.name || "",
+    stateChangedAt: FieldValue.serverTimestamp(),
+  });
+  return { ok: true, state };
+});
+
+/** Correct a tank's name, product or capacity. A setup typo is not permanent. */
+exports.updateTank = onCall(async (request) => {
   const ownerUid = assertOwner(request);
   const stationId = requireString(request.data?.stationId, "stationId");
   const tankId = requireString(request.data?.tankId, "tankId");
@@ -958,13 +1038,28 @@ exports.removeTank = onCall(async (request) => {
   const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
   const tank = await tankRef.get();
   if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
-  if (Number(tank.get("currentStock")) > Number(tank.get("deadStock"))) {
-    throw new HttpsError(
-      "failed-precondition",
-      "This tank still holds sellable stock. Draw it down before removing it."
-    );
+
+  const patch = {};
+  if (request.data?.name != null) {
+    patch.name = requireString(request.data.name, "name", { max: 40 });
   }
-  await tankRef.delete();
+  if (request.data?.fuelType != null) {
+    patch.fuelType = requireString(request.data.fuelType, "fuelType", { max: 40 });
+  }
+  if (request.data?.capacity != null) {
+    const cap = Number(request.data.capacity);
+    if (!Number.isFinite(cap) || cap <= 0) {
+      throw new HttpsError("invalid-argument", "Capacity must be a positive number.");
+    }
+    if (cap < Number(tank.get("currentStock"))) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Capacity cannot be less than the stock already in the tank."
+      );
+    }
+    patch.capacity = cap;
+  }
+  await tankRef.update(patch);
   return { ok: true };
 });
 
@@ -1003,6 +1098,9 @@ exports.recordDip = onCall(async (request) => {
   return db.runTransaction(async (tx) => {
     const tank = await tx.get(tankRef);
     if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
+    if (tank.get("state") === "retired") {
+      throw new HttpsError("failed-precondition", "This tank is out of service.");
+    }
     if (stock > Number(tank.get("capacity"))) {
       throw new HttpsError(
         "invalid-argument",
@@ -1057,6 +1155,9 @@ exports.recordDelivery = onCall(async (request) => {
   return db.runTransaction(async (tx) => {
     const tank = await tx.get(tankRef);
     if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
+    if (tank.get("state") === "retired") {
+      throw new HttpsError("failed-precondition", "This tank is out of service.");
+    }
     const previousStock = Number(tank.get("currentStock")) || 0;
     const capacity = Number(tank.get("capacity")) || 0;
     const after = previousStock + litres;

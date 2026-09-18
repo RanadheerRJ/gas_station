@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { backendInfo } from "../lib/api";
+import { watchConnection } from "../lib/pwa";
 import {
   CreditIcon,
   LedgerIcon,
@@ -53,6 +55,8 @@ export default function Layout() {
   if (!profile) return null;
 
   const links = navFor(profile);
+  const online = useConnection();
+  const install = useInstallPrompt();
 
   return (
     <div className="shell">
@@ -87,6 +91,29 @@ export default function Layout() {
       </aside>
 
       <div className="main">
+        {!online && (
+          <div className="conn-banner">
+            <span className="live-dot">●</span>
+            Offline — showing the last data loaded. Anything you save will fail
+            until the connection returns.
+          </div>
+        )}
+
+        {install.available && (
+          <div className="install-bar">
+            <span style={{ flex: 1 }}>
+              Install Station Ledger on this device for full-screen use and
+              faster starts.
+            </span>
+            <button type="button" onClick={install.prompt}>
+              Install
+            </button>
+            <button type="button" className="ghost" onClick={install.dismiss}>
+              Not now
+            </button>
+          </div>
+        )}
+
         {backendInfo.isDemo && (
           <div
             className="small"
@@ -117,4 +144,52 @@ export function PageHeader({ title, sub, actions }) {
       {actions}
     </div>
   );
+}
+
+
+/** True while the browser reports a usable connection. */
+function useConnection() {
+  const [online, setOnline] = useState(true);
+  useEffect(() => watchConnection(setOnline), []);
+  return online;
+}
+
+/**
+ * Chrome fires beforeinstallprompt instead of showing its own banner, so the
+ * app has to offer installation itself. Dismissal is remembered — nobody
+ * wants to refuse the same bar twice a day.
+ */
+function useInstallPrompt() {
+  const [deferred, setDeferred] = useState(null);
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem("stationledger.install.dismissed") === "1"
+  );
+
+  useEffect(() => {
+    const onPrompt = (e) => {
+      e.preventDefault();
+      setDeferred(e);
+    };
+    const onInstalled = () => setDeferred(null);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  return {
+    available: !!deferred && !dismissed,
+    prompt: async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      await deferred.userChoice;
+      setDeferred(null);
+    },
+    dismiss: () => {
+      localStorage.setItem("stationledger.install.dismissed", "1");
+      setDismissed(true);
+    },
+  };
 }

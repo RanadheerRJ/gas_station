@@ -38,6 +38,13 @@ export const TEMP_RANGE = { min: 5, max: 55 };
 /** Water in the bottom of a tank is corrosive and dilutes deliveries. */
 export const WATER_LIMIT_CM = 2.5;
 
+/**
+ * A tank is never deleted, only retired — the dips taken from it are part of
+ * the station's stock history and must stay readable. Retiring hides it from
+ * day-to-day screens; restoring brings it back. Every door swings both ways.
+ */
+export const TANK_STATE = { ACTIVE: "active", RETIRED: "retired" };
+
 /** Product families, mirroring the MS/HSD split used for testing deductions. */
 export function tankGroup(fuelType) {
   const f = String(fuelType || "").toLowerCase();
@@ -70,31 +77,22 @@ export function fillPercent(stock, capacity) {
   return Math.max(0, Math.min(100, round2((num(stock) / cap) * 100)));
 }
 
-/**
- * A tank's working figures.
- *
- * `deadStock` is the unpumpable heel at the bottom — below it the suction
- * line starts drawing air and sediment, so it is not stock you can sell.
- */
+/** A tank's working figures. */
 export function tankStatus(tank = {}) {
   const capacity = num(tank.capacity);
   const stock = num(tank.currentStock);
-  const dead = num(tank.deadStock);
-  const usable = Math.max(0, round2(stock - dead));
   const ullage = Math.max(0, round2(capacity - stock));
   const pct = fillPercent(stock, capacity);
 
   return {
     capacity,
     stock: round2(stock),
-    deadStock: dead,
-    usable,
     ullage,
     fillPercent: pct,
-    deadPercent: fillPercent(dead, capacity),
-    // Below the heel there is nothing sellable; a quarter tank is the point
-    // at which an order needs placing to avoid a dry run.
-    level: stock <= dead ? "dry" : pct < 25 ? "low" : pct > 95 ? "full" : "ok",
+    // A quarter tank is the point at which an order needs placing to avoid
+    // running a nozzle dry mid-shift.
+    level: pct < 10 ? "critical" : pct < 25 ? "low" : pct > 95 ? "full" : "ok",
+    retired: tank.state === TANK_STATE.RETIRED,
     temperature: tank.temperatureC ?? null,
     volumeAt15: volumeAt15(stock, tank.temperatureC, tank.fuelType),
   };

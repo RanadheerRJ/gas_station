@@ -12,7 +12,7 @@ import {
   readableError,
   recordDelivery,
   recordDip,
-  removeTank,
+  setTankState,
 } from "../lib/api";
 import { formatStamp, money, num } from "../lib/format";
 import {
@@ -29,29 +29,32 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 
 /**
  * An underground tank drawn side-on: straight barrel, dished ends, fuel
- * lying flat at its level. The hatched band at the bottom is dead stock —
- * fuel that is in the tank but cannot be pumped out of it.
+ * lying flat at its level. The level animates in on first paint and between
+ * dips, so a change in stock is something you see happen.
  */
 function TankVessel({ tank }) {
   const st = tankStatus(tank);
   const cls = fuelClass(tank.fuelType);
+
+  // Fill from empty on first paint so the level reads as a measurement
+  // arriving, then animate between levels as dips come in.
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(st.fillPercent));
+    return () => cancelAnimationFrame(id);
+  }, [st.fillPercent]);
+
   return (
     <div
-      className={`tank-vessel ${st.level}`}
+      className={`tank-vessel ${st.level}${st.retired ? " retired" : ""}`}
       title={`${money(st.stock)} L of ${money(st.capacity)} L`}
     >
       <div
         className={`tank-vessel__fill tank-fill--${cls}`}
-        style={{ height: `${st.fillPercent}%` }}
-      />
-      {st.deadPercent > 0 && (
-        // Never draw the heel above the fuel line: if stock has fallen below
-        // dead stock, everything left in the tank is unpumpable.
-        <div
-          className="tank-vessel__dead"
-          style={{ height: `${Math.min(st.deadPercent, st.fillPercent)}%` }}
-        />
-      )}
+        style={{ height: `${shown}%` }}
+      >
+        <div className="tank-vessel__surface" />
+      </div>
       <div className="tank-vessel__ticks">
         {[25, 50, 75].map((t) => (
           <i key={t} style={{ bottom: `${t}%` }} />
@@ -120,23 +123,24 @@ export default function GroundStock() {
     }
   };
 
-  const byProduct = useMemo(() => stockByProduct(tanks), [tanks]);
+  const active = useMemo(() => tanks.filter((t) => t.state !== "retired"), [tanks]);
+  const retired = useMemo(() => tanks.filter((t) => t.state === "retired"), [tanks]);
+  const byProduct = useMemo(() => stockByProduct(active), [active]);
   const station = stations.find((s) => s.id === stationId);
   const selectedTank = tanks.find((t) => t.id === selected) || null;
 
   const totals = useMemo(() => {
-    const s = tanks.map(tankStatus);
+    const s = active.map(tankStatus);
     return {
       stock: s.reduce((n, x) => n + x.stock, 0),
       capacity: s.reduce((n, x) => n + x.capacity, 0),
-      usable: s.reduce((n, x) => n + x.usable, 0),
       ullage: s.reduce((n, x) => n + x.ullage, 0),
       low: s.filter((x) => x.level === "low" || x.level === "dry").length,
     };
-  }, [tanks]);
+  }, [active]);
 
   // Tanks needing water attention are worth surfacing without hunting.
-  const wet = tanks.filter((t) => num(t.waterCm) > WATER_LIMIT_CM);
+  const wet = active.filter((t) => num(t.waterCm) > WATER_LIMIT_CM);
 
   if (stationsLoading) {
     return (
@@ -208,7 +212,7 @@ export default function GroundStock() {
 
         <Panel
           title="Tanks"
-          note="Each vessel is drawn to its fill level. The hatched band is dead stock, which cannot be pumped."
+          note="Each vessel is drawn to its current level. Tap one to dip it or book a delivery."
         >
           {loading ? (
             <Empty>Loading tanks…</Empty>
@@ -222,7 +226,7 @@ export default function GroundStock() {
           ) : (
             <>
               <div className="tank-farm">
-                {tanks.map((t) => {
+                {active.map((t) => {
                   const st = tankStatus(t);
                   const warm = num(t.temperatureC) > 35;
                   return (
@@ -274,7 +278,6 @@ export default function GroundStock() {
               <div className="divider" />
               <div className="row" style={{ gap: 40, flexWrap: "wrap" }}>
                 <Stat label="Stock in ground" value={`${money(totals.stock)} L`} />
-                <Stat label="Sellable" value={`${money(totals.usable)} L`} />
                 <Stat label="Space for delivery" value={`${money(totals.ullage)} L`} />
                 <Stat
                   label="Total capacity"
@@ -337,18 +340,28 @@ export default function GroundStock() {
                 <div className="divider" />
                 <div className="between">
                   <span className="small muted">
-                    Removing a tank keeps its readings out of future reports.
+                    {selectedTank.state === "retired"
+                      ? "This tank is out of service. Its dip history is kept."
+                      : "Taking a tank out of service hides it from the daily screens. Nothing is deleted."}
                   </span>
                   <button
                     type="button"
                     className="quiet"
                     disabled={busy}
-                    onClick={async () => {
-                      const ok = await run(() => removeTank(stationId, selectedTank.id));
-                      if (ok) setSelected(null);
-                    }}
+                    onClick={() =>
+                      run(() =>
+                        setTankState(
+                          stationId,
+                          selectedTank.id,
+                          selectedTank.state === "retired" ? "active" : "retired",
+                          profile
+                        )
+                      )
+                    }
                   >
-                    Remove this tank
+                    {selectedTank.state === "retired"
+                      ? "Return to service"
+                      : "Take out of service"}
                   </button>
                 </div>
               </>
@@ -462,7 +475,6 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
     name: `Tank ${existing + 1}`,
     fuelType: "Petrol",
     capacity: "",
-    deadStock: "",
     currentStock: "",
   });
 
@@ -476,7 +488,7 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
           <TankIcon /> Add a tank
         </span>
       }
-      note="Capacity and dead stock come off the tank chart supplied with the vessel."
+      note="Capacity comes off the tank chart supplied with the vessel."
     >
       <div className="stack">
         <div className="form-grid">
@@ -502,16 +514,6 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
               placeholder="20000"
             />
           </Field>
-          <Field label="Dead stock" hint="unpumpable heel, litres">
-            <input
-              className="mono"
-              inputMode="decimal"
-              style={{ textAlign: "right" }}
-              value={form.deadStock}
-              onChange={set("deadStock")}
-              placeholder="800"
-            />
-          </Field>
           <Field label="Stock now" hint="litres, from the dip stick">
             <input
               className="mono"
@@ -533,7 +535,6 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
                 name: form.name.trim(),
                 fuelType: form.fuelType,
                 capacity: num(form.capacity),
-                deadStock: num(form.deadStock),
                 currentStock: num(form.currentStock),
               })
             }

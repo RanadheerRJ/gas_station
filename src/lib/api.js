@@ -22,6 +22,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -205,14 +206,16 @@ export async function addNozzle(stationId, payload) {
   return { id: ref.id, ...doc_ };
 }
 
-export async function removeNozzle(stationId, nozzleId) {
-  if (isDemo) return demoBackend.removeNozzle(stationId, nozzleId);
-  await deleteDoc(doc(db, "stations", stationId, "nozzles", nozzleId));
+export async function setNozzleState(stationId, nozzleId, state) {
+  if (isDemo) return demoBackend.setNozzleState(stationId, nozzleId, state);
+  await updateDoc(doc(db, "stations", stationId, "nozzles", nozzleId), { state });
+  return { id: nozzleId, state };
 }
 
-export async function removePump(stationId, pumpId) {
-  if (isDemo) return demoBackend.removePump(stationId, pumpId);
-  await deleteDoc(doc(db, "stations", stationId, "pumps", pumpId));
+export async function setPumpState(stationId, pumpId, state) {
+  if (isDemo) return demoBackend.setPumpState(stationId, pumpId, state);
+  const res = await call("setPumpState")({ stationId, pumpId, state });
+  return res.data;
 }
 
 /**
@@ -285,9 +288,15 @@ export async function addTank(stationId, tank) {
   return res.data;
 }
 
-export async function removeTank(stationId, tankId) {
-  if (isDemo) return demoBackend.removeTank(stationId, tankId);
-  const res = await call("removeTank")({ stationId, tankId });
+export async function setTankState(stationId, tankId, state, profile) {
+  if (isDemo) return demoBackend.setTankState(stationId, tankId, state, profile);
+  const res = await call("setTankState")({ stationId, tankId, state });
+  return res.data;
+}
+
+export async function updateTank(stationId, tankId, patch) {
+  if (isDemo) return demoBackend.updateTank(stationId, tankId, patch);
+  const res = await call("updateTank")({ stationId, tankId, ...patch });
   return res.data;
 }
 
@@ -333,9 +342,9 @@ export async function reviseShift(stationId, shiftId, patch, profile) {
   return res.data;
 }
 
-export async function deleteStation(stationId, profile) {
-  if (isDemo) return demoBackend.deleteStation(stationId, profile);
-  const res = await call("deleteStation")({ stationId });
+export async function setStationState(stationId, state, profile) {
+  if (isDemo) return demoBackend.setStationState(stationId, state, profile);
+  const res = await call("setStationState")({ stationId, state });
   return res.data;
 }
 

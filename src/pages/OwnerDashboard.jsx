@@ -6,7 +6,7 @@ import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
   addStation,
-  deleteStation,
+  setStationState,
   listCustomers,
   listShifts,
   readableError,
@@ -24,7 +24,6 @@ export default function OwnerDashboard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(null);
-  const [confirmText, setConfirmText] = useState("");
 
   // Per-station roll-up: today's sales, today's cash, total outstanding credit.
   useEffect(() => {
@@ -108,14 +107,12 @@ export default function OwnerDashboard() {
     }
   };
 
-  const removeStation = async () => {
-    if (!deleting || confirmText.trim() !== deleting.name) return;
+  const changeStationState = async (station, state) => {
     setError("");
     setBusy(true);
     try {
-      await deleteStation(deleting.id, profile);
+      await setStationState(station.id, state, profile);
       setDeleting(null);
-      setConfirmText("");
       await reload();
     } catch (err) {
       setError(readableError(err));
@@ -226,7 +223,14 @@ export default function OwnerDashboard() {
                   return (
                     <tr key={s.id}>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{s.name}</div>
+                        <div style={{ fontWeight: 500 }}>
+                          {s.name}
+                          {s.state === "archived" && (
+                            <span className="tag" style={{ marginLeft: 6 }}>
+                              Archived
+                            </span>
+                          )}
+                        </div>
                         <div className="small muted">{s.address}</div>
                       </td>
                       <td className="num mono">{sum ? money(sum.litres) : "—"}</td>
@@ -270,17 +274,27 @@ export default function OwnerDashboard() {
                           <Link className="small" to={`/owner/shifts?station=${s.id}`}>
                             Shifts
                           </Link>
-                          <button
-                            type="button"
-                            className="quiet"
-                            onClick={() => {
-                              setConfirmText("");
-                              setError("");
-                              setDeleting(deleting?.id === s.id ? null : s);
-                            }}
-                          >
-                            delete
-                          </button>
+                          {s.state === "archived" ? (
+                            <button
+                              type="button"
+                              className="quiet"
+                              disabled={busy}
+                              onClick={() => changeStationState(s, "active")}
+                            >
+                              reopen
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="quiet"
+                              onClick={() => {
+                                setError("");
+                                setDeleting(deleting?.id === s.id ? null : s);
+                              }}
+                            >
+                              archive
+                            </button>
+                          )}
                         </span>
                       </td>
                     </tr>
@@ -301,35 +315,21 @@ export default function OwnerDashboard() {
           )}
         </Panel>
         {deleting && (
-          <Panel
-            title={`Delete ${deleting.name}`}
-            note="This cannot be undone."
-          >
+          <Panel title={`Archive ${deleting.name}`}>
             <div className="stack" style={{ gap: 10 }}>
-              <Notice kind="error">
-                Deleting this station permanently removes its pumps, nozzles, prices,
-                shift history and credit ledger. Staff assigned to it will lose access.
-                Export anything you need first.
+              <Notice>
+                Archiving hides this station from the day-to-day screens. Nothing
+                is deleted — its shifts, ledger and credit history stay intact, and
+                you can reopen it from this page at any time.
               </Notice>
-              <Field
-                label="Type the station name to confirm"
-                hint={deleting.name}
-              >
-                <input
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder={deleting.name}
-                />
-              </Field>
               {error && <Notice kind="error">{error}</Notice>}
               <div className="row">
                 <button
                   type="button"
-                  className="danger"
-                  disabled={busy || confirmText.trim() !== deleting.name}
-                  onClick={removeStation}
+                  disabled={busy}
+                  onClick={() => changeStationState(deleting, "archived")}
                 >
-                  {busy ? "Deleting…" : "Delete this station permanently"}
+                  {busy ? "Archiving…" : `Archive ${deleting.name}`}
                 </button>
                 <button type="button" onClick={() => setDeleting(null)} disabled={busy}>
                   Cancel

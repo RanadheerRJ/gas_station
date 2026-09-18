@@ -136,12 +136,13 @@ The two are independent measurements of the same thing, which is what makes
 them worth comparing — a persistent gap is how a leaking tank, an unbooked
 delivery or a lying meter announces itself.
 
-An owner sets up each tank once with its capacity and its **dead stock**: the
-heel at the bottom that sits below the suction line and can never be pumped
-out. Every tank is drawn as a cylinder filled to its actual level, with the
-dead stock hatched so it is visually obvious that it is not sellable, and
-quarter-height ticks like a sight glass. A tank under a quarter full turns rust
-and raises a reorder notice.
+An owner sets up each tank once with its name, product and capacity. Every tank
+is drawn as a cylinder filled to its actual level, with a bright line at the
+fuel surface and quarter-height ticks like a sight glass. The level animates
+from empty on first paint and eases between values as dips come in, so a change
+in stock is something you watch happen rather than something you have to spot.
+A tank under a quarter full turns amber; under a tenth, rust, with a reorder
+notice above the farm.
 
 **Temperature is recorded with every dip, and is not optional.** Petroleum
 expands as it warms, so the same fuel reads as more litres at 34 °C than at
@@ -200,10 +201,10 @@ src/
   components/ layout, ledger entry form, shared UI primitives
   pages/      login, developer admin, owner dashboard, shifts, pump/rate
               setup, ground stock, daily ledger, credit, staff
-functions/    createOwner, createStaff, addStation, deleteStation, resetPin,
-              pinLogin, setPrice, openShift, closeShift, addShiftExpense,
-              removeShiftExpense, reviseShift, reviewShift, addTank,
-              removeTank, recordDip, recordDelivery
+functions/    createOwner, createStaff, addStation, setStationState, resetPin,
+              pinLogin, setPrice, setPumpState, openShift, closeShift,
+              addShiftExpense, removeShiftExpense, reviseShift, reviewShift,
+              addTank, updateTank, setTankState, recordDip, recordDelivery
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -295,9 +296,10 @@ stations/{stationId}/nozzles/{nozzleId}    pumpId, name, fuelType,
                                            lastReading, createdAt
 stations/{stationId}/prices/{priceId}      fuelType, price, effectiveFrom,
                                            effectiveTo, setBy, setByName
-stations/{stationId}/tanks/{tankId}        name, fuelType, capacity, deadStock,
-                                           currentStock, temperatureC, waterCm,
-                                           lastDipAt, lastDipBy, createdAt
+stations/{stationId}/tanks/{tankId}        name, fuelType, capacity,
+                                           currentStock, state, temperatureC,
+                                           waterCm, lastDipAt, lastDipBy,
+                                           createdAt
 
 tankReadings/{stationId}/readings/{readingId}   append-only dip log
   tankId, kind: 'dip'|'delivery', stockLitres, previousStock, change,
@@ -328,6 +330,63 @@ Nothing financial is stored that can be computed. Litres, sale amounts,
 expected cash and variance are all derived from the readings above, so a
 figure can never drift out of agreement with the meter it came from.
 
+## Every door swings both ways
+
+Nothing in this app deletes anything. Real money and fuel stock are at stake,
+and a single mis-tap on a phone at a forecourt must never be able to destroy a
+year of shift records or a customer's outstanding balance.
+
+Plant is **retired**, not removed, and can always be brought back:
+
+| Thing | Reversible action | Guard before it happens |
+| --- | --- | --- |
+| Station | archive ⇄ reopen | no open shift, no credit outstanding |
+| Tank | out of service ⇄ return | must be drawn down to empty first |
+| Pump | out of service ⇄ return | not in an open shift; nozzles follow it |
+| Nozzle | out of service ⇄ return | not in an open shift |
+| Shift | reject ⇄ resubmit | only before approval |
+
+Retired items keep their history and stay readable in reports; they simply
+drop out of the day-to-day screens. A tank's dips survive it being taken out
+of service, and a nozzle's meter readings survive it being retired — every
+shift that ever cited them still resolves.
+
+Corrections work the same way. A tank's name, product and capacity can all be
+fixed after setup, because a typo at 6am should not be permanent; the only
+constraint is that capacity cannot be set below the stock already in the tank.
+Dips are the one genuine append-only log: a wrong reading is superseded by
+taking another, never edited, exactly as a paper dip book works.
+
+## Installing as an app
+
+The frontend is a progressive web app. On a phone or tablet it installs to the
+home screen and runs full-screen with no browser chrome, which is how a
+forecourt actually uses it.
+
+- `public/manifest.webmanifest` — standalone display, portrait, graphite theme,
+  with a maskable icon so Android's circular mask does not crop the mark.
+- `public/sw.js` — caches the app shell so the interface boots without a
+  signal. **Data is never cached:** every Firestore, Cloud Functions and auth
+  request is forced to the network, because a stale fuel price or stock level
+  is worse than an honest error — someone would act on it.
+- The service worker is registered only in production builds; caching a shell
+  while editing source is a debugging trap.
+- A rust banner appears the moment the connection drops, stating plainly that
+  saves will fail until it returns. Chrome's install prompt is captured and
+  offered as a bar, and a dismissal is remembered.
+
+Below 860px the sidebar becomes a fixed bottom tab bar with safe-area insets
+respected, touch targets are raised to 40px, and inputs use 16px type so iOS
+does not zoom the viewport on focus.
+
+## Motion
+
+Movement explains a change; it never decorates one. Panels rise and fade in
+sequence as a page settles, buttons take a 1px press, tank levels ease over
+760ms so a dip reads as fuel finding its level, and loading is a hairline
+sweeping in amber rather than a spinner. Everything collapses to near-zero
+duration under `prefers-reduced-motion`.
+
 ## Security posture
 
 - `users`, `usernames`, `authSecrets`, `stations` accept **no client writes**.
@@ -344,10 +403,7 @@ figure can never drift out of agreement with the meter it came from.
   `status` to `approved`, so the sign-off stamp always names a real reviewer.
 - `reviewShift` re-checks the caller's role server-side; only an owner or
   manager can approve or reject, and `reviseShift` refuses an approved shift.
-- `deleteStation` is owner-only, verifies ownership of the specific station,
-  refuses while a shift is open, and cascades through pumps, nozzles, prices,
-  shift records and the credit ledger. The UI additionally requires the owner
-  to type the station's exact name, because it is unrecoverable.
+- **There are no destructive operations anywhere in the app** — see below.
 - Tanks accept no client writes. Stock moves only through `recordDip` and
   `recordDelivery`, which validate against capacity and ullage and write the
   reading and the new level in one transaction — so stock can never shift

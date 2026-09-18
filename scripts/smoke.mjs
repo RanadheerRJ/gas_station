@@ -421,48 +421,97 @@ console.log("\nwalk-in credit customers");
      String(grown.outstandingBalance));
 }
 
-console.log("\nstation delete");
+console.log("\nreversible lifecycle: no destructive actions");
 {
   const fresh = await be.createOwner({ ownerName: "Delete Me", stationName: "Doomed Pump", phone: "9", address: "x", pin: "7429" });
   const prof = await be.pinLogin({ username: fresh.username, pin: "7429" });
   const mine = await be.listStations(prof);
   ok("new owner has one station", mine.length === 1);
 
+  ok("there is no way to delete a station", be.deleteStation === undefined);
+  ok("there is no way to delete a pump", be.removePump === undefined);
+  ok("there is no way to delete a nozzle", be.removeNozzle === undefined);
+
   const eq = await be.listPumps(mine[0].id);
   if (eq.nozzles.length) {
     const sh = await be.openShift(mine[0].id, { nozzleIds: [eq.nozzles[0].id] }, prof);
     let blocked = false;
-    try { await be.deleteStation(mine[0].id, prof); } catch { blocked = true; }
-    ok("cannot delete a station with an open shift", blocked);
+    try { await be.setStationState(mine[0].id, "archived", prof); } catch { blocked = true; }
+    ok("cannot archive a station with an open shift", blocked);
     await be.closeShift(mine[0].id, sh.id, {
       closingReadings: { [eq.nozzles[0].id]: eq.nozzles[0].lastReading },
-      expenses: [], creditSales: [],
+      creditSales: [],
       payments: { cash: 0, card: 0, upi: 0, credit: 0, other: 0 },
     }, prof);
   }
 
   let notMine = false;
-  try { await be.deleteStation(mine[0].id, owner); } catch { notMine = true; }
-  ok("another owner cannot delete the station", notMine);
+  try { await be.setStationState(mine[0].id, "archived", owner); } catch { notMine = true; }
+  ok("another owner cannot archive the station", notMine);
 
-  await be.deleteStation(mine[0].id, prof);
-  ok("station is gone after delete", (await be.listStations(prof)).length === 0);
+  const archived = await be.setStationState(mine[0].id, "archived", prof);
+  ok("station archives", archived.state === "archived");
+  ok("an archived station is still there, not deleted",
+     (await be.listStations(prof)).length === 1);
+  const back = await be.setStationState(mine[0].id, "active", prof);
+  ok("an archived station reopens", back.state === "active");
+
+  // Archiving must not bury money still owed to the station.
+  const custs = await be.listCustomers(mine[0].id);
+  if (custs.length === 0) {
+    const c = await be.createCustomer(mine[0].id, { name: "Owes Money", phone: "555" });
+    await be.addCustomerTransaction(mine[0].id, c.id, {
+      date: "2020-01-01", type: "credit", amount: 900, note: "",
+    });
+    let owing = false;
+    try { await be.setStationState(mine[0].id, "archived", prof); } catch { owing = true; }
+    ok("cannot archive with credit outstanding", owing);
+    await be.addCustomerTransaction(mine[0].id, c.id, {
+      date: "2020-01-02", type: "payment", amount: 900, note: "",
+    });
+    const settled = await be.setStationState(mine[0].id, "archived", prof);
+    ok("archives once the debt is settled", settled.state === "archived");
+  }
+
+  // Pumps and nozzles retire and return the same way.
+  const st2 = ownerStations[0].id;
+  const eq2 = await be.listPumps(st2);
+  const nz = eq2.nozzles.find((n) => n.pumpId === eq2.pumps[1].id);
+  const offNz = await be.setNozzleState(st2, nz.id, "retired");
+  ok("a nozzle can be taken out of service", offNz.state === "retired");
+  ok("the nozzle is kept, not deleted",
+     (await be.listPumps(st2)).nozzles.some((x) => x.id === nz.id));
+  const onNz = await be.setNozzleState(st2, nz.id, "active");
+  ok("a nozzle returns to service", onNz.state === "active");
+
+  const offPump = await be.setPumpState(st2, eq2.pumps[1].id, "retired");
+  ok("a pump can be taken out of service", offPump.state === "retired");
+  ok("its nozzles follow it out",
+     (await be.listPumps(st2)).nozzles
+       .filter((x) => x.pumpId === eq2.pumps[1].id)
+       .every((x) => x.state === "retired"));
+  await be.setPumpState(st2, eq2.pumps[1].id, "active");
+  ok("and follow it back",
+     (await be.listPumps(st2)).nozzles
+       .filter((x) => x.pumpId === eq2.pumps[1].id)
+       .every((x) => x.state === "active"));
 }
 
 
 console.log("\ntank maths");
 {
-  const t = { capacity: 20000, currentStock: 12500, deadStock: 800, fuelType: "Petrol", temperatureC: 32 };
+  const t = { capacity: 20000, currentStock: 12500, fuelType: "Petrol", temperatureC: 32 };
   const st = tm.tankStatus(t);
   ok("fill percent from capacity", st.fillPercent === 62.5, String(st.fillPercent));
-  ok("dead stock is not sellable", st.usable === 11700, String(st.usable));
   ok("ullage is the room left", st.ullage === 7500, String(st.ullage));
   ok("a half-full tank reads ok", st.level === "ok");
 
-  ok("a quarter-full tank reads low",
+  ok("a fifth-full tank reads low",
      tm.tankStatus({ ...t, currentStock: 3000 }).level === "low");
-  ok("at or below the heel reads dry",
-     tm.tankStatus({ ...t, currentStock: 800 }).level === "dry");
+  ok("nearly empty reads critical",
+     tm.tankStatus({ ...t, currentStock: 800 }).level === "critical");
+  ok("a retired tank is flagged",
+     tm.tankStatus({ ...t, state: "retired" }).retired === true);
   ok("an empty capacity never divides by zero",
      tm.fillPercent(100, 0) === 0);
 
@@ -530,7 +579,7 @@ console.log("\ntanks & ground stock");
   ok("station seeded with tanks", seeded.length === 3, `got ${seeded.length}`);
 
   const made = await be.addTank(st, {
-    name: "Tank 4", fuelType: "Petrol", capacity: 10000, deadStock: 500, currentStock: 4000,
+    name: "Tank 4", fuelType: "Petrol", capacity: 10000, currentStock: 4000,
   });
   ok("owner adds a tank", made.capacity === 10000);
   ok("a new tank has no temperature yet", made.temperatureC === null);
@@ -538,9 +587,6 @@ console.log("\ntanks & ground stock");
   let noCap = false;
   try { await be.addTank(st, { name: "Bad", fuelType: "Petrol", capacity: 0 }); } catch { noCap = true; }
   ok("a tank needs a capacity", noCap);
-  let deadTooBig = false;
-  try { await be.addTank(st, { name: "Bad", fuelType: "Petrol", capacity: 1000, deadStock: 1000 }); } catch { deadTooBig = true; }
-  ok("dead stock cannot exceed capacity", deadTooBig);
   let overFull = false;
   try { await be.addTank(st, { name: "Bad", fuelType: "Petrol", capacity: 1000, currentStock: 5000 }); } catch { overFull = true; }
   ok("opening stock cannot exceed capacity", overFull);
@@ -581,18 +627,45 @@ console.log("\ntanks & ground stock");
      new Date(dips[0].recordedAt) >= new Date(dips[1].recordedAt));
   ok("the delivery is in the log", dips.some((x) => x.kind === "delivery"));
 
-  // A tank holding sellable stock must be drawn down before removal.
-  let stillWet = false;
-  try { await be.removeTank(st, made.id); } catch { stillWet = true; }
-  ok("a tank with stock cannot be removed", stillWet);
-  await be.recordDip(st, made.id, { stockLitres: 400, temperatureC: 30 }, owner);
-  await be.removeTank(st, made.id);
-  ok("an empty tank can be removed",
-     (await be.listTanks(st)).tanks.every((x) => x.id !== made.id));
-  ok("its readings go with it",
-     (await be.listTanks(st)).dips.every((x) => x.tankId !== made.id));
+  ok("there is no way to delete a tank", be.removeTank === undefined);
 
-  const rollup = tm.stockByProduct((await be.listTanks(st)).tanks);
+  // Retiring is reversible and never destroys the dip history.
+  let stillWet = false;
+  try { await be.setTankState(st, made.id, "retired", owner); } catch { stillWet = true; }
+  ok("a tank with stock cannot be retired", stillWet);
+
+  await be.recordDip(st, made.id, { stockLitres: 0, temperatureC: 30 }, owner);
+  const retired = await be.setTankState(st, made.id, "retired", owner);
+  ok("an empty tank can be retired", retired.state === "retired");
+  ok("retiring records who did it", !!retired.stateChangedBy);
+
+  const afterRetire = await be.listTanks(st);
+  ok("a retired tank is kept, not deleted",
+     afterRetire.tanks.some((x) => x.id === made.id));
+  ok("its dip history survives",
+     afterRetire.dips.some((x) => x.tankId === made.id));
+
+  let dipRetired = false;
+  try { await be.recordDip(st, made.id, { stockLitres: 100, temperatureC: 30 }, owner); } catch { dipRetired = true; }
+  ok("a retired tank cannot be dipped", dipRetired);
+
+  const revived = await be.setTankState(st, made.id, "active", owner);
+  ok("a retired tank can be brought back", revived.state === "active");
+  await be.recordDip(st, made.id, { stockLitres: 500, temperatureC: 30 }, owner);
+  ok("and dipped again once back",
+     (await be.listTanks(st)).tanks.find((x) => x.id === made.id).currentStock === 500);
+
+  // Correcting a setup typo must not require rebuilding the tank.
+  const renamed = await be.updateTank(st, made.id, { name: "Tank 4A", capacity: 12000 });
+  ok("a tank can be renamed", renamed.name === "Tank 4A");
+  ok("capacity can be corrected", renamed.capacity === 12000);
+  let shrink = false;
+  try { await be.updateTank(st, made.id, { capacity: 100 }); } catch { shrink = true; }
+  ok("capacity cannot drop below current stock", shrink);
+
+  const rollup = tm.stockByProduct(
+    (await be.listTanks(st)).tanks.filter((x) => x.state !== "retired")
+  );
   ok("stock rolls up per product", rollup.Diesel.tanks === 2, JSON.stringify(rollup.Diesel));
 }
 

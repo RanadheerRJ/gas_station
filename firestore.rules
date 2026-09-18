@@ -102,7 +102,11 @@ service cloud.firestore {
        Tanks are owner-configured plant. Their stock level is advanced only
        by the recordDip / recordDelivery functions, which validate the
        reading against capacity and keep the dip log in step — so a client
-       can never quietly move stock without leaving a reading behind.      */
+       can never quietly move stock without leaving a reading behind.
+
+       Note there is no delete path anywhere in this file for tanks,
+       stations, pumps or nozzles. Plant is retired via a state field and
+       can always be returned to service; history is never destroyed.      */
 
     match /stations/{stationId}/tanks/{tankId} {
       allow read: if hasStationAccess(stationId);

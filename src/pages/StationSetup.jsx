@@ -12,8 +12,8 @@ import {
   getPrices,
   listPumps,
   readableError,
-  removeNozzle,
-  removePump,
+  setNozzleState,
+  setPumpState,
   setPrice as apiSetPrice,
 } from "../lib/api";
 import { activePrices } from "../lib/shiftMath";
@@ -294,16 +294,21 @@ export default function StationSetup() {
                         >
                           {nozzleFor === p.id ? "cancel" : "add nozzle"}
                         </button>
-                        {mine.length === 0 && (
-                          <button
-                            type="button"
-                            className="quiet"
-                            style={{ color: "var(--rust)" }}
-                            onClick={() => run(() => removePump(stationId, p.id))}
-                          >
-                            remove
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="quiet"
+                          onClick={() =>
+                            run(() =>
+                              setPumpState(
+                                stationId,
+                                p.id,
+                                p.state === "retired" ? "active" : "retired"
+                              )
+                            )
+                          }
+                        >
+                          {p.state === "retired" ? "return to service" : "out of service"}
+                        </button>
                       </span>
                     </div>
 
@@ -410,10 +415,17 @@ export default function StationSetup() {
                                 <button
                                   type="button"
                                   className="quiet"
-                                  style={{ color: "var(--rust)" }}
-                                  onClick={() => run(() => removeNozzle(stationId, n.id))}
+                                  onClick={() =>
+                                    run(() =>
+                                      setNozzleState(
+                                        stationId,
+                                        n.id,
+                                        n.state === "retired" ? "active" : "retired"
+                                      )
+                                    )
+                                  }
                                 >
-                                  remove
+                                  {n.state === "retired" ? "return" : "out of service"}
                                 </button>
                               </td>
                             </tr>

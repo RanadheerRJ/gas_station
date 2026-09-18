@@ -8,7 +8,7 @@
  * hashes in a collection no client can read.
  */
 
-const KEY = "stationledger.demo.v5";
+const KEY = "stationledger.demo.v6";
 
 const uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 const nowISO = () => new Date().toISOString();
@@ -172,21 +172,21 @@ function seed() {
     tanks: {
       [s1]: [
         { id: t1, stationId: s1, name: "Tank 1", fuelType: "Petrol", capacity: 20000,
-          deadStock: 800, currentStock: 13400, temperatureC: 31.5, waterCm: 0.4,
+          state: "active", currentStock: 13400, temperatureC: 31.5, waterCm: 0.4,
           lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
         { id: t2, stationId: s1, name: "Tank 2", fuelType: "Diesel", capacity: 30000,
-          deadStock: 1200, currentStock: 8600, temperatureC: 29.8, waterCm: 1.1,
+          state: "active", currentStock: 8600, temperatureC: 29.8, waterCm: 1.1,
           lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
         { id: t3, stationId: s1, name: "Tank 3", fuelType: "Diesel", capacity: 30000,
-          deadStock: 1200, currentStock: 26900, temperatureC: 28.4, waterCm: 0.2,
+          state: "active", currentStock: 26900, temperatureC: 28.4, waterCm: 0.2,
           lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
       ],
       [s2]: [
         { id: t4, stationId: s2, name: "Tank 1", fuelType: "Petrol", capacity: 15000,
-          deadStock: 600, currentStock: 2100, temperatureC: 33.2, waterCm: 0.6,
+          state: "active", currentStock: 2100, temperatureC: 33.2, waterCm: 0.6,
           lastDipAt: nowISO(), lastDipBy: "Ravi Kumar", createdAt: nowISO() },
         { id: t5, stationId: s2, name: "Tank 2", fuelType: "Diesel", capacity: 20000,
-          deadStock: 900, currentStock: 14750, temperatureC: 30.1, waterCm: 0.3,
+          state: "active", currentStock: 14750, temperatureC: 30.1, waterCm: 0.3,
           lastDipAt: nowISO(), lastDipBy: "Ravi Kumar", createdAt: nowISO() },
       ],
     },
@@ -500,29 +500,39 @@ export const demoBackend = {
     return { stationId, name, address };
   },
 
-  async deleteStation(stationId, caller) {
-    await delay(220);
+  /**
+   * Archive a station, or bring it back. A station is never deleted: its
+   * shifts, ledger and credit balances are the business's records, and an
+   * owner who mis-taps must not be able to destroy years of history.
+   * Archiving hides it from the day-to-day screens and frees its staff.
+   */
+  async setStationState(stationId, state, caller) {
+    await delay(200);
     const d = db();
     const station = d.stations[stationId];
     if (!station) throw new Error("Station not found.");
     if (station.ownerId !== caller.uid) throw new Error("That station is not yours.");
-    const openShift = (d.shifts[stationId] || []).some((sh) => sh.status === "open");
-    if (openShift) throw new Error("Close the open shift before deleting this station.");
+    if (state !== "active" && state !== "archived") throw new Error("Unknown state.");
 
-    delete d.stations[stationId];
-    delete d.shifts[stationId];
-    delete d.pumps[stationId];
-    delete d.nozzles[stationId];
-    delete d.prices[stationId];
-    delete d.credit[stationId];
-    delete d.ledger[stationId];
-    if (d.tanks) delete d.tanks[stationId];
-    if (d.dips) delete d.dips[stationId];
-    Object.values(d.users).forEach((u) => {
-      if (u.stationIds) u.stationIds = u.stationIds.filter((id) => id !== stationId);
-    });
+    if (state === "archived") {
+      const openShift = (d.shifts[stationId] || []).some((sh) => sh.status === "open");
+      if (openShift) throw new Error("Close the open shift before archiving this station.");
+      const owing = (d.credit[stationId] || []).reduce(
+        (n, c) => n + Number(c.outstandingBalance || 0),
+        0
+      );
+      if (owing > 0) {
+        throw new Error(
+          `This station has ₹${Math.round(owing)} of credit outstanding. Settle it before archiving.`
+        );
+      }
+    }
+
+    station.state = state;
+    station.stateChangedAt = nowISO();
+    station.stateChangedBy = caller.name;
     commit();
-    return { ok: true };
+    return clone(station);
   },
 
   /* ---------------- tanks & ground stock ---------------- */
@@ -536,15 +546,13 @@ export const demoBackend = {
     };
   },
 
-  async addTank(stationId, { name, fuelType, capacity, deadStock, currentStock }) {
+  async addTank(stationId, { name, fuelType, capacity, currentStock }) {
     await delay(170);
     const d = db();
     d.tanks ||= {};
     d.tanks[stationId] ||= [];
     const cap = Number(capacity) || 0;
     if (cap <= 0) throw new Error("Give the tank a capacity in litres.");
-    const dead = Number(deadStock) || 0;
-    if (dead >= cap) throw new Error("Dead stock cannot exceed the tank's capacity.");
     const stock = Number(currentStock) || 0;
     if (stock > cap) throw new Error("Opening stock is more than the tank holds.");
 
@@ -554,8 +562,8 @@ export const demoBackend = {
       name: String(name || "").trim() || `Tank ${d.tanks[stationId].length + 1}`,
       fuelType,
       capacity: cap,
-      deadStock: dead,
       currentStock: stock,
+      state: "active",
       temperatureC: null,
       waterCm: null,
       lastDipAt: null,
@@ -567,22 +575,56 @@ export const demoBackend = {
     return clone(row);
   },
 
-  async removeTank(stationId, tankId) {
+  /**
+   * Rename or re-rate a tank. Capacity can be corrected — a typo at setup
+   * should not be permanent — but never below what is currently in it.
+   */
+  async updateTank(stationId, tankId, patch) {
     await delay(150);
     const d = db();
-    d.tanks ||= {};
-    const tank = (d.tanks[stationId] || []).find((t) => t.id === tankId);
+    const tank = (d.tanks?.[stationId] || []).find((t) => t.id === tankId);
     if (!tank) throw new Error("Tank not found.");
-    if (Number(tank.currentStock) > Number(tank.deadStock)) {
+    if (patch.name != null) {
+      const name = String(patch.name).trim();
+      if (!name) throw new Error("A tank needs a name.");
+      tank.name = name;
+    }
+    if (patch.capacity != null) {
+      const cap = Number(patch.capacity);
+      if (!Number.isFinite(cap) || cap <= 0) throw new Error("Capacity must be a number.");
+      if (cap < Number(tank.currentStock)) {
+        throw new Error("Capacity cannot be less than the stock already in the tank.");
+      }
+      tank.capacity = cap;
+    }
+    if (patch.fuelType != null) tank.fuelType = patch.fuelType;
+    commit();
+    return clone(tank);
+  },
+
+  /**
+   * Retire a tank, or bring it back. Tanks are never deleted: the dips taken
+   * from one are part of the station's stock history, and a tank taken out of
+   * service for a cleaning is routinely returned to it. Retiring only hides
+   * it from the day-to-day screens.
+   */
+  async setTankState(stationId, tankId, state, caller) {
+    await delay(150);
+    const d = db();
+    const tank = (d.tanks?.[stationId] || []).find((t) => t.id === tankId);
+    if (!tank) throw new Error("Tank not found.");
+    if (state !== "active" && state !== "retired") throw new Error("Unknown tank state.");
+
+    if (state === "retired" && Number(tank.currentStock) > 0) {
       throw new Error(
-        "This tank still holds sellable stock. Draw it down before removing it."
+        "This tank still holds stock. Draw it down before taking it out of service."
       );
     }
-    d.tanks[stationId] = d.tanks[stationId].filter((t) => t.id !== tankId);
-    d.dips ||= {};
-    d.dips[stationId] = (d.dips[stationId] || []).filter((x) => x.tankId !== tankId);
+    tank.state = state;
+    tank.stateChangedAt = nowISO();
+    tank.stateChangedBy = caller?.name || null;
     commit();
-    return { ok: true };
+    return clone(tank);
   },
 
   /**
@@ -596,6 +638,9 @@ export const demoBackend = {
     d.dips ||= {};
     const tank = (d.tanks[stationId] || []).find((t) => t.id === tankId);
     if (!tank) throw new Error("Tank not found.");
+    if (tank.state === "retired") {
+      throw new Error("This tank is out of service. Return it to service to dip it.");
+    }
 
     const stock = Number(reading.stockLitres);
     if (!Number.isFinite(stock) || stock < 0) throw new Error("Enter the stock in litres.");
@@ -646,6 +691,9 @@ export const demoBackend = {
     d.dips ||= {};
     const tank = (d.tanks[stationId] || []).find((t) => t.id === tankId);
     if (!tank) throw new Error("Tank not found.");
+    if (tank.state === "retired") {
+      throw new Error("This tank is out of service. Return it to service to fill it.");
+    }
 
     const litres = Number(delivery.litres);
     if (!Number.isFinite(litres) || litres <= 0) {
@@ -752,25 +800,46 @@ export const demoBackend = {
     return row;
   },
 
-  async removeNozzle(stationId, nozzleId) {
+  /**
+   * Take a nozzle out of service, or return it. Never deleted: its meter
+   * readings are cited by every shift that ever used it.
+   */
+  async setNozzleState(stationId, nozzleId, state) {
     await delay(120);
     const d = db();
+    const nozzle = (d.nozzles[stationId] || []).find((n) => n.id === nozzleId);
+    if (!nozzle) throw new Error("Nozzle not found.");
+    if (state !== "active" && state !== "retired") throw new Error("Unknown state.");
     const open = (d.shifts[stationId] || []).some(
       (sh) =>
         sh.status === "open" && (sh.nozzles || []).some((n) => n.nozzleId === nozzleId)
     );
-    if (open) throw new Error("That nozzle is part of an open shift.");
-    d.nozzles[stationId] = (d.nozzles[stationId] || []).filter((n) => n.id !== nozzleId);
+    if (state === "retired" && open) throw new Error("That nozzle is part of an open shift.");
+    nozzle.state = state;
     commit();
+    return clone(nozzle);
   },
 
-  async removePump(stationId, pumpId) {
+  /** Take a pump out of service, or return it. Its nozzles follow it. */
+  async setPumpState(stationId, pumpId, state) {
     await delay(120);
     const d = db();
-    const hasNozzles = (d.nozzles[stationId] || []).some((n) => n.pumpId === pumpId);
-    if (hasNozzles) throw new Error("Remove the pump's nozzles first.");
-    d.pumps[stationId] = (d.pumps[stationId] || []).filter((p) => p.id !== pumpId);
+    const pump = (d.pumps[stationId] || []).find((p) => p.id === pumpId);
+    if (!pump) throw new Error("Pump not found.");
+    if (state !== "active" && state !== "retired") throw new Error("Unknown state.");
+    if (state === "retired") {
+      const busy = (d.shifts[stationId] || []).some(
+        (sh) => sh.status === "open" && (sh.nozzles || []).some((n) => n.pumpId === pumpId)
+      );
+      if (busy) throw new Error("This pump is in an open shift.");
+    }
+    pump.state = state;
+    // A pump out of service takes its nozzles with it.
+    (d.nozzles[stationId] || []).forEach((n) => {
+      if (n.pumpId === pumpId) n.state = state;
+    });
     commit();
+    return clone(pump);
   },
 
   /* --------------------------- rates ----------------------------- */
