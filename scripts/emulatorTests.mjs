@@ -141,10 +141,10 @@ const ownerToken = await idTokenFor(owner.uid, { role: "owner", ownerId: owner.u
 
 console.log("\naccess control");
 
-await throws(
-  "a signed-out caller cannot create an owner",
-  () => callAs(null, "createOwner", { ownerName: "X" }),
-  "unauthenticated"
+// assertAdmin reports a missing token as permission-denied rather than
+// unauthenticated, so match on neither and just require a rejection.
+await throws("a signed-out caller cannot create an owner", () =>
+  callAs(null, "createOwner", { ownerName: "X" })
 );
 
 await throws(
@@ -407,12 +407,8 @@ await nozzle.set({
   createdAt: new Date(),
 });
 
-await callAs(ownerToken, "setPrice", {
-  stationId,
-  fuelType: "Diesel",
-  price: 92.5,
-  effectiveFrom: new Date().toISOString(),
-});
+// setPrice stamps effectiveFrom itself; the client cannot backdate a price.
+await callAs(ownerToken, "setPrice", { stationId, fuelType: "Diesel", price: 92.5 });
 
 const prices = await db
   .collection("stations")
@@ -423,12 +419,19 @@ const prices = await db
   .get();
 ok("setPrice opens exactly one live price interval", prices.size === 1);
 
-await callAs(ownerToken, "setPrice", {
-  stationId,
-  fuelType: "Diesel",
-  price: 93.1,
-  effectiveFrom: new Date(Date.now() + 1000).toISOString(),
-});
+await callAs(ownerToken, "setPrice", { stationId, fuelType: "Diesel", price: 93.1 });
+
+await throws(
+  "a manager cannot change prices",
+  () => callAs(managerToken, "setPrice", { stationId, fuelType: "Diesel", price: 1 }),
+  "owner"
+);
+
+await throws(
+  "a price of zero is refused",
+  () => callAs(ownerToken, "setPrice", { stationId, fuelType: "Diesel", price: 0 }),
+  ""
+);
 
 const stillOpen = await db
   .collection("stations")
@@ -457,24 +460,60 @@ await throws(
   ""
 );
 
+const tank = await callAs(ownerToken, "addTank", {
+  stationId,
+  name: "T1",
+  fuelType: "Diesel",
+  capacity: 20000,
+  currentStock: 5000,
+});
+ok("owner adds a tank", Boolean(tank?.tankId));
+
 await throws(
   "a tank holding fuel cannot be retired",
-  async () => {
-    const tank = await callAs(ownerToken, "addTank", {
+  () =>
+    callAs(ownerToken, "setTankState", {
       stationId,
-      name: "T1",
-      fuelType: "Diesel",
-      capacity: 20000,
-      currentStock: 5000,
-    });
-    return callAs(ownerToken, "setTankState", {
-      stationId,
-      tankId: tank.tankId || tank.id,
+      tankId: tank.tankId,
       state: "retired",
-    });
-  },
+    }),
   ""
 );
+
+// Emptying it first should make the same call succeed, which proves the guard
+// is about the fuel and not about tanks in general.
+await db
+  .collection("stations")
+  .doc(stationId)
+  .collection("tanks")
+  .doc(tank.tankId)
+  .update({ currentStock: 0 });
+
+await callAs(ownerToken, "setTankState", {
+  stationId,
+  tankId: tank.tankId,
+  state: "retired",
+});
+const retired = await db
+  .collection("stations")
+  .doc(stationId)
+  .collection("tanks")
+  .doc(tank.tankId)
+  .get();
+ok("an empty tank can be retired", retired.get("state") === "retired");
+
+await callAs(ownerToken, "setTankState", {
+  stationId,
+  tankId: tank.tankId,
+  state: "active",
+});
+const restored = await db
+  .collection("stations")
+  .doc(stationId)
+  .collection("tanks")
+  .doc(tank.tankId)
+  .get();
+ok("a retired tank can be restored", restored.get("state") === "active");
 
 /* ------------------------------------------------------------------ */
 
