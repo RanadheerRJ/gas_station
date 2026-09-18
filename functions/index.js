@@ -5,13 +5,13 @@
  *   createOwner  - developer/admin only
  *   createStaff  - owner only, for stations they own
  *   addStation   - owner only, for their own account
+ *   resetPin     - developer resets an owner; owner resets their own staff
  *   pinLogin     - public; verifies a PIN and mints a custom auth token
  *
  * Raw PINs are never stored and never logged. Only a bcrypt hash lands in
  * Firestore, in a collection no client can read or write.
  */
 
-const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
@@ -30,14 +30,42 @@ const PIN_LENGTH = 4;
 const MAX_FAILED_LOGINS = 8;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
+/**
+ * Rejected outright: four-of-a-kind, ascending/descending runs, and the
+ * handful of PINs that dominate real-world breach data. A staff PIN guards
+ * cash and stock figures, so "1234" is not acceptable even if chosen.
+ */
+const WEAK_PINS = new Set([
+  "0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999",
+  "1234", "2345", "3456", "4567", "5678", "6789", "0123",
+  "9876", "8765", "7654", "6543", "5432", "4321", "3210",
+  "1212", "1122", "6969", "1004", "2000", "2001", "1010",
+]);
+
 /* ------------------------------------------------------------------ */
 /* helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-/** A 4-digit PIN from a cryptographically strong source. Never logged. */
-function generatePin() {
-  const max = 10 ** PIN_LENGTH;
-  return String(crypto.randomInt(0, max)).padStart(PIN_LENGTH, "0");
+/**
+ * Validate a caller-supplied PIN. The creator chooses it, so the rules are
+ * enforced here rather than trusting the client form. Never logged, and never
+ * echoed back in an error message.
+ */
+function validatePin(value, field = "pin") {
+  const pin = String(value ?? "");
+  if (!new RegExp(`^\\d{${PIN_LENGTH}}$`).test(pin)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `The ${field} must be exactly ${PIN_LENGTH} digits.`
+    );
+  }
+  if (WEAK_PINS.has(pin)) {
+    throw new HttpsError(
+      "invalid-argument",
+      "That PIN is too easy to guess. Avoid repeated digits and simple runs."
+    );
+  }
+  return pin;
 }
 
 /** "Ravi Kumar Reddy" -> "ravikumarreddy" (fallback "user" when empty). */
@@ -80,11 +108,11 @@ async function claimUsername(baseSlug, uid) {
 
 /**
  * Create an Auth user + users doc + username lookup + hashed PIN.
- * Returns { uid, username, pin } — the raw pin is returned to the caller
- * exactly once and is never persisted.
+ * The PIN is chosen by whoever is creating the account; only its bcrypt hash
+ * is persisted. Returns { uid, username } — never the PIN, since the caller
+ * already knows it.
  */
-async function provisionAccount({ name, phone, role, ownerId, stationIds }) {
-  const pin = generatePin();
+async function provisionAccount({ name, phone, role, ownerId, stationIds, pin }) {
   const pinHash = await bcrypt.hash(pin, BCRYPT_ROUNDS);
 
   const userRecord = await auth.createUser({
@@ -115,6 +143,7 @@ async function provisionAccount({ name, phone, role, ownerId, stationIds }) {
     });
     batch.set(db.collection("authSecrets").doc(uid), {
       pinHash,
+      setBy: ownerId || uid,
       updatedAt: FieldValue.serverTimestamp(),
     });
     await batch.commit();
@@ -127,7 +156,7 @@ async function provisionAccount({ name, phone, role, ownerId, stationIds }) {
     throw err;
   }
 
-  return { uid, username, pin };
+  return { uid, username };
 }
 
 function assertAdmin(request) {
@@ -155,15 +184,17 @@ exports.createOwner = onCall(async (request) => {
   const stationName = requireString(request.data?.stationName, "stationName");
   const phone = requireString(request.data?.phone, "phone", { max: 24 });
   const address = requireString(request.data?.address, "address", { max: 300 });
+  const pin = validatePin(request.data?.pin);
 
   const stationRef = db.collection("stations").doc();
 
-  const { uid, username, pin } = await provisionAccount({
+  const { uid, username } = await provisionAccount({
     name: ownerName,
     phone,
     role: "owner",
     ownerId: null,
     stationIds: [stationRef.id],
+    pin,
   });
 
   await stationRef.set({
@@ -173,7 +204,7 @@ exports.createOwner = onCall(async (request) => {
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  return { username, pin, uid, stationId: stationRef.id };
+  return { username, uid, stationId: stationRef.id };
 });
 
 /* ------------------------------------------------------------------ */
@@ -187,6 +218,7 @@ exports.createStaff = onCall(async (request) => {
   const phone = requireString(request.data?.phone, "phone", { max: 24 });
   const stationId = requireString(request.data?.stationId, "stationId");
   const role = requireString(request.data?.role, "role");
+  const pin = validatePin(request.data?.pin);
 
   if (role !== "manager" && role !== "attendant") {
     throw new HttpsError("invalid-argument", "Role must be manager or attendant.");
@@ -197,15 +229,16 @@ exports.createStaff = onCall(async (request) => {
     throw new HttpsError("permission-denied", "That station is not yours.");
   }
 
-  const { username, pin, uid } = await provisionAccount({
+  const { username, uid } = await provisionAccount({
     name,
     phone,
     role,
     ownerId: ownerUid,
     stationIds: [stationId],
+    pin,
   });
 
-  return { username, pin, uid, stationId };
+  return { username, uid, stationId };
 });
 
 /* ------------------------------------------------------------------ */
@@ -232,6 +265,58 @@ exports.addStation = onCall(async (request) => {
   await batch.commit();
 
   return { stationId: stationRef.id, name, address };
+});
+
+/* ------------------------------------------------------------------ */
+/* resetPin — a creator rotates a subordinate's PIN                    */
+/* ------------------------------------------------------------------ */
+
+exports.resetPin = onCall(async (request) => {
+  const caller = request.auth;
+  if (!caller) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const targetUid = requireString(request.data?.uid, "uid");
+  const pin = validatePin(request.data?.pin);
+
+  const targetSnap = await db.collection("users").doc(targetUid).get();
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "That account does not exist.");
+  }
+  const target = targetSnap.data();
+
+  // Authority runs strictly down the hierarchy: the developer may reset an
+  // owner, an owner may reset their own staff. Nobody resets a peer, and
+  // nobody resets upward.
+  const isAdmin = caller.token?.admin === true;
+  const isTheirOwner =
+    caller.token?.role === "owner" &&
+    target.role !== "owner" &&
+    target.ownerId === caller.uid;
+
+  if (!isAdmin && !isTheirOwner) {
+    throw new HttpsError("permission-denied", "You cannot reset that account's PIN.");
+  }
+
+  const pinHash = await bcrypt.hash(pin, BCRYPT_ROUNDS);
+  await db.collection("authSecrets").doc(targetUid).set(
+    {
+      pinHash,
+      setBy: caller.uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  // A rotated PIN clears any active lockout so the user isn't locked out of
+  // their own fresh credentials.
+  if (target.username) {
+    await db.collection("loginAttempts").doc(target.username).set(
+      { failedCount: 0 },
+      { merge: true }
+    );
+  }
+
+  return { ok: true, username: target.username };
 });
 
 /* ------------------------------------------------------------------ */

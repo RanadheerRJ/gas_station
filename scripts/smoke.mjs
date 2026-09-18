@@ -31,15 +31,51 @@ const attStations = await be.listStations(att);
 ok("attendant sees only their station", attStations.length === 1);
 
 console.log("\nprovisioning");
-const created = await be.createOwner({ ownerName: "Ravi Kumar", stationName: "Second Pump", phone: "1", address: "x" });
+const created = await be.createOwner({ ownerName: "Ravi Kumar", stationName: "Second Pump", phone: "1", address: "x", pin: "5731" });
 ok("username de-duplicated on collision", created.username === "ravikumar2", `got ${created.username}`);
-ok("PIN is 4 digits", /^\d{4}$/.test(created.pin), created.pin);
-const staff = await be.createStaff({ name: "New Hand", phone: "2", stationId: ownerStations[0].id, role: "attendant" }, owner);
+ok("chosen PIN is not echoed back", created.pin === undefined);
+ok("chosen PIN works for login", (await be.pinLogin({ username: "ravikumar2", pin: "5731" })).role === "owner");
+
+for (const bad of ["1234", "0000", "4321", "12", "abcd", "12345"]) {
+  let rejected = false;
+  try { await be.createOwner({ ownerName: "Weak " + bad, stationName: "s", phone: "1", address: "x", pin: bad }); }
+  catch { rejected = true; }
+  ok(`weak/invalid PIN "${bad}" rejected`, rejected);
+}
+
+const staff = await be.createStaff({ name: "New Hand", phone: "2", stationId: ownerStations[0].id, role: "attendant", pin: "8264" }, owner);
 ok("owner can create staff on own station", staff.username === "newhand");
+ok("staff signs in with owner-chosen PIN", (await be.pinLogin({ username: "newhand", pin: "8264" })).role === "attendant");
 let denied = false;
-try { await be.createStaff({ name: "X", phone: "3", stationId: created.stationId, role: "manager" }, owner); }
+try { await be.createStaff({ name: "X", phone: "3", stationId: created.stationId, role: "manager", pin: "8264" }, owner); }
 catch { denied = true; }
 ok("owner blocked from another owner's station", denied);
+
+console.log("\nPIN resets (RBAC)");
+const newHand = (await be.listStaff(owner)).find((u) => u.username === "newhand");
+await be.resetPin({ uid: newHand.uid, pin: "3917" }, owner);
+ok("owner resets own staff PIN", (await be.pinLogin({ username: "newhand", pin: "3917" })).uid === newHand.uid);
+let oldWorks = false;
+try { await be.pinLogin({ username: "newhand", pin: "8264" }); oldWorks = true; } catch {}
+ok("old PIN stops working after reset", !oldWorks);
+
+const admin = await be.pinLogin({ username: "developer", pin: "4820" });
+const ownerRec = (await be.listOwners()).find((o) => o.username === "ravikumar");
+await be.resetPin({ uid: ownerRec.uid, pin: "7412" }, admin);
+ok("developer resets an owner's PIN", (await be.pinLogin({ username: "ravikumar", pin: "7412" })).role === "owner");
+
+let upward = false;
+try { await be.resetPin({ uid: ownerRec.uid, pin: "5555" }, newHand); } catch { upward = true; }
+ok("staff cannot reset upward", upward);
+
+const otherOwner = (await be.listOwners()).find((o) => o.username === "ravikumar2");
+let sideways = false;
+try { await be.resetPin({ uid: otherOwner.uid, pin: "6183" }, ownerRec); } catch { sideways = true; }
+ok("owner cannot reset a peer owner", sideways);
+
+let weakReset = false;
+try { await be.resetPin({ uid: newHand.uid, pin: "1111" }, owner); } catch { weakReset = true; }
+ok("weak PIN rejected on reset too", weakReset);
 
 console.log("\nledger");
 const sid = ownerStations[0].id;

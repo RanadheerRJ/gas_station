@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../components/Layout";
 import { CredentialPanel, Empty, Field, Notice, Panel } from "../components/ui";
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
+import PinField, { pinReady } from "../components/PinField";
+import ResetPinPanel from "../components/ResetPinPanel";
 import { createStaff, listStaff, readableError } from "../lib/api";
 import { formatStamp } from "../lib/format";
 
@@ -11,10 +13,18 @@ export default function OwnerStaff() {
   const { stations } = useStations();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", phone: "", stationId: "", role: "attendant" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    stationId: "",
+    role: "attendant",
+    pin: "",
+    confirmPin: "",
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState(null);
+  const [resetting, setResetting] = useState(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -52,11 +62,12 @@ export default function OwnerStaff() {
           phone: form.phone.trim(),
           stationId: form.stationId,
           role: form.role,
+          pin: form.pin,
         },
         profile
       );
-      setCredentials({ ...res, subject: form.name.trim() });
-      setForm((f) => ({ ...f, name: "", phone: "" }));
+      setCredentials({ ...res, pin: form.pin, subject: form.name.trim() });
+      setForm((f) => ({ ...f, name: "", phone: "", pin: "", confirmPin: "" }));
       await load();
     } catch (err) {
       setError(readableError(err));
@@ -123,13 +134,26 @@ export default function OwnerStaff() {
                   <option value="manager">Manager</option>
                 </select>
               </Field>
+              <PinField
+                pin={form.pin}
+                confirm={form.confirmPin}
+                onPin={(v) => setForm((f) => ({ ...f, pin: v }))}
+                onConfirm={(v) => setForm((f) => ({ ...f, confirmPin: v }))}
+                label="PIN for this login"
+              />
             </div>
             {error && <Notice kind="error">{error}</Notice>}
             <div>
               <button
                 className="primary"
                 type="submit"
-                disabled={busy || !form.name.trim() || !form.phone.trim() || !form.stationId}
+                disabled={
+                  busy ||
+                  !form.name.trim() ||
+                  !form.phone.trim() ||
+                  !form.stationId ||
+                  !pinReady(form.pin, form.confirmPin)
+                }
               >
                 {busy ? "Creating…" : "Create login"}
               </button>
@@ -152,18 +176,37 @@ export default function OwnerStaff() {
                   <th>Role</th>
                   <th>Station</th>
                   <th>Created</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {staff.map((s) => (
-                  <tr key={s.uid}>
-                    <td style={{ fontWeight: 500 }}>{s.name}</td>
-                    <td className="mono">{s.username}</td>
-                    <td className="mono small">{s.phone}</td>
-                    <td style={{ textTransform: "capitalize" }}>{s.role}</td>
-                    <td>{stationName((s.stationIds || [])[0])}</td>
-                    <td className="small muted">{formatStamp(s.createdAt)}</td>
-                  </tr>
+                  <Fragment key={s.uid}>
+                    <tr>
+                      <td style={{ fontWeight: 500 }}>{s.name}</td>
+                      <td className="mono">{s.username}</td>
+                      <td className="mono small">{s.phone}</td>
+                      <td style={{ textTransform: "capitalize" }}>{s.role}</td>
+                      <td>{stationName((s.stationIds || [])[0])}</td>
+                      <td className="small muted">{formatStamp(s.createdAt)}</td>
+                      <td className="num">
+                        <button
+                          type="button"
+                          className="quiet"
+                          onClick={() => setResetting(resetting === s.uid ? null : s.uid)}
+                        >
+                          {resetting === s.uid ? "cancel" : "reset PIN"}
+                        </button>
+                      </td>
+                    </tr>
+                    {resetting === s.uid && (
+                      <tr>
+                        <td colSpan={7} style={{ background: "#fbfaf6" }}>
+                          <ResetPinPanel target={s} onDone={() => setResetting(null)} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

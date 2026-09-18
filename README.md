@@ -8,8 +8,8 @@ Firestore + Cloud Functions behind it.
 
 | Role | Created by | Scope | Can |
 | --- | --- | --- | --- |
-| Developer | manual, once | — | Invite station owners |
-| Owner | Developer | all their stations | Add stations, invite staff, full ledger, credit accounts |
+| Developer | manual, once | — | Invite station owners, reset any owner's PIN |
+| Owner | Developer | all their stations | Add stations, invite staff, reset their staff's PINs, full ledger, credit accounts |
 | Manager | Owner | one station | Full ledger for that station, correct past entries |
 | Attendant | Owner | one station | Log today's sales, readings and cash — no edits, no deletes |
 
@@ -21,11 +21,15 @@ Cloud Functions using the Admin SDK.
 Firebase Auth has no username+PIN mode, so it is built explicitly:
 
 1. `createOwner` / `createStaff` generate a username (slug of the person's
-   name, numerically de-duplicated) and a random 4-digit PIN.
+   name, numerically de-duplicated). The **PIN is chosen by whoever creates
+   the account** — the developer sets the owner's, the owner sets each staff
+   member's — and is confirmed twice in the form before submission.
 2. The PIN is bcrypt-hashed into `authSecrets/{uid}` — a collection that
    Firestore rules make unreadable and unwritable from every client. Only the
-   Admin SDK touches it. The raw PIN is returned to the inviter exactly once
-   and is never stored or logged.
+   Admin SDK touches it. The raw PIN is never stored, logged, or returned by
+   any function; the creator already knows it because they chose it.
+   Trivially guessable PINs (`1234`, `0000`, runs, repeated digits) are
+   rejected server-side, so a weak choice cannot reach the database.
 3. The client calls the `pinLogin` callable with `{ username, pin }`. On a
    match the function mints a custom token with
    `admin.auth().createCustomToken(uid)`, and the client calls
@@ -33,6 +37,11 @@ Firebase Auth has no username+PIN mode, so it is built explicitly:
 4. Custom claims are set at creation so rules check roles without extra reads:
    - Owner — `{ role: 'owner', ownerId: <own uid> }`
    - Manager/Attendant — `{ role, ownerId, stationId }`
+5. `resetPin` rotates a forgotten PIN. Authority runs strictly **down** the
+   hierarchy and is enforced in the function, not the UI: a developer may
+   reset an owner, an owner may reset only their own manager/attendant
+   accounts. Peer-to-peer and upward resets are refused. A reset also clears
+   any active lockout so the user isn't locked out of fresh credentials.
 
 Repeated failures against a username are rate-limited (8 attempts per 15
 minutes) in `loginAttempts/{username}`.
@@ -45,7 +54,7 @@ src/
   state/      auth context, station loader
   components/ layout, ledger entry form, shared UI primitives
   pages/      login, developer admin, owner dashboard, ledger, credit, staff
-functions/    createOwner, createStaff, addStation, pinLogin
+functions/    createOwner, createStaff, addStation, resetPin, pinLogin
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -114,6 +123,9 @@ Firebase project exists. The sign-in screen lists the demo logins. Add real
 credentials and the same UI talks to Firestore and Cloud Functions instead —
 no code changes.
 
+Demo PINs are the ones seeded in `src/lib/demoBackend.js`; in a real project
+every PIN is whatever the creator typed.
+
 Verify the ledger maths and access logic without a browser:
 
 ```bash
@@ -126,7 +138,7 @@ node scripts/smoke.mjs
 users/{uid}                name, phone, role, ownerId, stationIds[], username, createdAt
 stations/{stationId}       name, address, ownerId, createdAt
 usernames/{username}       uid                        (no client access)
-authSecrets/{uid}          pinHash                    (no client access, ever)
+authSecrets/{uid}          pinHash, setBy, updatedAt  (no client access, ever)
 loginAttempts/{username}   failedCount, lastFailedAt  (no client access)
 
 ledger/{stationId}/entries/{entryId}
@@ -160,5 +172,7 @@ Cash in hand for a day is derived, never stored:
   own uid in `enteredBy`, so entries are always attributable.
 - `createStaff` re-checks server-side that the target station belongs to the
   calling owner before creating anything.
+- `resetPin` re-derives the caller's authority from their token and the
+  target's `ownerId`, so hiding a button is never what keeps an account safe.
 - PINs never appear in Firestore, in function logs, or in any error message —
   failed logins return a deliberately vague "Incorrect username or PIN."

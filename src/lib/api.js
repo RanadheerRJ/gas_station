@@ -28,7 +28,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 
 import { auth, db, functions, firebaseConfigured } from "./firebase";
-import { demoBackend } from "./demoBackend";
+import { demoBackend, pinProblem } from "./demoBackend";
 
 const isDemo = !firebaseConfigured;
 
@@ -115,6 +115,12 @@ export async function createStaff(payload, profile) {
   return res.data;
 }
 
+export async function resetPin(payload, profile) {
+  if (isDemo) return demoBackend.resetPin(payload, profile);
+  const res = await call("resetPin")(payload);
+  return res.data;
+}
+
 export async function addStation(payload, profile) {
   if (isDemo) return demoBackend.addStation(payload, profile);
   const res = await call("addStation")(payload);
@@ -142,6 +148,15 @@ export async function listStations(profile) {
     })
   );
   return results.filter(Boolean);
+}
+
+/** Developer-only: every owner account in the system. */
+export async function listOwners() {
+  if (isDemo) return demoBackend.listOwners();
+  const snap = await getDocs(
+    query(collection(db, "users"), where("role", "==", "owner"))
+  );
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
 }
 
 export async function listStaff(profile) {
@@ -230,6 +245,9 @@ export async function addCustomerTransaction(stationId, customerId, tx) {
   await setDoc(ref, next, { merge: true });
   return { id: customerId, ...data, ...next };
 }
+
+/** Client-side PIN validation, mirroring the server's rules. */
+export { pinProblem };
 
 export const backendInfo = {
   isDemo,

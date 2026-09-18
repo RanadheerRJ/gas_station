@@ -52,7 +52,10 @@ export function Empty({ children }) {
   );
 }
 
-/** One-time credential panel: shown once, never persisted. */
+/**
+ * Post-creation handover panel. The PIN was chosen by the creator, so this
+ * confirms the username and echoes the PIN they just set for handover.
+ */
 export function CredentialPanel({ username, pin, onDismiss, subject }) {
   const [copied, setCopied] = useState(false);
 
@@ -70,8 +73,9 @@ export function CredentialPanel({ username, pin, onDismiss, subject }) {
   return (
     <div className="stack" style={{ gap: 10 }}>
       <Notice kind="good">
-        Account created for {subject}. Copy these now and hand them over — the PIN is
-        hashed on the server and cannot be shown again.
+        Account created for {subject}. Share the username and the PIN you chose —
+        only its hash is stored, so it cannot be looked up later. If it is lost you
+        can set a new one from this page.
       </Notice>
       <div className="credential">
         <div>

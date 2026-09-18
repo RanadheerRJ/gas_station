@@ -48,8 +48,11 @@ service cloud.firestore {
        Clients get read access only, and only to what concerns them.      */
 
     match /users/{uid} {
+      // The developer lists owners in order to reset their PINs; owners see
+      // their own staff; everyone sees themselves.
       allow read: if signedIn() && (
         request.auth.uid == uid ||
+        isAdmin() ||
         (isOwner() && resource.data.ownerId == claims().ownerId)
       );
       allow write: if false;

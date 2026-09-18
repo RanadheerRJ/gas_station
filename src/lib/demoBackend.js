@@ -8,7 +8,7 @@
  * hashes in a collection no client can read.
  */
 
-const KEY = "stationledger.demo.v1";
+const KEY = "stationledger.demo.v2";
 
 const uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 const nowISO = () => new Date().toISOString();
@@ -113,7 +113,7 @@ function seed() {
       },
     },
     pins: {
-      developer: "1234",
+      developer: "4820",
       ravikumar: "2468",
       sureshbabu: "1357",
       maheshn: "9753",
@@ -239,7 +239,26 @@ function uniqueUsername(base) {
   return candidate;
 }
 
-const randomPin = () => String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+/** Mirrors WEAK_PINS in functions/index.js. */
+const WEAK_PINS = new Set([
+  "0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999",
+  "1234", "2345", "3456", "4567", "5678", "6789", "0123",
+  "9876", "8765", "7654", "6543", "5432", "4321", "3210",
+  "1212", "1122", "6969", "1004", "2000", "2001", "1010",
+]);
+
+export function pinProblem(pin) {
+  if (!/^\d{4}$/.test(String(pin ?? ""))) return "The PIN must be exactly 4 digits.";
+  if (WEAK_PINS.has(String(pin)))
+    return "That PIN is too easy to guess. Avoid repeated digits and simple runs.";
+  return null;
+}
+
+function assertPin(pin) {
+  const problem = pinProblem(pin);
+  if (problem) throw new Error(problem);
+  return String(pin);
+}
 
 /* ------------------------------ session ------------------------------ */
 
@@ -287,13 +306,13 @@ export const demoBackend = {
     emit();
   },
 
-  async createOwner({ ownerName, stationName, phone, address }) {
+  async createOwner({ ownerName, stationName, phone, address, pin }) {
     await delay(220);
+    assertPin(pin);
     const d = db();
     const ownerUid = uid("u");
     const stationId = uid("st");
     const username = uniqueUsername(slugify(ownerName));
-    const pin = randomPin();
 
     d.users[ownerUid] = {
       uid: ownerUid,
@@ -317,11 +336,12 @@ export const demoBackend = {
     d.ledger[stationId] = [];
     d.credit[stationId] = [];
     commit();
-    return { username, pin, uid: ownerUid, stationId };
+    return { username, uid: ownerUid, stationId };
   },
 
-  async createStaff({ name, phone, stationId, role }, caller) {
+  async createStaff({ name, phone, stationId, role, pin }, caller) {
     await delay(220);
+    assertPin(pin);
     const d = db();
     const station = d.stations[stationId];
     if (!station || station.ownerId !== caller.uid) {
@@ -329,7 +349,6 @@ export const demoBackend = {
     }
     const staffUid = uid("u");
     const username = uniqueUsername(slugify(name));
-    const pin = randomPin();
     d.users[staffUid] = {
       uid: staffUid,
       name,
@@ -343,7 +362,26 @@ export const demoBackend = {
     d.usernames[username] = staffUid;
     d.pins[username] = pin;
     commit();
-    return { username, pin, uid: staffUid, stationId };
+    return { username, uid: staffUid, stationId };
+  },
+
+  async resetPin({ uid: targetUid, pin }, caller) {
+    await delay(200);
+    assertPin(pin);
+    const d = db();
+    const target = d.users[targetUid];
+    if (!target) throw new Error("That account does not exist.");
+
+    const isAdmin = caller.role === "admin";
+    const isTheirOwner =
+      caller.role === "owner" && target.role !== "owner" && target.ownerId === caller.uid;
+    if (!isAdmin && !isTheirOwner) {
+      throw new Error("You cannot reset that account's PIN.");
+    }
+
+    d.pins[target.username] = String(pin);
+    commit();
+    return { ok: true, username: target.username };
   },
 
   async addStation({ name, address }, caller) {
@@ -372,6 +410,11 @@ export const demoBackend = {
       return clone(all.filter((s) => s.ownerId === profile.ownerId));
     }
     return clone(all.filter((s) => profile.stationIds.includes(s.id)));
+  },
+
+  async listOwners() {
+    await delay(80);
+    return clone(Object.values(db().users).filter((u) => u.role === "owner"));
   },
 
   async listStaff(profile) {
