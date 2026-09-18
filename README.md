@@ -195,21 +195,25 @@ would corrupt the next shift's opening readings.
 
 ```
 src/
-  lib/        firebase init, api facade, shift maths, tank maths, formatters,
-              demo backend
-  state/      auth context, station loader
-  components/ layout, ledger entry form, shared UI primitives
-  pages/      login, developer admin, owner dashboard, shifts, pump/rate
-              setup, ground stock, daily ledger, credit, staff
-  components/motion.jsx   counting figures, one-shot cues, animated lists,
-                          skeletons
-functions/    createOwner, createStaff, addStation, setStationState, resetPin,
-              pinLogin, setPrice, setPumpState, openShift, closeShift,
-              addShiftExpense, removeShiftExpense, reviseShift, reviewShift,
-              addTank, updateTank, setTankState, recordDip, recordDelivery,
-              recordCustomerPayment
-scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
-src/lib/*.test.js         unit tests for the shift and tank maths
+  lib/          firebase.js    SDK init, emulator wiring
+                api.js         the only module that talks to Firebase
+                pin.js         PIN rules, mirrored from the functions
+                shiftMath.js   money arithmetic, pure
+                tankMath.js    volume arithmetic, pure
+                *.test.js      unit tests for the two maths modules
+  state/        auth context, station loader
+  components/   layout, shared UI primitives
+                motion.jsx     counting figures, cues, animated lists, skeletons
+  pages/        login, developer admin, owner dashboard, shifts, pump/rate
+                setup, ground stock, daily ledger, credit, staff
+functions/      createOwner, createStaff, addStation, setStationState, resetPin,
+                pinLogin, setPrice, setPumpState, openShift, closeShift,
+                addShiftExpense, removeShiftExpense, reviseShift, reviewShift,
+                addTank, updateTank, setTankState, recordDip, recordDelivery,
+                recordCustomerPayment
+scripts/        setAdminClaim.cjs   grant the first admin claim
+                seedStation.cjs     create a first owner and station
+                emulatorTests.mjs   end-to-end tests against the emulators
 firestore.rules
 firestore.indexes.json
 ```
@@ -230,21 +234,11 @@ the others.
   money-writing path in this app is a callable function.
 - **`firebase-tools`**, installed below.
 
-### 1. Run it with no backend at all
+### 1. Create the Firebase project
 
-Before touching Firebase, confirm the app works:
-
-```bash
-npm install
-npm run dev          # http://localhost:5173/gas_station/
-```
-
-With no `.env.local` present the app runs entirely in `localStorage`, seeded
-with two stations, several days of shifts, tanks and credit customers. The
-sign-in screen lists the demo logins and their PINs. Click through all four
-roles here first; it costs nothing and makes the rest of this obvious.
-
-### 2. Create the Firebase project
+Firebase is the only backend. There is no offline or demo mode: the app reads
+and writes real Firestore documents and calls real Cloud Functions, so the
+project has to exist before anything works.
 
 1. Create a project in the [Firebase console](https://console.firebase.google.com).
 2. **Build → Authentication → Get started**, and enable the
@@ -252,12 +246,12 @@ roles here first; it costs nothing and makes the rest of this obvious.
    developer. Everyone else signs in with a username and PIN against a custom
    token, which needs no provider enabled.
 3. **Build → Firestore Database → Create database**. Start in **production
-   mode** — the rules in this repo replace the defaults in step 4. Pick the
+   mode** — the rules in this repo replace the defaults in step 3. Pick the
    region closest to the stations; it cannot be changed later.
 4. **Project settings → General → Your apps → Web app** (`</>`). Register the
    app and copy the config object.
 
-### 3. Point the app at the project
+### 2. Point the app at the project
 
 ```bash
 cp .env.example .env.local
@@ -275,8 +269,10 @@ Fill in each value from the config object you just copied:
 | `VITE_FIREBASE_APP_ID` | `appId` | yes |
 | `VITE_FUNCTIONS_REGION` | region you deploy functions to | no, defaults to `us-central1` |
 
-The app switches out of demo mode as soon as `VITE_FIREBASE_PROJECT_ID` is
-set, so fill in all of them or none of them. `.env.local` is git-ignored and
+All of them are required. Without `VITE_FIREBASE_API_KEY` and
+`VITE_FIREBASE_PROJECT_ID` the login screen shows a setup error instead of a
+sign-in form, because an app that cannot reach its backend should say so
+rather than fail on the first keystroke. `.env.local` is git-ignored and
 must stay that way — these values are public-by-design client config, but the
 file is a habit worth keeping clean.
 
@@ -284,7 +280,7 @@ If you deploy functions somewhere other than `us-central1`, set
 `VITE_FUNCTIONS_REGION` to match or every callable will fail with a CORS-ish
 `internal` error that tells you nothing.
 
-### 4. Deploy rules, indexes and functions
+### 3. Deploy rules, indexes and functions
 
 ```bash
 npm i -g firebase-tools
@@ -305,7 +301,7 @@ The first functions deploy also enables the required Google Cloud APIs and
 takes several minutes. If it fails asking you to enable Cloud Build or
 Artifact Registry, accept and run it again.
 
-### 5. Create the developer account
+### 4. Create the developer account
 
 The developer is the only account the app cannot create, because there is
 nobody yet to create it. It is made by hand, once.
@@ -320,7 +316,7 @@ nobody yet to create it. It is made by hand, once.
 
    ```bash
    cd functions && npm install && cd ..   # the script uses firebase-admin
-   node scripts/setAdminClaim.js you@example.com
+   node scripts/setAdminClaim.cjs you@example.com
    ```
 
    The script looks the user up by email and sets `{ admin: true }`. It prints
@@ -332,7 +328,7 @@ nobody yet to create it. It is made by hand, once.
 You can do the same thing without the script from any Admin SDK context:
 `admin.auth().setCustomUserClaims(uid, { admin: true })`.
 
-### 6. Work down the chain
+### 5. Work down the chain
 
 Sign in as the developer. From there the app creates everyone else, and each
 level can only create the level below it:
@@ -349,15 +345,48 @@ At no point does anyone sign themselves up, and at no point is a PIN generated
 for you — whoever creates an account chooses the PIN and is responsible for
 passing it on.
 
+#### Shortcut: seed a first station
+
+Doing all of that by hand to try something out is tedious, so there is a
+script that creates an owner, a station, two pumps with four nozzles, and two
+tanks in one go:
+
+```bash
+node scripts/seedStation.cjs --dry-run \
+  --owner "Ravi Kumar" --station "Highway Fuels" --pin 4827
+
+# happy with it? drop --dry-run
+node scripts/seedStation.cjs \
+  --owner "Ravi Kumar" --station "Highway Fuels" --pin 4827
+```
+
+This is **not** demo data — everything it writes is real and yours, in the
+same shape the app writes itself. It needs the same `serviceAccountKey.json`
+as `setAdminClaim.cjs`, refuses weak PINs, and refuses to run twice for the
+same phone number so a repeated run cannot silently duplicate a station.
+
+Fuel prices are deliberately seeded at zero. A made-up rate that looks
+plausible is more dangerous than an obvious blank, so set real prices in
+**Setup** before opening a shift.
+
 ### Verifying a deployment
 
 ```bash
 npm run check
 ```
 
-That runs lint, the unit tests, the smoke suite and a production build. The
-smoke suite exercises the demo backend rather than your Firebase project, so
-it is safe to run against a live checkout.
+That runs lint, formatting, the unit tests and a production build. None of it
+touches your Firebase project.
+
+To exercise the backend itself, run the emulator suite:
+
+```bash
+npm run test:emulator
+```
+
+That starts local Auth, Firestore and Functions emulators, runs
+`scripts/emulatorTests.mjs` against them, and shuts them down. It never
+connects to a real project.
 
 ## Running locally
 
@@ -374,23 +403,50 @@ be checked through `npm run preview`, not `npm run dev`.
 ### Checks
 
 ```bash
-npm run lint         # ESLint across src/, functions/ and scripts/
-npm run format       # Prettier, same config for the app and the functions
-npm test             # unit tests for the shift and tank maths
-npm run smoke        # end-to-end pass over the demo backend
-npm run check        # all of the above, then a build
+npm run lint           # ESLint across src/, functions/ and scripts/
+npm run format         # Prettier, same config for the app and the functions
+npm test               # unit tests for the shift and tank maths
+npm run check          # lint, format, unit tests, then a build
+npm run test:emulator  # end-to-end against the Firebase emulators
+npm run emulators      # just start the emulators, with the UI on :4000
 ```
 
 `npm test` covers `src/lib/shiftMath.js` and `src/lib/tankMath.js` — the pure
-money and volume arithmetic, with no Firebase in the way. `npm run smoke`
-drives the demo backend through real sequences: opening and closing shifts,
-approval and rejection, credit repayment limits, and the archive and restore
-guards.
+money and volume arithmetic, with no Firebase in the way. It is fast and needs
+nothing installed.
 
-## Publishing the demo to GitHub Pages
+`npm run test:emulator` is the real safety net. It drives the actual Cloud
+Functions and the actual `firestore.rules`: account creation and the privilege
+ladder, PIN hashing and login, credit balances and over-repayment, price
+intervals, double-opening a nozzle, and retiring a tank that still holds fuel.
 
-The app runs fully in the browser when no Firebase config is present, so the
-demo backend can be published as a static site with nothing behind it.
+This replaced an earlier suite that ran against a hand-written imitation of
+the backend. That could only ever prove the imitation agreed with itself; a
+rules change or a bad transaction would sail straight past it.
+
+**The emulators need Java** (a JRE is enough). On Debian or Ubuntu,
+`sudo apt install default-jre-headless`; on macOS, `brew install openjdk`. CI
+runners have it already.
+
+### Developing against the emulators
+
+To point the running app at the emulators instead of the live project, set
+`VITE_USE_EMULATORS=true` in `.env.local` and start them in another terminal:
+
+```bash
+npm run emulators      # terminal 1
+npm run dev            # terminal 2
+```
+
+The login screen shows a red "Connected to local emulators" line so emulator
+data is never mistaken for real data. The `VITE_FIREBASE_*` values still need
+to be present but can be dummies.
+
+## Publishing to GitHub Pages
+
+The published site talks to your real Firebase project. Pages only serves
+static files, which is all this app is — the backend is Firestore and Cloud
+Functions, reached from the browser.
 
 **Deploy from `main`.** The workflow at `.github/workflows/deploy-pages.yml`
 builds and publishes on every push to `main`, and can be run on demand from
@@ -398,14 +454,58 @@ the **Actions** tab. Keep `main` as the Pages branch; there is no `gh-pages`
 branch to maintain, because the build is uploaded as an artifact rather than
 committed.
 
-To turn it on, once:
+To turn it on:
 
 1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
    Not "Deploy from a branch" — that serves the repository as-is, and this
    repository is source, not a built site.
-2. Push to `main`, or run the workflow manually.
+2. **Settings → Secrets and variables → Actions**, and add one repository
+   secret per value from `.env.example`:
+
+   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
+   `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
+
+   If your functions are not in `us-central1`, also add a repository
+   **variable** `VITE_FUNCTIONS_REGION`.
+
+3. **Firebase console → Authentication → Settings → Authorized domains**, and
+   add `<user>.github.io`. Sign-in is rejected from an unlisted domain.
+4. Push to `main`, or run the workflow manually.
 
 The site appears at `https://<user>.github.io/gas_station/`.
+
+The workflow fails the build if the bundle comes out with no Firebase config
+in it. A site that deploys cleanly and then cannot sign anyone in is worse
+than a red run, because nothing looks wrong until someone tries to use it.
+
+### Before you point this at real stations
+
+The config in those secrets is **not** a credential — Firebase web config
+ships inside the bundle and anyone can read it. Keeping it in secrets means
+you can rotate or swap projects without a commit, and a fork does not inherit
+your backend. That is all it buys.
+
+What actually protects the data:
+
+- `firestore.rules`, which is the only thing standing between a signed-in
+  attendant and another station's ledger.
+- Every write going through an authenticated Cloud Function.
+- No account being creatable without an existing privileged account.
+
+Two things worth weighing before this holds real money. Sign-in is a username
+and a **4-digit PIN**, which is fine for a phone in a forecourt and weak for a
+public URL that anyone can find — the `pinLogin` lockout is what keeps that
+honest, so do not loosen it. And a public Pages URL is discoverable, so the
+security posture rests entirely on rules and functions rather than on obscurity.
+
+If that is not a trade you want, deploy to Firebase Hosting instead — already
+configured in `firebase.json`, same build, and it can sit behind App Check or
+an IP allowlist:
+
+```bash
+npm run build && firebase deploy --only hosting
+```
 
 ### What subpath hosting required
 
@@ -427,17 +527,6 @@ three things unless they are handled:
 Because `base` is no longer `/`, `npm run dev` also serves from
 `http://localhost:5173/gas_station/` and redirects the root there. That is
 deliberate: development matches production.
-
-### Deliberately no Firebase on the public site
-
-The workflow passes no `VITE_FIREBASE_*` values, so the published site always
-runs the demo backend in `localStorage`. Wiring a real project into a public
-Pages site would put live station ledgers behind nothing but an unlisted URL.
-Firebase config is client-visible by design, so the protection has to be that
-the credentials are simply absent.
-
-If you do want a hosted build against a real project, deploy it to Firebase
-Hosting behind the same Auth, not to Pages.
 
 ## Query and index audit
 

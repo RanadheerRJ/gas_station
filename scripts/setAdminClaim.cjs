@@ -7,7 +7,7 @@
  *   1. Firebase console > Authentication > Add user (email + password).
  *   2. Project settings > Service accounts > Generate new private key,
  *      save it as serviceAccountKey.json in the repo root (git-ignored).
- *   3. node scripts/setAdminClaim.js you@example.com
+ *   3. node scripts/setAdminClaim.cjs you@example.com
  *
  * The developer then signs into the app with that Firebase account. Owners,
  * managers and attendants use username + PIN instead.
@@ -18,7 +18,7 @@ const admin = require("firebase-admin");
 
 const email = process.argv[2];
 if (!email) {
-  console.error("Usage: node scripts/setAdminClaim.js <developer-email>");
+  console.error("Usage: node scripts/setAdminClaim.cjs <developer-email>");
   process.exit(1);
 }
 

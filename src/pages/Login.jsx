@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../state/AuthContext";
-import { backendInfo, readableError } from "../lib/api";
+import { readableError } from "../lib/api";
+import { firebaseConfigured, useEmulators } from "../lib/firebase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
 
@@ -15,11 +16,13 @@ export default function Login() {
   const [rejections, setRejections] = useState(0);
   const shake = useOneShot(rejections, { className: "shake" });
 
-  const demoLogins = backendInfo.isDemo ? backendInfo.demoLogins() : [];
-
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!firebaseConfigured) {
+      setError("This build has no Firebase configuration. See the README.");
+      return;
+    }
     if (!/^\d{4}$/.test(pin)) {
       setError("Enter the 4-digit PIN.");
       setRejections((n) => n + 1);
@@ -55,7 +58,7 @@ export default function Login() {
                 spellCheck="false"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ravikumar"
+                placeholder="your username"
                 autoFocus
               />
             </label>
@@ -72,58 +75,34 @@ export default function Login() {
                 aria-invalid={error ? true : undefined}
               />
             </label>
+            {!firebaseConfigured && (
+              <Notice kind="error">
+                No Firebase project is configured, so sign-in cannot work. Copy{" "}
+                <span className="mono">.env.example</span> to{" "}
+                <span className="mono">.env.local</span>, fill in the{" "}
+                <span className="mono">VITE_FIREBASE_*</span> values from your project
+                settings, and restart the dev server.
+              </Notice>
+            )}
             {error && <Notice kind="error">{error}</Notice>}
-            <button className="primary" type="submit" disabled={busy || !username}>
+            <button
+              className="primary"
+              type="submit"
+              disabled={busy || !username || !firebaseConfigured}
+            >
               {busy ? "Checking…" : "Sign in"}
             </button>
             <p className="small muted" style={{ margin: 0 }}>
               Accounts are issued by your station owner or the system developer. There is
               no self sign-up.
             </p>
+            {useEmulators && (
+              <p className="small mono" style={{ margin: 0, color: "var(--rust)" }}>
+                Connected to local emulators — not live data.
+              </p>
+            )}
           </form>
         </div>
-
-        {demoLogins.length > 0 && (
-          <div className="panel">
-            <header>
-              <h2>Demo logins</h2>
-            </header>
-            <div className="body" style={{ padding: 0 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Role</th>
-                    <th>Username</th>
-                    <th className="num">PIN</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {demoLogins.map((d) => (
-                    <tr key={d.username}>
-                      <td style={{ textTransform: "capitalize" }}>{d.role}</td>
-                      <td className="mono">{d.username}</td>
-                      <td className="num mono">{d.pin}</td>
-                      <td className="num">
-                        <button
-                          type="button"
-                          className="quiet"
-                          onClick={() => {
-                            setUsername(d.username);
-                            setPin(d.pin);
-                            setError("");
-                          }}
-                        >
-                          use
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

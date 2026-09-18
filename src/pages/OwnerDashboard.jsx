@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
 import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
 import { LoadingPanels } from "../components/motion.jsx";
-import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
   addStation,
@@ -16,7 +15,6 @@ import { money, todayISO } from "../lib/format";
 import { SHIFT_STATUS, shiftTotals, varianceTone } from "../lib/shiftMath";
 
 export default function OwnerDashboard() {
-  const { profile } = useAuth();
   const { stations, loading, reload } = useStations();
   const [summaries, setSummaries] = useState({});
   const [showAdd, setShowAdd] = useState(false);
@@ -94,7 +92,7 @@ export default function OwnerDashboard() {
     setError("");
     setBusy(true);
     try {
-      await addStation({ name: form.name.trim(), address: form.address.trim() }, profile);
+      await addStation({ name: form.name.trim(), address: form.address.trim() });
       setForm({ name: "", address: "" });
       setShowAdd(false);
       await reload();
@@ -109,7 +107,7 @@ export default function OwnerDashboard() {
     setError("");
     setBusy(true);
     try {
-      await setStationState(station.id, state, profile);
+      await setStationState(station.id, state);
       setDeleting(null);
       await reload();
     } catch (err) {

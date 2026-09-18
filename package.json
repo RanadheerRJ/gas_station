@@ -13,8 +13,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "node scripts/smoke.mjs",
-    "check": "npm run lint && npm run test && npm run smoke && npm run build"
+    "test:emulator": "firebase emulators:exec --only auth,firestore,functions --project demo-station-ledger \"node scripts/emulatorTests.mjs\"",
+    "emulators": "firebase emulators:start --project demo-station-ledger",
+    "check": "npm run lint && npm run format:check && npm test && npm run build"
   },
   "dependencies": {
     "firebase": "^10.13.2",
@@ -23,11 +24,15 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@vitejs/plugin-react": "^4.3.1",
+    "bcryptjs": "^3.0.3",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "firebase-admin": "^14.4.0",
+    "firebase-tools": "^15.30.2",
     "prettier": "^3.9.8",
     "vite": "^5.4.8",
     "vitest": "^2.1.9"

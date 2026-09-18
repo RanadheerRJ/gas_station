@@ -57,16 +57,13 @@ export default function OwnerStaff() {
     setCredentials(null);
     setBusy(true);
     try {
-      const res = await createStaff(
-        {
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          stationId: form.stationId,
-          role: form.role,
-          pin: form.pin,
-        },
-        profile
-      );
+      const res = await createStaff({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        stationId: form.stationId,
+        role: form.role,
+        pin: form.pin,
+      });
       setCredentials({ ...res, pin: form.pin, subject: form.name.trim() });
       setForm((f) => ({ ...f, name: "", phone: "", pin: "", confirmPin: "" }));
       await load();

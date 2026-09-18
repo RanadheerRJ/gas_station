@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
-import { backendInfo } from "../lib/api";
 import { watchConnection } from "../lib/pwa";
 import {
   CreditIcon,
@@ -123,20 +122,6 @@ export default function Layout() {
           </div>
         )}
 
-        {backendInfo.isDemo && (
-          <div
-            className="small"
-            style={{
-              background: "#2e4756",
-              color: "#dfe6ea",
-              padding: "6px 24px",
-            }}
-          >
-            Demo mode — no Firebase project configured, data is stored in this browser.
-            Add <span className="mono">.env.local</span> credentials to use live Firestore
-            and Cloud Functions.
-          </div>
-        )}
         {/* Keyed on the path so the fade replays on every navigation rather
             than only on first mount. */}
         <div className="route-fade" key={pathname}>

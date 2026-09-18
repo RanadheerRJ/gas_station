@@ -1,10 +1,16 @@
 # Builds the app and publishes it to GitHub Pages.
 #
-# The site is the demo backend: with no VITE_FIREBASE_* secrets present the app
-# runs entirely in the browser's localStorage, which is exactly what you want
-# on a public URL. Pointing a public Pages site at a real Firestore project
-# would expose live station data, so this workflow deliberately does not wire
-# any Firebase config in.
+# The published site talks to the real Firebase project, so the VITE_FIREBASE_*
+# values are injected from repository secrets at build time. They are not
+# secrets in the cryptographic sense — Firebase web config ships in the bundle
+# by design and is readable by anyone who loads the page — but keeping them out
+# of the repository means the project can be rotated or swapped without a
+# commit, and a fork does not inherit your backend.
+#
+# What actually protects the data is Firestore security rules, the fact that
+# every write goes through an authenticated Cloud Function, and that no account
+# can be created without an existing privileged account. Review firestore.rules
+# before pointing this at a project holding real money.
 
 name: Deploy to GitHub Pages
 
@@ -39,18 +45,55 @@ jobs:
 
       - run: npm ci
 
-      # The same gate used locally: lint, unit tests, smoke suite. A broken
-      # build should not reach the public URL.
+      # Static checks and the pure-logic unit tests. Fast, and they need no
+      # emulator or credentials.
       - run: npm run lint
+      - run: npm run format:check
       - run: npm test
-      - run: npm run smoke
+
+      # End-to-end tests against the emulator suite: real Cloud Functions and
+      # real security rules, no connection to the live project. Java is needed
+      # by the Firestore emulator and is preinstalled on ubuntu-latest.
+      - name: Install function dependencies
+        run: npm ci --prefix functions
+
+      - name: End-to-end tests against the emulators
+        run: npm run test:emulator
 
       - name: Build
-        # BASE_PATH must match how Pages serves the site. For a project site
-        # that is /<repo>/; for a user or org site it would be "/".
         env:
+          # BASE_PATH must match how Pages serves the site. For a project site
+          # that is /<repo>/; for a user or org site it would be "/".
           BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FUNCTIONS_REGION: ${{ vars.VITE_FUNCTIONS_REGION || 'us-central1' }}
         run: npm run build
+
+      # A build with no configuration would deploy a site nobody can sign into,
+      # which is worse than a failed deploy because it looks fine. Checking for
+      # the project id specifically: generic Firebase hostnames are baked into
+      # the SDK whether or not any config was supplied, so they prove nothing.
+      - name: Fail if the build has no Firebase configuration
+        env:
+          PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        run: |
+          if [ -z "$PROJECT_ID" ]; then
+            echo "::error::VITE_FIREBASE_PROJECT_ID secret is not set."
+            echo "Add the VITE_FIREBASE_* secrets under"
+            echo "  Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          if ! grep -rqF "$PROJECT_ID" dist/assets/*.js; then
+            echo "::error::Built bundle does not contain the project id."
+            echo "The build ran without its environment; check the Build step."
+            exit 1
+          fi
+          echo "Firebase project id is present in the bundle."
 
       - uses: actions/configure-pages@v5
 

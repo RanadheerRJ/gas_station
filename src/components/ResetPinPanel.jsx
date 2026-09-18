@@ -2,14 +2,12 @@ import { useState } from "react";
 import PinField, { pinReady } from "./PinField";
 import { Notice } from "./ui";
 import { readableError, resetPin } from "../lib/api";
-import { useAuth } from "../state/AuthContext";
 
 /**
  * Inline "set a new PIN" form for one subordinate account.
  * Authority is re-checked server-side; this only shows the affordance.
  */
 export default function ResetPinPanel({ target, onDone }) {
-  const { profile } = useAuth();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,7 +19,7 @@ export default function ResetPinPanel({ target, onDone }) {
     setError("");
     setBusy(true);
     try {
-      await resetPin({ uid: target.uid, pin }, profile);
+      await resetPin({ uid: target.uid, pin });
       setDone(true);
       onDone?.();
     } catch (err) {

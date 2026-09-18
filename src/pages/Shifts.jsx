@@ -150,11 +150,7 @@ export default function Shifts() {
     setBusy(true);
     setError("");
     try {
-      await openShift(
-        stationId,
-        { employeeName: profile.name, nozzleIds: picked },
-        profile
-      );
+      await openShift(stationId, { employeeName: profile.name, nozzleIds: picked });
       setPicked([]);
       setStarting(false);
       await load();
@@ -386,7 +382,7 @@ export default function Shifts() {
                 setBusy(true);
                 setError("");
                 try {
-                  await closeShift(stationId, s.id, payload, profile);
+                  await closeShift(stationId, s.id, payload);
                   setClosingFor(null);
                   await load();
                 } catch (err) {
@@ -561,13 +557,11 @@ export default function Shifts() {
                               canReview={canReview}
                               busy={busy}
                               onRevise={(patch) =>
-                                run(() => reviseShift(stationId, s.id, patch, profile))
+                                run(() => reviseShift(stationId, s.id, patch))
                               }
-                              onApprove={() =>
-                                run(() => approveShift(stationId, s.id, profile))
-                              }
+                              onApprove={() => run(() => approveShift(stationId, s.id))}
                               onReject={(reason) =>
-                                run(() => rejectShift(stationId, s.id, reason, profile))
+                                run(() => rejectShift(stationId, s.id, reason))
                               }
                             />
                           </td>

@@ -338,7 +338,7 @@ export default function GroundStock() {
                 tank={selectedTank}
                 busy={busy}
                 onSubmit={(reading) =>
-                  run(() => recordDip(stationId, selectedTank.id, reading, profile))
+                  run(() => recordDip(stationId, selectedTank.id, reading))
                 }
               />
             ) : (
@@ -346,7 +346,7 @@ export default function GroundStock() {
                 tank={selectedTank}
                 busy={busy}
                 onSubmit={(delivery) =>
-                  run(() => recordDelivery(stationId, selectedTank.id, delivery, profile))
+                  run(() => recordDelivery(stationId, selectedTank.id, delivery))
                 }
               />
             )}
@@ -369,8 +369,7 @@ export default function GroundStock() {
                         setTankState(
                           stationId,
                           selectedTank.id,
-                          selectedTank.state === "retired" ? "active" : "retired",
-                          profile
+                          selectedTank.state === "retired" ? "active" : "retired"
                         )
                       )
                     }
