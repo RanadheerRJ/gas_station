@@ -1,0 +1,69 @@
+# Builds the app and publishes it to GitHub Pages.
+#
+# The site is the demo backend: with no VITE_FIREBASE_* secrets present the app
+# runs entirely in the browser's localStorage, which is exactly what you want
+# on a public URL. Pointing a public Pages site at a real Firestore project
+# would expose live station data, so this workflow deliberately does not wire
+# any Firebase config in.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Lets you publish on demand from the Actions tab without pushing.
+  workflow_dispatch:
+
+# GITHUB_TOKEN needs these to publish; nothing here writes to the repository.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. In-progress runs are allowed to finish so a
+# half-uploaded artifact is never published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      # The same gate used locally: lint, unit tests, smoke suite. A broken
+      # build should not reach the public URL.
+      - run: npm run lint
+      - run: npm test
+      - run: npm run smoke
+
+      - name: Build
+        # BASE_PATH must match how Pages serves the site. For a project site
+        # that is /<repo>/; for a user or org site it would be "/".
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

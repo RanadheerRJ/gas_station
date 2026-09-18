@@ -10,8 +10,12 @@ export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   if (import.meta.env.DEV) return;
 
+  // The worker must be requested from under the deployment base, otherwise
+  // its scope would not cover the app and it would 404 on a project site.
+  const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    navigator.serviceWorker.register(swUrl).catch(() => {
       // An unavailable service worker costs offline support, nothing more,
       // so a failure here is deliberately swallowed.
       return undefined;

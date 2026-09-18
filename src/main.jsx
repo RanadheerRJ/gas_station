@@ -8,7 +8,10 @@ import { registerServiceWorker } from "./lib/pwa";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* On GitHub Pages the app lives under /<repo>/, so the router has to be
+        told where its root is or every route would resolve one level too high.
+        BASE_URL is "/" in development and for a root deployment. */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
         <App />
       </AuthProvider>

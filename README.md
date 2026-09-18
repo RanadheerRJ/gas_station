@@ -236,7 +236,7 @@ Before touching Firebase, confirm the app works:
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:5173/gas_station/
 ```
 
 With no `.env.local` present the app runs entirely in `localStorage`, seeded
@@ -363,7 +363,7 @@ it is safe to run against a live checkout.
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:5173/gas_station/
 npm run build        # production bundle into dist/
 npm run preview      # serve the built bundle, needed to test the service worker
 ```
@@ -386,6 +386,58 @@ money and volume arithmetic, with no Firebase in the way. `npm run smoke`
 drives the demo backend through real sequences: opening and closing shifts,
 approval and rejection, credit repayment limits, and the archive and restore
 guards.
+
+## Publishing the demo to GitHub Pages
+
+The app runs fully in the browser when no Firebase config is present, so the
+demo backend can be published as a static site with nothing behind it.
+
+**Deploy from `main`.** The workflow at `.github/workflows/deploy-pages.yml`
+builds and publishes on every push to `main`, and can be run on demand from
+the **Actions** tab. Keep `main` as the Pages branch; there is no `gh-pages`
+branch to maintain, because the build is uploaded as an artifact rather than
+committed.
+
+To turn it on, once:
+
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+   Not "Deploy from a branch" — that serves the repository as-is, and this
+   repository is source, not a built site.
+2. Push to `main`, or run the workflow manually.
+
+The site appears at `https://<user>.github.io/gas_station/`.
+
+### What subpath hosting required
+
+A project site is served from `/<repo>/`, not the domain root, which breaks
+three things unless they are handled:
+
+- **Asset URLs.** `vite.config.js` sets `base` from `BASE_PATH`, which the
+  workflow fills in from the repository name. Set `BASE_PATH=/` if you move
+  this to a user or org site.
+- **Deep links.** GitHub Pages has no rewrite rules, so `/gas_station/owner/stock`
+  is a missing file and Pages answers with `404.html`. The build writes a copy
+  of `index.html` to that name, which hands the URL to the router. The router
+  itself is given `basename={import.meta.env.BASE_URL}`.
+- **The service worker.** It derives its base from its own location rather
+  than assuming the origin root, so its scope covers the app wherever it is
+  mounted. The manifest uses relative `start_url` and `scope` for the same
+  reason.
+
+Because `base` is no longer `/`, `npm run dev` also serves from
+`http://localhost:5173/gas_station/` and redirects the root there. That is
+deliberate: development matches production.
+
+### Deliberately no Firebase on the public site
+
+The workflow passes no `VITE_FIREBASE_*` values, so the published site always
+runs the demo backend in `localStorage`. Wiring a real project into a public
+Pages site would put live station ledgers behind nothing but an unlisted URL.
+Firebase config is client-visible by design, so the protection has to be that
+the credentials are simply absent.
+
+If you do want a hosted build against a real project, deploy it to Firebase
+Hosting behind the same Auth, not to Pages.
 
 ## Query and index audit
 
