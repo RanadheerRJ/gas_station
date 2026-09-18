@@ -462,19 +462,16 @@ To turn it on:
 1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
    Not "Deploy from a branch" — that serves the repository as-is, and this
    repository is source, not a built site.
-2. **Settings → Secrets and variables → Actions**, and add one repository
-   secret per value from `.env.example`:
+2. **Firebase console → Authentication → Settings → Authorized domains**, and
+   add `<user>.github.io`. Sign-in is rejected from an unlisted domain, so
+   without this the site loads and then fails at the login screen.
+3. Push to `main`, or run the workflow manually.
 
-   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
-   `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
-
-   If your functions are not in `us-central1`, also add a repository
-   **variable** `VITE_FUNCTIONS_REGION`.
-
-3. **Firebase console → Authentication → Settings → Authorized domains**, and
-   add `<user>.github.io`. Sign-in is rejected from an unlisted domain.
-4. Push to `main`, or run the workflow manually.
+There are no repository secrets to configure. The Firebase config lives in
+`.env.production`, committed, and Vite loads it for production builds. That is
+deliberate: the config ships inside the bundle and is readable by anyone who
+opens the site, so keeping it in secrets would hide it from you and from
+nobody else, while adding a step that silently breaks the deploy when missed.
 
 The site appears at `https://<user>.github.io/gas_station/`.
 

@@ -1,327 +1,344 @@
-# Setting this up, step by step
+# Getting this live on GitHub Pages
 
-Written for someone who has not done this before. Every command is meant to be
-copied and pasted exactly. If something goes wrong, the "When it breaks"
-section at the bottom covers the errors you are most likely to hit.
+Written for someone who has not done this before. The goal is a working site
+at
 
-You will be typing commands into a **terminal**:
+```
+https://ranadheerrj.github.io/gas_station/
+```
 
-- **Windows** — press Start, type `powershell`, open **Windows PowerShell**.
-- **Mac** — press Cmd+Space, type `terminal`, press Enter.
+that you can open on any phone or computer. No running anything on your own
+machine to use it day to day.
 
-The whole thing takes about 30 minutes, most of it waiting on one deploy.
+There is still some terminal work, but only **once**, and only to push the
+backend up to Firebase. GitHub builds and publishes the website itself, every
+time the code changes.
+
+**Roughly 30 minutes**, most of it waiting on one command.
 
 ---
 
-## Step 0 — Install the two things you need
+## The two halves
 
-**Node.js 20.** Go to <https://nodejs.org> and install the **LTS** version.
-Then close your terminal, open a new one, and check:
+It helps to know why there are two jobs here:
+
+| Piece | What it is | Where it lives |
+| --- | --- | --- |
+| The website | The screens you click | GitHub Pages, published automatically |
+| The backend | Login, database, all the rules | Firebase, pushed from your machine once |
+
+GitHub Pages can only serve files. It cannot run the login or the ledger
+logic. That is what Firebase is for, and Firebase has to be set up from a
+terminal because there is no way to upload security rules from a web page.
+
+Do the backend first, or the website will load and then fail the moment
+anybody tries to sign in.
+
+---
+
+# Part 1 — The backend (once, from a terminal)
+
+## Step 0 — Install Node.js and Git
+
+Open a terminal:
+
+- **Windows** — Start, type `powershell`, open **Windows PowerShell**
+- **Mac** — Cmd+Space, type `terminal`, Enter
+
+**Node.js:** install the **LTS** version from <https://nodejs.org>. Then close
+the terminal, open a new one, and check:
 
 ```bash
 node --version
 ```
 
-You want `v20.something` or higher. If the command is not found, Node did not
-install correctly, or you need to open a fresh terminal window.
+You want `v20` or higher. If it says command not found, open a fresh terminal
+window; if it still does, the install did not work.
 
-**Git.** Check whether you already have it:
+**Git:**
 
 ```bash
 git --version
 ```
 
-If that errors, install it from <https://git-scm.com/downloads>.
+If that errors, install from <https://git-scm.com/downloads>.
 
----
-
-## Step 1 — Get the code onto your computer
-
-Yes — clone first. Everything else happens inside the folder you clone.
-
-There is one wrinkle. The `main` branch of the repository currently contains
-only a README; all the actual code is on the branch the work was done on. So
-you must clone **that branch**, not the default one:
+## Step 1 — Download the code
 
 ```bash
 git clone --branch arena/01a0b35a-gas-station https://github.com/RanadheerRJ/gas_station.git
 cd gas_station
 ```
 
-Check that you got the real thing:
+> **Why that long branch name?** The `main` branch of the repository is still
+> almost empty — all the work is on this branch until you merge it in Part 2.
+> A plain `git clone` would leave you with just a README.
+
+Check it worked:
 
 ```bash
 ls
 ```
 
-You should see `src`, `functions`, `firestore.rules`, `package.json` and
-others. If all you see is `README.md`, you cloned the wrong branch — delete
-the folder and run the clone command again exactly as written.
+You should see `src`, `functions`, `firestore.rules` and others. If you only
+see `README.md`, delete the folder and run the clone command again exactly as
+written.
 
-> **Tidying this up later.** Once you merge pull request #1 on GitHub, `main`
-> will contain everything and a plain `git clone` will be enough. You do not
-> have to do that now.
-
----
-
-## Step 2 — Install the project's dependencies
-
-Two separate installs, because the website and the server code are separate
-projects:
+## Step 2 — Install the dependencies
 
 ```bash
 npm install
 npm install --prefix functions
 ```
 
-Each takes a minute or two and prints a lot of text. Warnings are normal.
-Only stop if you see the word `error`.
+Two installs because the website and the server code are separate projects.
+Each takes a minute and prints a lot. Warnings are fine; only stop for `error`.
 
----
-
-## Step 3 — Add your Firebase keys
-
-Create a file named exactly `.env.local` in the `gas_station` folder, with
-this in it:
-
-```
-VITE_FIREBASE_API_KEY=AIzaSyDWnmHmjAnjjkYACMZEUFoAWfHk7vlpK_o
-VITE_FIREBASE_AUTH_DOMAIN=gasstation-7c7ab.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=gasstation-7c7ab
-VITE_FIREBASE_STORAGE_BUCKET=gasstation-7c7ab.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=91745032420
-VITE_FIREBASE_APP_ID=1:91745032420:web:94f6771d5927228e6cb4f1
-VITE_FUNCTIONS_REGION=us-central1
-VITE_USE_EMULATORS=false
-```
-
-The fastest way is to copy the template and edit it:
-
-```bash
-cp .env.example .env.local
-```
-
-Then open `.env.local` in any text editor (Notepad is fine) and paste the
-values above over what is there.
-
-The leading dot in the filename matters, and so does the exact spelling.
-This file is deliberately excluded from Git, so your keys never get committed.
-
----
-
-## Step 4 — Sign in to Firebase
+## Step 3 — Sign in to Firebase
 
 ```bash
 npx firebase login
 ```
 
-A browser window opens. Sign in with the Google account that owns the
-`gasstation-7c7ab` project and click Allow. The terminal will confirm.
+A browser opens. Sign in with the Google account that owns
+**gasstation-7c7ab** and click Allow.
 
-You do **not** need to pick a project afterwards — the repository already
-points at `gasstation-7c7ab`.
+You do not need to choose a project afterwards — the repository already points
+at yours.
 
----
+## Step 4 — Switch on billing
 
-## Step 5 — Turn on billing
+Cloud Functions will not deploy without it, and there is no way around that.
 
-Cloud Functions will not deploy without this. There is no way around it.
+1. <https://console.firebase.google.com> → open **gasstation-7c7ab**
+2. Bottom-left, click the plan name (probably **Spark**)
+3. Choose **Blaze — pay as you go**, add a card
 
-1. Go to <https://console.firebase.google.com> and open **gasstation-7c7ab**.
-2. Bottom-left, click the plan name (probably **Spark**).
-3. Choose **Blaze — pay as you go** and add a card.
+For a few stations this realistically costs nothing; the free monthly
+allowance is far larger than this app will use. Set a budget alert if you want
+reassurance.
 
-For a handful of stations this realistically costs nothing — the free monthly
-allowance is far more than this app will use. Set a budget alert for a small
-amount if you want peace of mind.
+## Step 5 — Create the database and turn on sign-in
 
----
-
-## Step 6 — Set up the database and sign-in method
-
-Still in the Firebase console:
+Still in the Firebase console.
 
 **Database:**
 
-1. Left sidebar → **Build → Firestore Database → Create database**.
-2. Choose **Start in production mode**. This denies all access, which is
-   correct — the next step replaces those defaults with the real rules.
-3. Pick a location close to your stations, for example `asia-south1`
-   (Mumbai). **You cannot change this later.**
+1. **Build → Firestore Database → Create database**
+2. Choose **Start in production mode** — this denies everything, which is
+   correct, because Step 6 replaces it with the real rules
+3. Pick a location near your stations, e.g. `asia-south1` (Mumbai).
+   **This cannot be changed later.**
 
 **Sign-in:**
 
-1. Left sidebar → **Build → Authentication → Get started**.
-2. Choose **Email/Password**, enable the top toggle only, and save.
+1. **Build → Authentication → Get started**
+2. Choose **Email/Password**, enable the first toggle only, save
 
-This is used by exactly one account, yours. Everyone else signs in with a
-username and PIN, which needs nothing enabled here.
+That is for one account: yours. Everyone else uses a username and PIN, which
+needs nothing enabled here.
 
----
+## Step 6 — Upload the rules and the server code
 
-## Step 7 — Upload the security rules and the server code
-
-Back in your terminal, in the `gas_station` folder:
+Back in the terminal, inside `gas_station`:
 
 ```bash
 npx firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-That one is quick. Then:
+Quick. Then:
 
 ```bash
 npx firebase deploy --only functions
 ```
 
-**This one takes 5–10 minutes** and is the step most likely to complain.
+**This takes 5–10 minutes** and is the step most likely to complain.
 
 If it fails saying an API needs enabling (Cloud Build, Artifact Registry, or
-similar), that is normal on a brand-new project. Either click the link it
-prints and enable it, or wait a minute and run the same command again. It
-often succeeds on the second attempt.
+similar), that is normal on a new project. Click the link it prints and enable
+it, or just run the command again — it usually works the second time.
 
-When it finishes you should see `Deploy complete!` and a list of about twenty
-function names.
+You want `Deploy complete!` and a list of about twenty function names.
 
-> **Do not skip the rules deploy.** Until it runs, your database is using
-> Firebase's defaults rather than this app's rules.
+## Step 7 — Make yourself the administrator
 
----
+The app creates every account except the first. That one is you, by hand.
 
-## Step 8 — Create your own account
+**7a.** Firebase console → **Authentication → Users → Add user**. Enter your
+email and a password.
 
-The app creates every account except the first one. That one is you, by hand.
+**7b.** Gear icon → **Project settings → Service accounts** → **Generate new
+private key**. A `.json` file downloads. Move it into your `gas_station`
+folder and rename it exactly:
 
-**8a. Create the user:**
-
-1. Firebase console → **Authentication → Users → Add user**.
-2. Enter your email and a password. Click Add user.
-
-**8b. Download the admin key:**
-
-1. Click the gear icon → **Project settings → Service accounts**.
-2. Click **Generate new private key**, then confirm. A `.json` file downloads.
-3. Move that file into your `gas_station` folder and **rename it exactly**:
-
-   ```
-   serviceAccountKey.json
-   ```
+```
+serviceAccountKey.json
+```
 
 > This file is the master key to your project — it ignores every security
-> rule. It is excluded from Git so it cannot be uploaded by accident. Delete
-> it when you finish Step 8c.
+> rule. It is excluded from Git so it cannot be uploaded by accident. You
+> delete it in 7d.
 
-**8c. Make yourself the administrator:**
+**7c.** Grant yourself admin, using the same email as in 7a:
 
 ```bash
 node scripts/setAdminClaim.cjs your-email@example.com
 ```
 
-Use the same email as in step 8a. It prints the user id it updated.
+It prints the user id it changed.
 
-**8d. Delete the key file.** You are done with it:
+**7d.** Delete the key:
 
 ```bash
 rm serviceAccountKey.json
 ```
 
-On Windows PowerShell: `del serviceAccountKey.json`
+Windows PowerShell: `del serviceAccountKey.json`
+
+The backend is now done. You never need to repeat Part 1.
 
 ---
 
-## Step 9 — Run it
+# Part 2 — Publishing the website
 
-```bash
-npm run dev
+## Step 8 — Merge the code into `main`
+
+The publishing job only runs from the `main` branch, and `main` is still
+nearly empty. Merging is what starts everything.
+
+1. Go to <https://github.com/RanadheerRJ/gas_station/pull/1>
+2. Click **Merge pull request**, then **Confirm merge**
+
+## Step 9 — Turn on GitHub Pages
+
+1. <https://github.com/RanadheerRJ/gas_station/settings/pages>
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**
+
+   Not "Deploy from a branch" — that serves the raw files, and this repository
+   contains source code that has to be built first.
+
+That is the only setting. There are **no secrets to add** — the Firebase
+config is committed in `.env.production`, because it ends up readable inside
+the website anyway and hiding it would only hide it from you.
+
+## Step 10 — Let it build
+
+Merging in Step 8 should have started a build already.
+
+1. <https://github.com/RanadheerRJ/gas_station/actions>
+2. Click the run at the top
+
+It takes 2–3 minutes. A green tick means published. If you turned Pages on
+after merging, click **Re-run all jobs** on that run.
+
+## Step 11 — Allow the Pages address to sign people in
+
+Firebase rejects sign-in from any address it does not know, so this is the
+step that makes login actually work.
+
+1. Firebase console → **Authentication → Settings → Authorized domains**
+2. **Add domain**
+3. Enter exactly:
+
+   ```
+   ranadheerrj.github.io
+   ```
+
+Miss this and the site loads perfectly but every sign-in fails with
+`auth/unauthorized-domain`.
+
+## Step 12 — Open it
+
+```
+https://ranadheerrj.github.io/gas_station/
 ```
 
-Open the address it prints — it will be
-<http://localhost:5173/gas_station/>. Note the `/gas_station/` on the end;
-the plain address will not work.
+Sign in with the email and password from Step 7a. You should land on a screen
+whose only option is **Invite Owner** — correct, because the developer account
+exists only to create owners.
 
-Sign in with the email and password from step 8a.
-
-You should land on a screen whose only option is **Invite Owner**. That is
-correct: the developer account exists only to create owners.
-
-To stop the server later, press **Ctrl+C** in the terminal.
+On a phone, use your browser's **Add to Home Screen** and it installs like an
+app, full screen and offline-capable.
 
 ---
 
-## Step 10 — Create your first station
+## Step 13 — Create your first station
 
-Two ways. Either is fine.
-
-**In the app**, which is the normal path:
-
-1. **Invite Owner** — create the owner. You choose their 4-digit PIN and tell
-   them; the app never generates or emails one.
-2. Sign out, sign in as that owner (username + PIN).
+1. **Invite Owner** — you choose their 4-digit PIN and tell them. The app
+   never generates or sends one.
+2. Sign out, sign back in as that owner using their username and PIN.
 3. **Setup** — add pumps, nozzles and tanks, and set today's fuel prices.
 
-**Or seed one from the terminal**, faster for testing. This needs
-`serviceAccountKey.json` again, so do it before step 8d, or download another:
+**Set real prices before opening a shift.** Everything the app calculates
+hangs off them.
 
-```bash
-node scripts/seedStation.cjs --owner "Ravi Kumar" --station "Highway Fuels" --pin 4827 --dry-run
-```
+---
 
-`--dry-run` only shows what it would create. Remove it to actually create an
-owner, a station, 2 pumps, 4 nozzles and 2 tanks.
+## From now on
 
-**Set real fuel prices in Setup before opening a shift.** The seeder puts
-prices at zero on purpose — an invented rate that looks plausible is more
-dangerous than an obvious blank.
+Any change pushed to `main` rebuilds and republishes the site within a few
+minutes. You never touch the terminal again unless you change the server code
+in `functions/`, which needs `npx firebase deploy --only functions`.
 
 ---
 
 ## When it breaks
 
 **`npm: command not found`**
-Node is not installed, or you need a fresh terminal window. Redo step 0.
-
-**The page loads but says Firebase is not configured**
-`.env.local` is missing, misspelled, or in the wrong folder. It must sit
-beside `package.json`. After creating it, stop the server with Ctrl+C and run
-`npm run dev` again — it only reads that file at startup.
-
-**`auth/unauthorized-domain` when signing in**
-Firebase console → **Authentication → Settings → Authorized domains → Add
-domain**. `localhost` is usually there already; add any other address you open
-the app from.
+Node is not installed, or you need a new terminal window. Redo Step 0.
 
 **`Your project must be on the Blaze plan`**
-Step 5.
+Step 4.
 
 **The functions deploy fails mentioning an API**
-Normal on a new project. Enable what it names, or just run the command again.
+Normal on a new project. Enable what it names, or run the command again.
+
+**The Actions run is red**
+Open it and click the failed step. If it says the bundle has no project id,
+`.env.production` did not make it into the merge.
+
+**The site loads but sign-in fails with `auth/unauthorized-domain`**
+Step 11. This is the most common one.
+
+**Signed in, but the app does not treat you as an admin**
+Permissions attach when you sign in. Sign out and back in after Step 7c.
 
 **`permission-denied` everywhere once signed in**
-The rules deploy in step 7 did not run. Run it again.
+The rules deploy in Step 6 did not run. Run it again.
 
-**Signed in, but the app still thinks you are not an admin**
-Custom permissions are attached when you sign in. Sign out and back in after
-step 8c.
-
-**`EACCES` or permission errors during `npm install`**
-Do not use `sudo`. It usually means Node was installed system-wide awkwardly;
-reinstalling from nodejs.org normally fixes it.
+**404 at the Pages address**
+Either the build has not finished, or Pages Source is not set to
+**GitHub Actions**. Check Step 9, then the Actions tab.
 
 ---
 
-## What to do after it works
+## Before real money goes through this
 
-- **Merge pull request #1** on GitHub so `main` holds the real code. After
-  that a plain `git clone` is enough, and the GitHub Pages deployment can run.
-- **Read the "Before you point this at real stations" section of
-  `README.md`** before putting real money through this. Sign-in is a 4-digit
-  PIN, which is reasonable on a phone in a forecourt and weak on a public URL.
-- **Run the backend tests** if you plan to change the server code. They need
-  Java installed:
+Worth reading the security section of `README.md`, but the short version:
 
-  ```bash
-  npm run test:emulator
-  ```
+Sign-in is a username and a **4-digit PIN** on a web address anyone can find.
+That is reasonable for a phone in a forecourt and weak for a public URL. What
+protects you is the security rules, the lockout after repeated wrong PINs, and
+the fact that nobody can create an account without an existing privileged one.
 
-  Be aware these have never been run — they were written in an environment
-  that could not execute them. Expect to fix a few before they pass.
+If that is not a trade you want, the same code deploys to Firebase Hosting
+instead, which can sit behind stricter access controls:
+
+```bash
+npm run build && npx firebase deploy --only hosting
+```
+
+---
+
+## Running it locally (optional)
+
+Only useful if you want to change the code. Not needed to use the app.
+
+```bash
+cp .env.example .env.local     # then paste your Firebase values in
+npm run dev
+```
+
+Then open <http://localhost:5173/gas_station/> — note the `/gas_station/` on
+the end; the bare address will not work. Add `localhost` to Firebase's
+authorized domains too.
