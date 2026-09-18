@@ -6,7 +6,7 @@ import StationPicker from "../components/StationPicker";
 import { LedgerIcon, StatusDot } from "../components/icons";
 import { useStations } from "../state/useStations";
 import { listShifts, readableError } from "../lib/api";
-import { formatDate, formatStamp, money } from "../lib/format";
+import { formatDate, formatStamp, money, num } from "../lib/format";
 import { shiftTotals, varianceLabel, varianceTone } from "../lib/shiftMath";
 
 /**
@@ -67,17 +67,17 @@ export default function DailyLedger() {
       };
       d.shifts.push({ shift: s, totals: t });
       d.litres += t.totalLitres;
-      d.sales += t.grossSales;
-      d.credit += t.creditTotal;
-      d.digital += t.digital;
+      d.sales += t.gross;
+      d.credit += num(t.payments?.credit);
+      d.digital += num(t.payments?.upi) + num(t.payments?.card);
       d.expenses += t.expensesTotal;
-      d.expected += t.expectedCash;
+      d.expected += t.net;
       d.declared += t.declared ?? 0;
       d.variance += t.variance ?? 0;
       Object.entries(t.fuels).forEach(([fuel, v]) => {
         d.fuels[fuel] ||= { litres: 0, amount: 0 };
         d.fuels[fuel].litres += v.litres;
-        d.fuels[fuel].amount += v.amount;
+        d.fuels[fuel].amount += v.revenue;
       });
       byDate.set(s.date, d);
     });
@@ -167,7 +167,7 @@ export default function DailyLedger() {
                   <th className="num">Sales</th>
                   <th className="num">Credit</th>
                   <th className="num">Expenses</th>
-                  <th className="num">Cash declared</th>
+                  <th className="num">Collected</th>
                   <th className="num">Variance</th>
                   <th />
                 </tr>
@@ -238,16 +238,16 @@ export default function DailyLedger() {
                                               }
                                               title={varianceLabel(totals.variance)}
                                             />
-                                            {shift.name}
+                                            {shift.employeeName}
                                           </span>
                                         </td>
                                         <td className="num mono">{money(totals.totalLitres)}</td>
-                                        <td className="num mono">{money(totals.grossSales)}</td>
+                                        <td className="num mono">{money(totals.gross)}</td>
                                         <td className="num mono">{money(totals.variance)}</td>
                                         <td className="small">
-                                          {shift.closedByName || "—"}
+                                          {shift.employeeName || shift.closedByName || "—"}
                                           <div className="muted" style={{ fontSize: 11.5 }}>
-                                            {formatStamp(shift.closedAt)}
+                                            {formatStamp(shift.endTime)}
                                           </div>
                                         </td>
                                       </tr>

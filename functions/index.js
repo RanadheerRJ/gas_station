@@ -415,78 +415,132 @@ async function assertStationAccess(request, stationId) {
   }
 }
 
+/**
+ * Set a price. Closes the previous active interval and opens a new one in a
+ * single transaction, so there is never a gap or an overlap in the history.
+ */
+exports.setPrice = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  await assertStationAccess(request, stationId);
+  if (request.auth?.token?.role !== "owner") {
+    throw new HttpsError("permission-denied", "Only an owner can change prices.");
+  }
+
+  const fuelType = requireString(request.data?.fuelType, "fuelType", { max: 40 });
+  const price = Number(request.data?.price);
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new HttpsError("invalid-argument", "Price must be a positive number.");
+  }
+
+  const pricesRef = db.collection("stations").doc(stationId).collection("prices");
+
+  return db.runTransaction(async (tx) => {
+    const activeSnap = await tx.get(
+      pricesRef.where("fuelType", "==", fuelType).where("effectiveTo", "==", null)
+    );
+    const now = new Date().toISOString();
+    activeSnap.forEach((d) => tx.update(d.ref, { effectiveTo: now }));
+
+    const ref = pricesRef.doc();
+    tx.set(ref, {
+      stationId,
+      fuelType,
+      price,
+      effectiveFrom: now,
+      effectiveTo: null,
+      setBy: request.auth.uid,
+      setByName: request.auth.token.name || "",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return { id: ref.id, fuelType, price, effectiveFrom: now };
+  });
+});
+
 exports.openShift = onCall(async (request) => {
   const stationId = requireString(request.data?.stationId, "stationId");
   await assertStationAccess(request, stationId);
 
-  const name = requireString(request.data?.name || "Shift", "name", { max: 40 });
+  const nozzleIds = Array.isArray(request.data?.nozzleIds) ? request.data.nozzleIds : [];
+  if (nozzleIds.length === 0) {
+    throw new HttpsError("invalid-argument", "Select at least one nozzle.");
+  }
+
   const shiftsRef = db.collection("shifts").doc(stationId).collection("records");
+  const stationRef = db.collection("stations").doc(stationId);
 
   return db.runTransaction(async (tx) => {
-    const openSnap = await tx.get(shiftsRef.where("status", "==", "open").limit(1));
-    if (!openSnap.empty) {
+    // A nozzle may only be in one open shift, so several operators can work
+    // different pumps at the same time without colliding.
+    const openSnap = await tx.get(shiftsRef.where("status", "==", "open"));
+    const busy = {};
+    openSnap.forEach((d) => {
+      (d.get("nozzles") || []).forEach((n) => {
+        busy[n.nozzleId] = d.get("employeeName") || "another operator";
+      });
+    });
+    const taken = nozzleIds.filter((id) => busy[id]);
+    if (taken.length) {
       throw new HttpsError(
         "failed-precondition",
-        "A shift is already open at this station. Close it first."
+        `That nozzle is already in an active shift by ${busy[taken[0]]}.`
       );
     }
 
-    const [nozzleSnap, rateSnap] = await Promise.all([
-      tx.get(db.collection("stations").doc(stationId).collection("nozzles")),
-      tx.get(db.collection("stations").doc(stationId).collection("meta").doc("rates")),
+    const [pumpSnap, priceSnap] = await Promise.all([
+      tx.get(stationRef.collection("pumps")),
+      tx.get(stationRef.collection("prices").where("effectiveTo", "==", null)),
     ]);
 
-    if (nozzleSnap.empty) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Add at least one pump and nozzle before opening a shift."
-      );
-    }
-    const rates = rateSnap.exists ? rateSnap.data() : {};
-
-    const pumpSnap = await tx.get(
-      db.collection("stations").doc(stationId).collection("pumps")
-    );
     const pumpNames = {};
     pumpSnap.forEach((p) => {
       pumpNames[p.id] = p.get("name");
     });
+    const activePrice = {};
+    priceSnap.forEach((p) => {
+      activePrice[p.get("fuelType")] = { id: p.id, price: p.get("price") };
+    });
 
-    const readings = {};
-    const missing = new Set();
-    nozzleSnap.forEach((n) => {
-      const fuelType = n.get("fuelType");
-      if (rates[fuelType] == null) missing.add(fuelType);
-      readings[n.id] = {
-        label: `${pumpNames[n.get("pumpId")] || "Pump"} · ${n.get("name")}`,
+    const nozzleDocs = await Promise.all(
+      nozzleIds.map((id) => tx.get(stationRef.collection("nozzles").doc(id)))
+    );
+
+    const nozzles = nozzleDocs.map((nz) => {
+      if (!nz.exists) throw new HttpsError("not-found", "Nozzle not found.");
+      const fuelType = nz.get("fuelType");
+      const price = activePrice[fuelType];
+      if (!price) {
+        throw new HttpsError(
+          "failed-precondition",
+          `Set a price for ${fuelType} before starting a shift.`
+        );
+      }
+      return {
+        nozzleId: nz.id,
+        pumpId: nz.get("pumpId"),
+        label: `${pumpNames[nz.get("pumpId")] || "Pump"} · ${nz.get("name")}`,
         fuelType,
-        opening: Number(n.get("currentReading")) || 0,
-        closing: "",
-        // Snapshot the rate so a later change never reprices this shift.
-        rate: Number(rates[fuelType]) || 0,
+        openingReading: Number(nz.get("lastReading")) || 0,
+        closingReading: "",
+        // Snapshot the price so a later change never reprices this shift.
+        price: Number(price.price),
+        priceId: price.id,
       };
     });
 
-    if (missing.size) {
-      throw new HttpsError(
-        "failed-precondition",
-        `Set today's rate for ${[...missing].join(", ")} before opening a shift.`
-      );
-    }
-
     const ref = shiftsRef.doc();
     tx.set(ref, {
-      name,
+      employeeName: request.data?.employeeName || request.auth.token.name || "",
+      userId: request.auth.uid,
       status: "open",
       date: new Date().toISOString().slice(0, 10),
-      openedAt: FieldValue.serverTimestamp(),
-      openedBy: request.auth.uid,
+      startTime: FieldValue.serverTimestamp(),
+      endTime: null,
       openedByName: request.auth.token.name || "",
-      readings,
+      closedByName: null,
+      nozzles,
       expenses: [],
       creditSales: [],
-      digitalCollected: 0,
-      cashDeclared: "",
+      payments: { cash: "", card: "", upi: "", credit: "", other: "" },
       note: "",
     });
     return { shiftId: ref.id };
@@ -512,18 +566,16 @@ exports.closeShift = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "That shift is already closed.");
     }
 
-    const readings = snap.get("readings") || {};
-    const incoming = payload.readings || {};
-
-    Object.keys(readings).forEach((nozzleId) => {
-      const closing = Number(incoming[nozzleId]?.closing);
+    const closings = payload.closingReadings || {};
+    const nozzles = (snap.get("nozzles") || []).map((n) => {
+      const closing = Number(closings[n.nozzleId]);
       if (!Number.isFinite(closing)) {
         throw new HttpsError(
           "invalid-argument",
-          `Closing reading missing for ${readings[nozzleId].label}.`
+          `Closing reading missing for ${n.label}.`
         );
       }
-      readings[nozzleId].closing = closing;
+      return { ...n, closingReading: closing };
     });
 
     const expenses = (payload.expenses || []).map((e) => ({
@@ -536,15 +588,14 @@ exports.closeShift = onCall(async (request) => {
       amount: Number(c.amount) || 0,
     }));
 
-    // Advance each nozzle's totaliser to this shift's closing reading.
-    Object.entries(readings).forEach(([nozzleId, r]) => {
+    // Advance only the nozzles this shift actually held.
+    nozzles.forEach((n) => {
       tx.update(
-        db.collection("stations").doc(stationId).collection("nozzles").doc(nozzleId),
-        { currentReading: Number(r.closing) }
+        db.collection("stations").doc(stationId).collection("nozzles").doc(n.nozzleId),
+        { lastReading: Number(n.closingReading) }
       );
     });
 
-    // Post credit taken during the shift onto customer accounts.
     creditSales.forEach((c) => {
       if (!c.customerId) return;
       const custRef = db
@@ -560,23 +611,28 @@ exports.closeShift = onCall(async (request) => {
             date: snap.get("date"),
             type: "credit",
             amount: c.amount,
-            note: `${snap.get("name")} shift`,
+            note: `${snap.get("employeeName")} shift`,
           }),
         },
         { merge: true }
       );
     });
 
+    const p = payload.payments || {};
     tx.update(shiftRef, {
-      readings,
+      nozzles,
       expenses,
       creditSales,
-      digitalCollected: Number(payload.digitalCollected) || 0,
-      cashDeclared: Number(payload.cashDeclared) || 0,
+      payments: {
+        cash: Number(p.cash) || 0,
+        card: Number(p.card) || 0,
+        upi: Number(p.upi) || 0,
+        credit: Number(p.credit) || 0,
+        other: Number(p.other) || 0,
+      },
       note: String(payload.note || "").trim(),
       status: "closed",
-      closedAt: FieldValue.serverTimestamp(),
-      closedBy: request.auth.uid,
+      endTime: FieldValue.serverTimestamp(),
       closedByName: request.auth.token.name || "",
     });
 

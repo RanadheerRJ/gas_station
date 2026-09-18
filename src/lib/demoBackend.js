@@ -8,7 +8,7 @@
  * hashes in a collection no client can read.
  */
 
-const KEY = "stationledger.demo.v3";
+const KEY = "stationledger.demo.v4";
 
 const uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 const nowISO = () => new Date().toISOString();
@@ -34,38 +34,41 @@ function seed() {
     return d.toISOString().slice(0, 10);
   };
 
-  const mkShift = (stationId, offset, name, readings, by, byName, cashAdj = 0) => {
-    const gross = readings.reduce((n, r) => n + (r.closing - r.opening) * r.rate, 0);
-    const credit = name === "Evening" && offset < 2 ? 18400 : 0;
-    const digital = Math.round(gross * 0.18);
+  const mkShift = (stationId, offset, employeeName, userId, nozzles, cashAdj = 0) => {
+    const gross = nozzles.reduce(
+      (n, r) => n + (r.closingReading - r.openingReading) * r.price,
+      0
+    );
     const expenses = offset % 2 === 0 ? [{ label: "Power bill", amount: 1850 }] : [];
     const expTotal = expenses.reduce((n, e) => n + e.amount, 0);
-    const expected = gross - credit - digital - expTotal;
+    const net = gross - expTotal;
+    const credit = offset < 2 && employeeName === "Mahesh N" ? 18400 : 0;
+    const upi = Math.round(net * 0.18);
+    const card = Math.round(net * 0.07);
     const at = new Date(Date.now() - offset * 86400000);
     return {
       id: uid("sh"),
       stationId,
-      name,
+      employeeName,
+      userId,
       status: "closed",
       date: day(offset),
-      openedAt: new Date(at.getTime() - 28800000).toISOString(),
-      openedBy: by,
-      openedByName: byName,
-      closedAt: at.toISOString(),
-      closedBy: by,
-      closedByName: byName,
-      readings: Object.fromEntries(
-        readings.map((r) => [
-          r.id,
-          { label: r.label, fuelType: r.fuelType, opening: r.opening, closing: r.closing, rate: r.rate },
-        ])
-      ),
+      startTime: new Date(at.getTime() - 28800000).toISOString(),
+      endTime: at.toISOString(),
+      openedByName: employeeName,
+      closedByName: employeeName,
+      nozzles: nozzles.map((n) => ({ ...n })),
       expenses,
       creditSales: credit
         ? [{ customerId: cust1, name: "Sri Balaji Transports", amount: credit }]
         : [],
-      digitalCollected: digital,
-      cashDeclared: +(expected + cashAdj).toFixed(2),
+      payments: {
+        cash: +(net - upi - card - credit + cashAdj).toFixed(2),
+        card,
+        upi,
+        credit,
+        other: 0,
+      },
       note: "",
     };
   };
@@ -152,53 +155,60 @@ function seed() {
     },
     nozzles: {
       [s1]: [
-        { id: n1, pumpId: p1, name: "N1", fuelType: "Petrol", currentReading: 148230.5, createdAt: nowISO() },
-        { id: n2, pumpId: p1, name: "N2", fuelType: "Diesel", currentReading: 203411.0, createdAt: nowISO() },
-        { id: n3, pumpId: p2, name: "N1", fuelType: "Petrol", currentReading: 96755.25, createdAt: nowISO() },
-        { id: n4, pumpId: p2, name: "N2", fuelType: "Diesel", currentReading: 121008.75, createdAt: nowISO() },
+        { id: n1, pumpId: p1, name: "N1", fuelType: "Petrol", lastReading: 148230.5, createdAt: nowISO() },
+        { id: n2, pumpId: p1, name: "N2", fuelType: "Diesel", lastReading: 203411.0, createdAt: nowISO() },
+        { id: n3, pumpId: p2, name: "N1", fuelType: "Petrol", lastReading: 96755.25, createdAt: nowISO() },
+        { id: n4, pumpId: p2, name: "N2", fuelType: "Diesel", lastReading: 121008.75, createdAt: nowISO() },
       ],
       [s2]: [
-        { id: n5, pumpId: p3, name: "N1", fuelType: "Petrol", currentReading: 54120.0, createdAt: nowISO() },
-        { id: n6, pumpId: p3, name: "N2", fuelType: "Diesel", currentReading: 77310.5, createdAt: nowISO() },
+        { id: n5, pumpId: p3, name: "N1", fuelType: "Petrol", lastReading: 54120.0, createdAt: nowISO() },
+        { id: n6, pumpId: p3, name: "N2", fuelType: "Diesel", lastReading: 77310.5, createdAt: nowISO() },
       ],
     },
-    rates: {
-      [s1]: { Petrol: 104.8, Diesel: 91.6 },
-      [s2]: { Petrol: 105.2, Diesel: 92.1 },
-    },
-    rateHistory: {
+    prices: {
       [s1]: [
-        { date: todayISO(), fuelType: "Petrol", rate: 104.8, setByName: "Ravi Kumar", at: nowISO() },
-        { date: todayISO(), fuelType: "Diesel", rate: 91.6, setByName: "Ravi Kumar", at: nowISO() },
+        { id: uid("pr"), stationId: s1, fuelType: "Petrol", price: 104.2,
+          effectiveFrom: new Date(Date.now() - 3 * 86400000).toISOString(),
+          effectiveTo: new Date(Date.now() - 86400000).toISOString(), setByName: "Ravi Kumar" },
+        { id: uid("pr"), stationId: s1, fuelType: "Diesel", price: 91.2,
+          effectiveFrom: new Date(Date.now() - 3 * 86400000).toISOString(),
+          effectiveTo: new Date(Date.now() - 86400000).toISOString(), setByName: "Ravi Kumar" },
+        { id: uid("pr"), stationId: s1, fuelType: "Petrol", price: 104.8,
+          effectiveFrom: new Date(Date.now() - 86400000).toISOString(),
+          effectiveTo: null, setByName: "Ravi Kumar" },
+        { id: uid("pr"), stationId: s1, fuelType: "Diesel", price: 91.6,
+          effectiveFrom: new Date(Date.now() - 86400000).toISOString(),
+          effectiveTo: null, setByName: "Ravi Kumar" },
       ],
-      [s2]: [],
+      [s2]: [
+        { id: uid("pr"), stationId: s2, fuelType: "Petrol", price: 105.2,
+          effectiveFrom: new Date(Date.now() - 2 * 86400000).toISOString(),
+          effectiveTo: null, setByName: "Ravi Kumar" },
+        { id: uid("pr"), stationId: s2, fuelType: "Diesel", price: 92.1,
+          effectiveFrom: new Date(Date.now() - 2 * 86400000).toISOString(),
+          effectiveTo: null, setByName: "Ravi Kumar" },
+      ],
     },
     shifts: {
       [s1]: [
-        mkShift(s1, 1, "Evening", [
-          { id: n1, label: "Pump 1 · N1", fuelType: "Petrol", opening: 147180.5, closing: 147705.5, rate: 104.8 },
-          { id: n2, label: "Pump 1 · N2", fuelType: "Diesel", opening: 202495.0, closing: 203080.0, rate: 91.6 },
-          { id: n3, label: "Pump 2 · N1", fuelType: "Petrol", opening: 96240.25, closing: 96520.25, rate: 104.8 },
-          { id: n4, label: "Pump 2 · N2", fuelType: "Diesel", opening: 120520.75, closing: 120870.75, rate: 91.6 },
-        ], attId, "Mahesh N", -240),
-        mkShift(s1, 1, "Morning", [
-          { id: n1, label: "Pump 1 · N1", fuelType: "Petrol", opening: 146700.5, closing: 147180.5, rate: 104.8 },
-          { id: n2, label: "Pump 1 · N2", fuelType: "Diesel", opening: 201950.0, closing: 202495.0, rate: 91.6 },
-          { id: n3, label: "Pump 2 · N1", fuelType: "Petrol", opening: 95980.25, closing: 96240.25, rate: 104.8 },
-          { id: n4, label: "Pump 2 · N2", fuelType: "Diesel", opening: 120190.75, closing: 120520.75, rate: 91.6 },
-        ], mgrId, "Suresh Babu", 0),
-        mkShift(s1, 2, "Evening", [
-          { id: n1, label: "Pump 1 · N1", fuelType: "Petrol", opening: 146210.5, closing: 146700.5, rate: 104.2 },
-          { id: n2, label: "Pump 1 · N2", fuelType: "Diesel", opening: 201400.0, closing: 201950.0, rate: 91.2 },
-          { id: n3, label: "Pump 2 · N1", fuelType: "Petrol", opening: 95720.25, closing: 95980.25, rate: 104.2 },
-          { id: n4, label: "Pump 2 · N2", fuelType: "Diesel", opening: 119880.75, closing: 120190.75, rate: 91.2 },
-        ], attId, "Mahesh N", 120),
+        mkShift(s1, 1, "Mahesh N", attId, [
+          { nozzleId: n1, pumpId: p1, label: "Pump 1 · N1", fuelType: "Petrol", openingReading: 147180.5, closingReading: 147705.5, price: 104.8 },
+          { nozzleId: n2, pumpId: p1, label: "Pump 1 · N2", fuelType: "Diesel", openingReading: 202495.0, closingReading: 203080.0, price: 91.6 },
+        ], -240),
+        mkShift(s1, 1, "Suresh Babu", mgrId, [
+          { nozzleId: n3, pumpId: p2, label: "Pump 2 · N1", fuelType: "Petrol", openingReading: 96240.25, closingReading: 96520.25, price: 104.8 },
+          { nozzleId: n4, pumpId: p2, label: "Pump 2 · N2", fuelType: "Diesel", openingReading: 120520.75, closingReading: 120870.75, price: 91.6 },
+        ], 0),
+        mkShift(s1, 2, "Mahesh N", attId, [
+          { nozzleId: n1, pumpId: p1, label: "Pump 1 · N1", fuelType: "Petrol", openingReading: 146700.5, closingReading: 147180.5, price: 104.2 },
+          { nozzleId: n2, pumpId: p1, label: "Pump 1 · N2", fuelType: "Diesel", openingReading: 201950.0, closingReading: 202495.0, price: 91.2 },
+        ], 120),
       ],
       [s2]: [
-        mkShift(s2, 1, "Full day", [
-          { id: n5, label: "Pump 1 · N1", fuelType: "Petrol", opening: 53480.0, closing: 54120.0, rate: 105.2 },
-          { id: n6, label: "Pump 1 · N2", fuelType: "Diesel", opening: 76580.5, closing: 77310.5, rate: 92.1 },
-        ], ownerId, "Ravi Kumar", 0),
+        mkShift(s2, 1, "Ravi Kumar", ownerId, [
+          { nozzleId: n5, pumpId: p3, label: "Pump 1 · N1", fuelType: "Petrol", openingReading: 53480.0, closingReading: 54120.0, price: 105.2 },
+          { nozzleId: n6, pumpId: p3, label: "Pump 1 · N2", fuelType: "Diesel", openingReading: 76580.5, closingReading: 77310.5, price: 92.1 },
+        ], 0),
       ],
     },
     credit: {
@@ -506,7 +516,7 @@ export const demoBackend = {
       pumpId,
       name,
       fuelType,
-      currentReading: Number(openingReading) || 0,
+      lastReading: Number(openingReading) || 0,
       createdAt: nowISO(),
     };
     d.nozzles[stationId].push(row);
@@ -518,7 +528,8 @@ export const demoBackend = {
     await delay(120);
     const d = db();
     const open = (d.shifts[stationId] || []).some(
-      (sh) => sh.status === "open" && sh.readings?.[nozzleId]
+      (sh) =>
+        sh.status === "open" && (sh.nozzles || []).some((n) => n.nozzleId === nozzleId)
     );
     if (open) throw new Error("That nozzle is part of an open shift.");
     d.nozzles[stationId] = (d.nozzles[stationId] || []).filter((n) => n.id !== nozzleId);
@@ -536,30 +547,41 @@ export const demoBackend = {
 
   /* --------------------------- rates ----------------------------- */
 
-  async getRates(stationId) {
+  async getPrices(stationId) {
     await delay(60);
-    const d = db();
-    return clone({
-      rates: d.rates[stationId] || {},
-      history: (d.rateHistory[stationId] || []).slice(-40).reverse(),
-    });
+    const rows = db().prices[stationId] || [];
+    return clone(
+      [...rows].sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))
+    );
   },
 
-  async setRate(stationId, { fuelType, rate }, caller) {
+  /**
+   * Setting a price closes the previous active record and opens a new one,
+   * so history is never overwritten and past shifts reprice correctly.
+   */
+  async setPrice(stationId, { fuelType, price }, caller) {
     await delay(150);
     const d = db();
-    d.rates[stationId] ||= {};
-    d.rates[stationId][fuelType] = Number(rate);
-    d.rateHistory[stationId] ||= [];
-    d.rateHistory[stationId].push({
-      date: todayISO(),
+    d.prices[stationId] ||= [];
+    const now = nowISO();
+    d.prices[stationId]
+      .filter((p) => p.fuelType === fuelType && !p.effectiveTo)
+      .forEach((p) => {
+        p.effectiveTo = now;
+      });
+    const row = {
+      id: uid("pr"),
+      stationId,
       fuelType,
-      rate: Number(rate),
+      price: Number(price),
+      effectiveFrom: now,
+      effectiveTo: null,
+      setBy: caller?.uid || null,
       setByName: caller?.name || "—",
-      at: nowISO(),
-    });
+    };
+    d.prices[stationId].push(row);
     commit();
-    return clone(d.rates[stationId]);
+    return clone(row);
   },
 
   /* --------------------------- shifts ---------------------------- */
@@ -570,55 +592,73 @@ export const demoBackend = {
     return clone([...rows].sort((a, b) => (a.openedAt < b.openedAt ? 1 : -1)));
   },
 
-  async openShift(stationId, { name }, caller) {
+  /**
+   * Start a shift on a chosen SUBSET of nozzles. Each nozzle can only be in
+   * one open shift at a time, so several operators can work different pumps
+   * concurrently. The price in force is snapshotted per nozzle.
+   */
+  async openShift(stationId, { employeeName, nozzleIds }, caller) {
     await delay(180);
     const d = db();
     d.shifts[stationId] ||= [];
-    if (d.shifts[stationId].some((sh) => sh.status === "open")) {
-      throw new Error("A shift is already open at this station. Close it first.");
+
+    const picked = nozzleIds || [];
+    if (picked.length === 0) throw new Error("Select at least one nozzle.");
+
+    const busy = {};
+    d.shifts[stationId]
+      .filter((sh) => sh.status === "open")
+      .forEach((sh) =>
+        (sh.nozzles || []).forEach((n) => {
+          busy[n.nozzleId] = sh.employeeName;
+        })
+      );
+
+    const allNozzles = d.nozzles[stationId] || [];
+    const pumps = d.pumps[stationId] || [];
+    const prices = d.prices[stationId] || [];
+
+    const taken = picked.filter((id) => busy[id]);
+    if (taken.length) {
+      throw new Error(`That nozzle is already in an active shift by ${busy[taken[0]]}.`);
     }
 
-    const nozzles = d.nozzles[stationId] || [];
-    if (nozzles.length === 0) {
-      throw new Error("Add at least one pump and nozzle before opening a shift.");
-    }
-    const rates = d.rates[stationId] || {};
-    const missing = [...new Set(nozzles.map((n) => n.fuelType))].filter((f) => !rates[f]);
-    if (missing.length) {
-      throw new Error(`Set today's rate for ${missing.join(", ")} before opening a shift.`);
-    }
-
-    // Opening readings come from each nozzle's running totaliser, and the
-    // rate in force is snapshotted now so later rate changes never reprice
-    // this shift.
-    const readings = {};
-    nozzles.forEach((n) => {
-      readings[n.id] = {
-        label: `${(d.pumps[stationId] || []).find((p) => p.id === n.pumpId)?.name || "Pump"} · ${n.name}`,
-        fuelType: n.fuelType,
-        opening: n.currentReading,
-        closing: "",
-        rate: rates[n.fuelType],
+    const nozzles = picked.map((id) => {
+      const nz = allNozzles.find((n) => n.id === id);
+      if (!nz) throw new Error("Nozzle not found.");
+      const active = prices
+        .filter((pr) => pr.fuelType === nz.fuelType && !pr.effectiveTo)
+        .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))[0];
+      if (!active) {
+        throw new Error(`Set a price for ${nz.fuelType} before starting a shift.`);
+      }
+      return {
+        nozzleId: nz.id,
+        pumpId: nz.pumpId,
+        label: `${pumps.find((p) => p.id === nz.pumpId)?.name || "Pump"} · ${nz.name}`,
+        fuelType: nz.fuelType,
+        openingReading: nz.lastReading,
+        closingReading: "",
+        price: active.price,
+        priceId: active.id,
       };
     });
 
     const shift = {
       id: uid("sh"),
       stationId,
-      name: name || "Shift",
+      employeeName: employeeName || caller.name,
+      userId: caller.uid,
       status: "open",
-      openedAt: nowISO(),
-      openedBy: caller.uid,
-      openedByName: caller.name,
-      closedAt: null,
-      closedBy: null,
-      closedByName: null,
       date: todayISO(),
-      readings,
+      startTime: nowISO(),
+      endTime: null,
+      openedByName: caller.name,
+      closedByName: null,
+      nozzles,
       expenses: [],
       creditSales: [],
-      digitalCollected: 0,
-      cashDeclared: "",
+      payments: { cash: "", card: "", upi: "", credit: "", other: "" },
       note: "",
     };
     d.shifts[stationId].unshift(shift);
@@ -633,10 +673,13 @@ export const demoBackend = {
     if (!shift) throw new Error("Shift not found.");
     if (shift.status === "closed") throw new Error("That shift is already closed.");
 
-    Object.entries(payload.readings || {}).forEach(([nozzleId, r]) => {
-      if (shift.readings[nozzleId]) {
-        shift.readings[nozzleId].closing = Number(r.closing);
+    const closings = payload.closingReadings || {};
+    shift.nozzles = shift.nozzles.map((n) => {
+      const c = closings[n.nozzleId];
+      if (c === undefined || c === null || c === "") {
+        throw new Error(`Missing closing reading for ${n.label}.`);
       }
+      return { ...n, closingReading: Number(c) };
     });
 
     shift.expenses = (payload.expenses || []).map((e) => ({
@@ -648,28 +691,31 @@ export const demoBackend = {
       name: String(c.name || "").trim(),
       amount: Number(c.amount) || 0,
     }));
-    shift.digitalCollected = Number(payload.digitalCollected) || 0;
-    shift.cashDeclared = Number(payload.cashDeclared) || 0;
+    shift.payments = {
+      cash: Number(payload.payments?.cash) || 0,
+      card: Number(payload.payments?.card) || 0,
+      upi: Number(payload.payments?.upi) || 0,
+      credit: Number(payload.payments?.credit) || 0,
+      other: Number(payload.payments?.other) || 0,
+    };
     shift.note = String(payload.note || "").trim();
     shift.status = "closed";
-    shift.closedAt = nowISO();
-    shift.closedBy = caller.uid;
+    shift.endTime = nowISO();
     shift.closedByName = caller.name;
 
-    // The closing reading becomes the next shift's opening.
-    (d.nozzles[stationId] || []).forEach((n) => {
-      const r = shift.readings[n.id];
-      if (r && r.closing !== "") n.currentReading = Number(r.closing);
+    // Each nozzle's closing reading becomes its next opening.
+    (d.nozzles[stationId] || []).forEach((nz) => {
+      const line = shift.nozzles.find((n) => n.nozzleId === nz.id);
+      if (line) nz.lastReading = Number(line.closingReading);
     });
 
-    // Credit taken during the shift posts to the customer's account.
     shift.creditSales.forEach((c) => {
       if (!c.customerId) return;
       const cust = (d.credit[stationId] || []).find((x) => x.id === c.customerId);
       if (!cust) return;
       cust.transactions = [
         ...(cust.transactions || []),
-        { date: shift.date, type: "credit", amount: c.amount, note: `${shift.name} shift` },
+        { date: shift.date, type: "credit", amount: c.amount, note: `${shift.employeeName} shift` },
       ];
       cust.outstandingBalance = Number(cust.outstandingBalance || 0) + c.amount;
     });

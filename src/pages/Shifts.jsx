@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
 import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
 import StationPicker from "../components/StationPicker";
-import { CashIcon, GaugeIcon, NozzleIcon, ShiftIcon, StatusDot } from "../components/icons";
+import { CashIcon, GaugeIcon, NozzleIcon, PumpIcon, ShiftIcon, StatusDot } from "../components/icons";
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
@@ -16,27 +16,44 @@ import {
 } from "../lib/api";
 import { formatDate, formatStamp, money, num } from "../lib/format";
 import {
+  PAYMENT_LABELS,
+  PAYMENT_MODES,
   litresBetween,
+  nozzleOccupancy,
+  paymentsTotal,
+  pumpOccupancy,
   shiftTotals,
   validateClosing,
   varianceLabel,
   varianceTone,
 } from "../lib/shiftMath";
 
+export const fuelClass = (fuelType = "") => {
+  const f = fuelType.toLowerCase();
+  if (f.includes("premium")) return "premium";
+  if (f.includes("petrol")) return "petrol";
+  if (f.includes("diesel")) return "diesel";
+  if (f.includes("cng")) return "cng";
+  return "premium";
+};
+
 export default function Shifts() {
-  const { profile, canAmend } = useAuth();
+  const { profile } = useAuth();
   const { stations, loading: stationsLoading } = useStations();
   const [params, setParams] = useSearchParams();
 
   const [stationId, setStationId] = useState("");
   const [shifts, setShifts] = useState([]);
-  const [nozzleCount, setNozzleCount] = useState(0);
+  const [pumps, setPumps] = useState([]);
+  const [nozzles, setNozzles] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [shiftName, setShiftName] = useState("Morning");
+  const [starting, setStarting] = useState(false);
+  const [picked, setPicked] = useState([]);
   const [expanded, setExpanded] = useState(null);
+  const [closingFor, setClosingFor] = useState(null);
 
   useEffect(() => {
     if (stations.length === 0) return;
@@ -55,7 +72,8 @@ export default function Shifts() {
         listCustomers(stationId),
       ]);
       setShifts(sh);
-      setNozzleCount(eq.nozzles.length);
+      setPumps(eq.pumps);
+      setNozzles(eq.nozzles);
       setCustomers(cust);
       setError("");
     } catch (err) {
@@ -69,17 +87,30 @@ export default function Shifts() {
     load();
   }, [load]);
 
-  const openOne = shifts.find((s) => s.status === "open");
+  const openShifts = shifts.filter((s) => s.status === "open");
   const closed = shifts.filter((s) => s.status === "closed");
   const station = stations.find((s) => s.id === stationId);
+
+  const occupancy = useMemo(() => pumpOccupancy(pumps, nozzles, openShifts), [
+    pumps,
+    nozzles,
+    openShifts,
+  ]);
+  const nozzleBusy = useMemo(() => nozzleOccupancy(openShifts), [openShifts]);
+
+  const busyCount = Object.values(occupancy).filter((o) => o.busy).length;
+  const freeCount = pumps.length - busyCount;
+
+  // Your own open shift, if you have one.
+  const myShift = openShifts.find((s) => s.userId === profile.uid);
 
   const today = closed.filter((s) => s.date === new Date().toISOString().slice(0, 10));
   const todaySummary = useMemo(() => {
     const t = today.map(shiftTotals);
     return {
       litres: t.reduce((n, x) => n + x.totalLitres, 0),
-      sales: t.reduce((n, x) => n + x.grossSales, 0),
-      cash: t.reduce((n, x) => n + (x.declared ?? 0), 0),
+      gross: t.reduce((n, x) => n + x.gross, 0),
+      declared: t.reduce((n, x) => n + (x.declared ?? 0), 0),
       variance: t.reduce((n, x) => n + (x.variance ?? 0), 0),
     };
   }, [today]);
@@ -88,7 +119,9 @@ export default function Shifts() {
     setBusy(true);
     setError("");
     try {
-      await openShift(stationId, { name: shiftName.trim() || "Shift" }, profile);
+      await openShift(stationId, { employeeName: profile.name, nozzleIds: picked }, profile);
+      setPicked([]);
+      setStarting(false);
       await load();
     } catch (err) {
       setError(readableError(err));
@@ -108,11 +141,26 @@ export default function Shifts() {
     );
   }
 
+  const activeNozzles = nozzles.filter((n) => !nozzleBusy[n.id]);
+
   return (
     <>
       <PageHeader
         title="Shifts"
-        sub={station ? `${station.name} · readings-based` : ""}
+        sub={
+          station
+            ? `${station.name} · ${freeCount} pump${freeCount === 1 ? "" : "s"} free · ${busyCount} busy`
+            : ""
+        }
+        actions={
+          !myShift &&
+          !starting &&
+          activeNozzles.length > 0 && (
+            <button className="primary" type="button" onClick={() => setStarting(true)}>
+              Start shift
+            </button>
+          )
+        }
       />
       <div className="content stack">
         {stations.length > 1 && (
@@ -127,12 +175,246 @@ export default function Shifts() {
 
         {error && <Notice kind="error">{error}</Notice>}
 
+        {/* -------- live forecourt -------- */}
+        <Panel
+          title={
+            <span className="row" style={{ gap: 7, alignItems: "center" }}>
+              <PumpIcon /> Forecourt right now
+            </span>
+          }
+          note="A pump is busy while any of its nozzles is in an open shift."
+        >
+          {pumps.length === 0 ? (
+            <Empty>
+              No pumps configured. An owner needs to add pumps and nozzles first.
+            </Empty>
+          ) : (
+            <>
+              <div className="pump-board">
+                {pumps.map((p) => {
+                  const occ = occupancy[p.id] || {};
+                  const mine = nozzles.filter((n) => n.pumpId === p.id);
+                  const fuels = [...new Set(mine.map((n) => n.fuelType))];
+                  return (
+                    <div key={p.id} className={`pump-tile${occ.busy ? " busy" : ""}`}>
+                      <div className="pump-tile__head">
+                        <div>
+                          <div className="pump-tile__name">
+                            <PumpIcon size={16} />
+                            {p.name}
+                          </div>
+                          <div className="pump-tile__meta">
+                            {mine.length} nozzle{mine.length === 1 ? "" : "s"}
+                            {fuels.length ? ` · ${fuels.join(" · ")}` : ""}
+                          </div>
+                        </div>
+                        <span className="pump-tile__state">
+                          <StatusDot
+                            tone={occ.busy ? "rust" : "green"}
+                            title={occ.busy ? "busy" : "available"}
+                          />
+                          {occ.busy ? "Busy" : "Free"}
+                        </span>
+                      </div>
+
+                      <div className="row" style={{ gap: 6, alignItems: "center" }}>
+                        {mine.map((n) => (
+                          <span
+                            key={n.id}
+                            className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`}
+                            title={`${n.name} · ${n.fuelType}${
+                              nozzleBusy[n.id] ? ` · ${nozzleBusy[n.id].operator}` : ""
+                            }`}
+                          />
+                        ))}
+                        <span className="small muted">
+                          {occ.busy
+                            ? `${occ.operators.join(", ")} fuelling`
+                            : "Available to take"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="divider" />
+              <div className="fuel-key">
+                <span className="k">
+                  <span className="fuel-dot fuel-dot--petrol" /> Petrol
+                </span>
+                <span className="k">
+                  <span className="fuel-dot fuel-dot--diesel" /> Diesel
+                </span>
+                <span className="k">
+                  <span className="fuel-dot fuel-dot--premium" /> Premium
+                </span>
+                <span className="k">
+                  <span className="fuel-dot fuel-dot--cng" /> CNG
+                </span>
+              </div>
+            </>
+          )}
+        </Panel>
+
+        {/* -------- start a shift: pick your nozzles -------- */}
+        {starting && !myShift && (
+          <Panel
+            title={
+              <span className="row" style={{ gap: 7, alignItems: "center" }}>
+                <ShiftIcon /> Start your shift
+              </span>
+            }
+            note="Tick the nozzles you are taking. Opening readings come from each meter — you never type them."
+            flush
+          >
+            <div>
+              {nozzles.map((n) => {
+                const held = nozzleBusy[n.id];
+                const pump = pumps.find((p) => p.id === n.pumpId);
+                const checked = picked.includes(n.id);
+                return (
+                  <label
+                    key={n.id}
+                    className={`nozzle-pick${held ? " disabled" : ""}`}
+                    style={{ cursor: held ? "not-allowed" : "pointer" }}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={!!held}
+                      checked={checked}
+                      onChange={(e) =>
+                        setPicked((prev) =>
+                          e.target.checked
+                            ? [...prev, n.id]
+                            : prev.filter((x) => x !== n.id)
+                        )
+                      }
+                    />
+                    <div className="nozzle-pick__body">
+                      <div className="nozzle-pick__title">
+                        <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                        {pump?.name || "Pump"} · {n.name}
+                        <span className="muted" style={{ fontWeight: 400 }}>
+                          {n.fuelType}
+                        </span>
+                      </div>
+                      <div className="nozzle-pick__sub">
+                        {held ? (
+                          <>In an active shift by {held.operator}</>
+                        ) : (
+                          <>
+                            Opening reading{" "}
+                            <span className="mono">{money(n.lastReading)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="body row" style={{ borderTop: "1px solid var(--hairline)" }}>
+              <button
+                className="primary"
+                type="button"
+                disabled={busy || picked.length === 0}
+                onClick={start}
+              >
+                {busy
+                  ? "Starting…"
+                  : `Start shift on ${picked.length} nozzle${picked.length === 1 ? "" : "s"}`}
+              </button>
+              <button type="button" onClick={() => { setStarting(false); setPicked([]); }}>
+                Cancel
+              </button>
+            </div>
+          </Panel>
+        )}
+
+        {/* -------- open shifts -------- */}
+        {openShifts.map((s) =>
+          closingFor === s.id ? (
+            <CloseShiftPanel
+              key={s.id}
+              shift={s}
+              customers={customers}
+              busy={busy}
+              onCancel={() => setClosingFor(null)}
+              onSubmit={async (payload) => {
+                setBusy(true);
+                setError("");
+                try {
+                  await closeShift(stationId, s.id, payload, profile);
+                  setClosingFor(null);
+                  await load();
+                } catch (err) {
+                  setError(readableError(err));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          ) : (
+            <Panel
+              key={s.id}
+              title={
+                <span className="row" style={{ gap: 7, alignItems: "center" }}>
+                  <StatusDot tone="amber" title="open" />
+                  {s.employeeName} — shift open
+                </span>
+              }
+              note={`Started ${formatStamp(s.startTime)} · ${s.nozzles.length} nozzle${
+                s.nozzles.length === 1 ? "" : "s"
+              }`}
+              actions={
+                (s.userId === profile.uid || profile.role !== "attendant") && (
+                  <button
+                    className="primary"
+                    type="button"
+                    onClick={() => setClosingFor(s.id)}
+                  >
+                    Close shift
+                  </button>
+                )
+              }
+              flush
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nozzle</th>
+                    <th>Fuel</th>
+                    <th className="num">Opening</th>
+                    <th className="num">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.nozzles.map((n) => (
+                    <tr key={n.nozzleId}>
+                      <td>
+                        <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                          <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                          {n.label}
+                        </span>
+                      </td>
+                      <td>{n.fuelType}</td>
+                      <td className="num mono">{money(n.openingReading)}</td>
+                      <td className="num mono">{money(n.price)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Panel>
+          )
+        )}
+
         {today.length > 0 && (
           <Panel title="Today, so far">
             <div className="row" style={{ gap: 40 }}>
               <Stat label="Litres sold" value={money(todaySummary.litres)} />
-              <Stat label="Fuel sales" value={`₹ ${money(todaySummary.sales)}`} />
-              <Stat label="Cash declared" value={`₹ ${money(todaySummary.cash)}`} />
+              <Stat label="Fuel sales" value={`₹ ${money(todaySummary.gross)}`} />
+              <Stat label="Collected" value={`₹ ${money(todaySummary.declared)}`} />
               <Stat
                 label="Variance"
                 value={`₹ ${money(todaySummary.variance)}`}
@@ -142,61 +424,7 @@ export default function Shifts() {
           </Panel>
         )}
 
-        {openOne ? (
-          <OpenShiftPanel
-            shift={openOne}
-            customers={customers}
-            busy={busy}
-            onClose={async (payload) => {
-              setBusy(true);
-              setError("");
-              try {
-                await closeShift(stationId, openOne.id, payload, profile);
-                await load();
-              } catch (err) {
-                setError(readableError(err));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        ) : (
-          <Panel
-            title={
-              <span className="row" style={{ gap: 7, alignItems: "center" }}>
-                <ShiftIcon /> No shift open
-              </span>
-            }
-          >
-            {nozzleCount === 0 ? (
-              <Notice kind="error">
-                This station has no nozzles yet. An owner needs to add pumps, nozzles and
-                today's rates before a shift can be opened.
-              </Notice>
-            ) : (
-              <div className="stack" style={{ gap: 12 }}>
-                <div className="small muted">
-                  Opening a shift snapshots every nozzle's current meter reading and the
-                  rates in force. At handover you enter only the closing readings.
-                </div>
-                <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
-                  <Field label="Shift name">
-                    <input
-                      value={shiftName}
-                      onChange={(e) => setShiftName(e.target.value)}
-                      placeholder="Morning"
-                      style={{ width: 180 }}
-                    />
-                  </Field>
-                  <button className="primary" type="button" disabled={busy} onClick={start}>
-                    {busy ? "Opening…" : "Open shift"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </Panel>
-        )}
-
+        {/* -------- closed shifts -------- */}
         <Panel title="Closed shifts" flush>
           {loading ? (
             <Empty>Loading…</Empty>
@@ -207,13 +435,12 @@ export default function Shifts() {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Shift</th>
+                  <th>Operator</th>
                   <th className="num">Litres</th>
-                  <th className="num">Sales</th>
-                  <th className="num">Expected</th>
-                  <th className="num">Declared</th>
+                  <th className="num">Gross</th>
+                  <th className="num">Net</th>
+                  <th className="num">Collected</th>
                   <th className="num">Variance</th>
-                  <th>Closed by</th>
                   <th />
                 </tr>
               </thead>
@@ -231,12 +458,12 @@ export default function Shifts() {
                               tone={varianceTone(t.variance) === "neg" ? "rust" : "green"}
                               title={varianceLabel(t.variance)}
                             />
-                            {s.name}
+                            {s.employeeName}
                           </span>
                         </td>
                         <td className="num mono">{money(t.totalLitres)}</td>
-                        <td className="num mono">{money(t.grossSales)}</td>
-                        <td className="num mono">{money(t.expectedCash)}</td>
+                        <td className="num mono">{money(t.gross)}</td>
+                        <td className="num mono">{money(t.net)}</td>
                         <td className="num mono">{money(t.declared)}</td>
                         <td
                           className="num mono"
@@ -248,12 +475,6 @@ export default function Shifts() {
                           }}
                         >
                           {money(t.variance)}
-                        </td>
-                        <td className="small">
-                          {s.closedByName || "—"}
-                          <div className="muted" style={{ fontSize: 11.5 }}>
-                            {formatStamp(s.closedAt)}
-                          </div>
                         </td>
                         <td className="num">
                           <button
@@ -267,7 +488,7 @@ export default function Shifts() {
                       </tr>
                       {open && (
                         <tr>
-                          <td colSpan={9} style={{ background: "#fbfaf6" }}>
+                          <td colSpan={8} style={{ background: "#fbfaf6" }}>
                             <ClosedShiftDetail shift={s} totals={t} />
                           </td>
                         </tr>
@@ -285,50 +506,55 @@ export default function Shifts() {
 }
 
 /* ------------------------------------------------------------------ */
-/* the open shift: enter closing readings only                         */
+/* closing: enter closing readings + split the payments                */
 /* ------------------------------------------------------------------ */
 
-function OpenShiftPanel({ shift, customers, onClose, busy }) {
+function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
   const [closings, setClosings] = useState({});
   const [expenses, setExpenses] = useState([]);
   const [creditSales, setCreditSales] = useState([]);
-  const [digital, setDigital] = useState("");
-  const [cash, setCash] = useState("");
+  const [payments, setPayments] = useState({
+    cash: "",
+    card: "",
+    upi: "",
+    credit: "",
+    other: "",
+  });
   const [note, setNote] = useState("");
   const [problems, setProblems] = useState([]);
 
-  // Live preview of the shift as it would close with what's typed so far.
-  const preview = useMemo(() => {
-    const readings = {};
-    Object.entries(shift.readings || {}).forEach(([id, r]) => {
-      readings[id] = { ...r, closing: closings[id] ?? "" };
-    });
-    return shiftTotals({
-      readings,
-      expenses,
-      creditSales,
-      digitalCollected: digital,
-      cashDeclared: cash,
-    });
-  }, [shift.readings, closings, expenses, creditSales, digital, cash]);
+  const withClosings = useMemo(
+    () =>
+      shift.nozzles.map((n) => ({ ...n, closingReading: closings[n.nozzleId] ?? "" })),
+    [shift.nozzles, closings]
+  );
+
+  const preview = useMemo(
+    () => shiftTotals({ nozzles: withClosings, expenses, creditSales, payments }),
+    [withClosings, expenses, creditSales, payments]
+  );
+
+  // Credit taken this shift is a payment mode too — keep the two in step so
+  // the operator isn't asked for the same figure twice.
+  const creditTotal = creditSales.reduce((n, c) => n + num(c.amount), 0);
+  useEffect(() => {
+    setPayments((p) => ({ ...p, credit: creditTotal ? String(creditTotal) : "" }));
+  }, [creditTotal]);
 
   const submit = () => {
-    const readings = {};
-    Object.entries(shift.readings || {}).forEach(([id, r]) => {
-      readings[id] = { ...r, closing: closings[id] ?? "" };
-    });
-    const found = validateClosing(readings);
+    const found = validateClosing(withClosings);
     if (found.length) {
       setProblems(found);
       return;
     }
     setProblems([]);
-    onClose({
-      readings,
+    onSubmit({
+      closingReadings: Object.fromEntries(
+        withClosings.map((n) => [n.nozzleId, n.closingReading])
+      ),
       expenses,
       creditSales,
-      digitalCollected: num(digital),
-      cashDeclared: num(cash),
+      payments,
       note,
     });
   };
@@ -337,45 +563,41 @@ function OpenShiftPanel({ shift, customers, onClose, busy }) {
     <Panel
       title={
         <span className="row" style={{ gap: 7, alignItems: "center" }}>
-          <StatusDot tone="amber" title="open" />
-          {shift.name} shift — open
+          <GaugeIcon /> Close {shift.employeeName}'s shift
         </span>
       }
-      note={`Opened ${formatStamp(shift.openedAt)} by ${shift.openedByName || "—"}`}
+      note={`Started ${formatStamp(shift.startTime)}`}
     >
       <div className="stack">
         <div>
-          <h3 className="row" style={{ gap: 7, alignItems: "center", marginBottom: 8 }}>
-            <GaugeIcon size={16} /> Closing readings
-          </h3>
+          <h3 style={{ marginBottom: 8 }}>Closing readings</h3>
           <div className="panel flush">
             <table>
               <thead>
                 <tr>
                   <th>Nozzle</th>
-                  <th>Fuel</th>
                   <th className="num">Opening</th>
                   <th className="num">Closing</th>
                   <th className="num">Litres</th>
-                  <th className="num">Rate</th>
+                  <th className="num">Price</th>
                   <th className="num">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(shift.readings || {}).map(([id, r]) => {
-                  const typed = closings[id] ?? "";
-                  const litres = typed === "" ? null : litresBetween(r.opening, typed);
-                  const below = typed !== "" && num(typed) < num(r.opening);
+                {shift.nozzles.map((n) => {
+                  const typed = closings[n.nozzleId] ?? "";
+                  const litres =
+                    typed === "" ? null : litresBetween(n.openingReading, typed);
+                  const below = typed !== "" && num(typed) < num(n.openingReading);
                   return (
-                    <tr key={id}>
+                    <tr key={n.nozzleId}>
                       <td>
                         <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                          <NozzleIcon size={15} />
-                          {r.label}
+                          <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                          {n.label}
                         </span>
                       </td>
-                      <td>{r.fuelType}</td>
-                      <td className="num mono muted">{money(r.opening)}</td>
+                      <td className="num mono muted">{money(n.openingReading)}</td>
                       <td className="num">
                         <input
                           className="mono"
@@ -387,15 +609,15 @@ function OpenShiftPanel({ shift, customers, onClose, busy }) {
                           }}
                           value={typed}
                           onChange={(e) =>
-                            setClosings((c) => ({ ...c, [id]: e.target.value }))
+                            setClosings((c) => ({ ...c, [n.nozzleId]: e.target.value }))
                           }
-                          placeholder={money(r.opening)}
+                          placeholder={money(n.openingReading)}
                         />
                       </td>
                       <td className="num mono">{litres == null ? "—" : money(litres)}</td>
-                      <td className="num mono muted">{money(r.rate)}</td>
+                      <td className="num mono muted">{money(n.price)}</td>
                       <td className="num mono">
-                        {litres == null ? "—" : money(litres * num(r.rate))}
+                        {litres == null ? "—" : money(litres * num(n.price))}
                       </td>
                     </tr>
                   );
@@ -403,10 +625,10 @@ function OpenShiftPanel({ shift, customers, onClose, busy }) {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>Total</td>
+                  <td colSpan={3}>Total</td>
                   <td className="num mono">{money(preview.totalLitres)}</td>
                   <td />
-                  <td className="num mono">{money(preview.grossSales)}</td>
+                  <td className="num mono">{money(preview.gross)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -425,29 +647,28 @@ function OpenShiftPanel({ shift, customers, onClose, busy }) {
 
         <div>
           <h3 className="row" style={{ gap: 7, alignItems: "center", marginBottom: 8 }}>
-            <CashIcon size={16} /> Handover
+            <CashIcon size={16} /> What you collected
           </h3>
           <div className="form-grid">
-            <Field label="Card / UPI collected" hint="not in the drawer">
-              <input
-                className="mono"
-                inputMode="decimal"
-                style={{ textAlign: "right" }}
-                value={digital}
-                onChange={(e) => setDigital(e.target.value)}
-                placeholder="0.00"
-              />
-            </Field>
-            <Field label="Cash counted" hint="what you are handing over">
-              <input
-                className="mono"
-                inputMode="decimal"
-                style={{ textAlign: "right" }}
-                value={cash}
-                onChange={(e) => setCash(e.target.value)}
-                placeholder="0.00"
-              />
-            </Field>
+            {PAYMENT_MODES.map((mode) => (
+              <Field
+                key={mode}
+                label={PAYMENT_LABELS[mode]}
+                hint={mode === "credit" ? "from the list above" : undefined}
+              >
+                <input
+                  className="mono"
+                  inputMode="decimal"
+                  style={{ textAlign: "right" }}
+                  value={payments[mode]}
+                  readOnly={mode === "credit"}
+                  onChange={(e) =>
+                    setPayments((p) => ({ ...p, [mode]: e.target.value }))
+                  }
+                  placeholder="0.00"
+                />
+              </Field>
+            ))}
             <Field label="Note" hint="optional">
               <input
                 value={note}
@@ -460,11 +681,10 @@ function OpenShiftPanel({ shift, customers, onClose, busy }) {
 
         <div className="panel">
           <div className="body row" style={{ gap: 36, flexWrap: "wrap" }}>
-            <Stat label="Fuel sales" value={money(preview.grossSales)} />
-            <Stat label="Less credit" value={money(preview.creditTotal)} />
-            <Stat label="Less card / UPI" value={money(preview.digital)} />
+            <Stat label="Gross sales" value={money(preview.gross)} />
             <Stat label="Less expenses" value={money(preview.expensesTotal)} />
-            <Stat label="Expected cash" value={money(preview.expectedCash)} />
+            <Stat label="Net due" value={money(preview.net)} />
+            <Stat label="Collected" value={money(paymentsTotal(payments))} />
             <Stat
               label={`Variance · ${varianceLabel(preview.variance)}`}
               value={preview.variance == null ? "—" : money(preview.variance)}
@@ -486,6 +706,9 @@ function OpenShiftPanel({ shift, customers, onClose, busy }) {
         <div className="row">
           <button className="primary" type="button" disabled={busy} onClick={submit}>
             {busy ? "Closing…" : "Close shift & hand over"}
+          </button>
+          <button type="button" onClick={onCancel} disabled={busy}>
+            Cancel
           </button>
         </div>
       </div>
@@ -642,11 +865,6 @@ function CreditEditor({ rows, setRows, customers }) {
           </tbody>
         </table>
       </div>
-      {rows.some((r) => r.customerId) && (
-        <div className="small muted" style={{ marginTop: 6 }}>
-          These post to the customers' accounts when the shift closes.
-        </div>
-      )}
     </div>
   );
 }
@@ -663,19 +881,24 @@ function ClosedShiftDetail({ shift, totals }) {
               <th className="num">Opening</th>
               <th className="num">Closing</th>
               <th className="num">Litres</th>
-              <th className="num">Rate</th>
+              <th className="num">Price</th>
               <th className="num">Amount</th>
             </tr>
           </thead>
           <tbody>
             {totals.lines.map((l) => (
               <tr key={l.nozzleId}>
-                <td>{l.label}</td>
-                <td className="num mono">{money(l.opening)}</td>
-                <td className="num mono">{money(l.closing)}</td>
-                <td className="num mono">{money(l.litres)}</td>
-                <td className="num mono">{money(l.rate)}</td>
-                <td className="num mono">{money(l.amount)}</td>
+                <td>
+                  <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                    <span className={`fuel-dot fuel-dot--${fuelClass(l.fuelType)}`} />
+                    {l.label}
+                  </span>
+                </td>
+                <td className="num mono">{money(l.openingReading)}</td>
+                <td className="num mono">{money(l.closingReading)}</td>
+                <td className="num mono">{money(l.litresSold)}</td>
+                <td className="num mono">{money(l.price)}</td>
+                <td className="num mono">{money(l.revenue)}</td>
               </tr>
             ))}
           </tbody>
@@ -684,7 +907,7 @@ function ClosedShiftDetail({ shift, totals }) {
               <td colSpan={3}>Total</td>
               <td className="num mono">{money(totals.totalLitres)}</td>
               <td />
-              <td className="num mono">{money(totals.grossSales)}</td>
+              <td className="num mono">{money(totals.gross)}</td>
             </tr>
           </tfoot>
         </table>
@@ -695,27 +918,25 @@ function ClosedShiftDetail({ shift, totals }) {
         <table>
           <tbody>
             <tr>
-              <td>Fuel sales</td>
-              <td className="num mono">{money(totals.grossSales)}</td>
-            </tr>
-            <tr>
-              <td>Credit</td>
-              <td className="num mono">−{money(totals.creditTotal)}</td>
-            </tr>
-            <tr>
-              <td>Card / UPI</td>
-              <td className="num mono">−{money(totals.digital)}</td>
+              <td>Gross sales</td>
+              <td className="num mono">{money(totals.gross)}</td>
             </tr>
             <tr>
               <td>Expenses</td>
               <td className="num mono">−{money(totals.expensesTotal)}</td>
             </tr>
             <tr className="total">
-              <td>Expected cash</td>
-              <td className="num mono">{money(totals.expectedCash)}</td>
+              <td>Net due</td>
+              <td className="num mono">{money(totals.net)}</td>
             </tr>
-            <tr>
-              <td>Declared</td>
+            {PAYMENT_MODES.map((mode) => (
+              <tr key={mode}>
+                <td className="muted">{PAYMENT_LABELS[mode]}</td>
+                <td className="num mono">{money(totals.payments[mode])}</td>
+              </tr>
+            ))}
+            <tr className="total">
+              <td>Collected</td>
               <td className="num mono">{money(totals.declared)}</td>
             </tr>
             <tr className="total">
@@ -724,7 +945,9 @@ function ClosedShiftDetail({ shift, totals }) {
                 className="num mono"
                 style={{
                   color:
-                    varianceTone(totals.variance) === "neg" ? "var(--rust)" : "var(--green)",
+                    varianceTone(totals.variance) === "neg"
+                      ? "var(--rust)"
+                      : "var(--green)",
                 }}
               >
                 {money(totals.variance)}

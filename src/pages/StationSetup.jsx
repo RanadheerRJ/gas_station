@@ -9,13 +9,15 @@ import { useStations } from "../state/useStations";
 import {
   addNozzle,
   addPump,
-  getRates,
+  getPrices,
   listPumps,
   readableError,
   removeNozzle,
   removePump,
-  setRate as apiSetRate,
+  setPrice as apiSetPrice,
 } from "../lib/api";
+import { activePrices } from "../lib/shiftMath";
+import { fuelClass } from "./Shifts";
 import { formatStamp, money, num } from "../lib/format";
 
 const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
@@ -28,8 +30,7 @@ export default function StationSetup() {
   const [stationId, setStationId] = useState("");
   const [pumps, setPumps] = useState([]);
   const [nozzles, setNozzles] = useState([]);
-  const [rates, setRates] = useState({});
-  const [history, setHistory] = useState([]);
+  const [priceRecords, setPriceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,11 +55,10 @@ export default function StationSetup() {
     if (!stationId) return;
     setLoading(true);
     try {
-      const [eq, r] = await Promise.all([listPumps(stationId), getRates(stationId)]);
+      const [eq, pr] = await Promise.all([listPumps(stationId), getPrices(stationId)]);
       setPumps(eq.pumps);
       setNozzles(eq.nozzles);
-      setRates(r.rates);
-      setHistory(r.history);
+      setPriceRecords(pr);
       setRateDraft({});
       setError("");
     } catch (err) {
@@ -87,6 +87,7 @@ export default function StationSetup() {
 
   // Only fuels actually dispensed here need a price.
   const activeFuels = [...new Set(nozzles.map((n) => n.fuelType))];
+  const active = activePrices(priceRecords);
   const station = stations.find((s) => s.id === stationId);
 
   if (stationsLoading) {
@@ -119,89 +120,112 @@ export default function StationSetup() {
 
         {error && <Notice kind="error">{error}</Notice>}
 
-        {/* ---------------- rates ---------------- */}
+        {/* ---------------- prices ---------------- */}
         <Panel
           title={
             <span className="row" style={{ gap: 7, alignItems: "center" }}>
-              <RateIcon /> Today's rates
+              <RateIcon /> Fuel prices
             </span>
           }
-          note="Each shift snapshots the rate in force when it opens, so changing a rate never reprices a past shift."
+          note="A new price closes the previous one and starts a fresh interval — history is never overwritten, so a past shift always reprices correctly."
         >
           {activeFuels.length === 0 ? (
-            <Empty>Add a nozzle first — rates are set per fuel type you dispense.</Empty>
+            <Empty>Add a nozzle first — prices are set per fuel type you dispense.</Empty>
           ) : (
-            <div className="row" style={{ gap: 28, flexWrap: "wrap" }}>
-              {activeFuels.map((fuel) => {
-                const current = rates[fuel];
-                const draft = rateDraft[fuel] ?? "";
-                const changed = draft !== "" && num(draft) !== num(current);
-                return (
-                  <div key={fuel} className="stack" style={{ gap: 6, minWidth: 190 }}>
-                    <div className="small muted">{fuel}</div>
-                    <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
-                      <input
-                        className="mono"
-                        inputMode="decimal"
-                        style={{ textAlign: "right", width: 110 }}
-                        value={draft !== "" ? draft : (current ?? "")}
-                        onChange={(e) =>
-                          setRateDraft((d) => ({ ...d, [fuel]: e.target.value }))
-                        }
-                        placeholder="0.00"
-                      />
-                      <button
-                        type="button"
-                        className="small"
-                        disabled={busy || !changed}
-                        onClick={() =>
-                          run(() =>
-                            apiSetRate(stationId, { fuelType: fuel, rate: num(draft) }, profile)
-                          )
-                        }
-                      >
-                        {changed ? "Save" : "Saved"}
-                      </button>
-                    </div>
-                    {current == null && (
-                      <span className="small" style={{ color: "var(--rust)" }}>
-                        No rate set — shifts cannot open.
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {history.length > 0 && (
             <>
-              <div className="divider" />
-              <details>
-                <summary className="small muted" style={{ cursor: "pointer" }}>
-                  Rate change history ({history.length})
-                </summary>
-                <table style={{ marginTop: 10 }}>
-                  <thead>
-                    <tr>
-                      <th>When</th>
-                      <th>Fuel</th>
-                      <th className="num">Rate</th>
-                      <th>Set by</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.slice(0, 12).map((h, i) => (
-                      <tr key={i}>
-                        <td className="small mono">{formatStamp(h.at)}</td>
-                        <td>{h.fuelType}</td>
-                        <td className="num mono">{money(h.rate)}</td>
-                        <td className="small">{h.setByName || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </details>
+              <div className="price-board">
+                {activeFuels.map((fuel) => {
+                  const rec = active[fuel];
+                  const draft = rateDraft[fuel] ?? "";
+                  const changed = draft !== "" && num(draft) > 0 && num(draft) !== num(rec?.price);
+                  return (
+                    <div key={fuel} className="price-card">
+                      <div className="price-card__fuel">
+                        <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
+                        {fuel}
+                      </div>
+                      <div className="price-card__value">
+                        {rec ? `₹ ${money(rec.price)}` : "Not set"}
+                      </div>
+                      <div className="price-card__since">
+                        {rec ? `Active since ${formatStamp(rec.effectiveFrom)}` : "Shifts cannot start"}
+                      </div>
+                      <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "nowrap" }}>
+                        <input
+                          className="mono"
+                          inputMode="decimal"
+                          style={{ textAlign: "right" }}
+                          value={draft}
+                          onChange={(e) =>
+                            setRateDraft((d) => ({ ...d, [fuel]: e.target.value }))
+                          }
+                          placeholder={rec ? money(rec.price) : "0.00"}
+                        />
+                        <button
+                          type="button"
+                          className="small"
+                          disabled={busy || !changed}
+                          onClick={() =>
+                            run(async () => {
+                              await apiSetPrice(
+                                stationId,
+                                { fuelType: fuel, price: num(draft) },
+                                profile
+                              );
+                            })
+                          }
+                        >
+                          Update
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {priceRecords.length > 0 && (
+                <>
+                  <div className="divider" />
+                  <details>
+                    <summary className="small muted" style={{ cursor: "pointer" }}>
+                      Price history ({priceRecords.length})
+                    </summary>
+                    <table style={{ marginTop: 10 }}>
+                      <thead>
+                        <tr>
+                          <th>Fuel</th>
+                          <th className="num">Price</th>
+                          <th>From</th>
+                          <th>To</th>
+                          <th>Set by</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {priceRecords.slice(0, 15).map((h) => (
+                          <tr key={h.id}>
+                            <td>
+                              <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                                <span className={`fuel-dot fuel-dot--${fuelClass(h.fuelType)}`} />
+                                {h.fuelType}
+                              </span>
+                            </td>
+                            <td className="num mono">{money(h.price)}</td>
+                            <td className="small mono">{formatStamp(h.effectiveFrom)}</td>
+                            <td className="small mono">
+                              {h.effectiveTo ? (
+                                formatStamp(h.effectiveTo)
+                              ) : (
+                                <span className="tag green">active</span>
+                              )}
+                            </td>
+                            <td className="small">{h.setByName || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </details>
+                </>
+              )}
             </>
           )}
         </Panel>
@@ -358,8 +382,8 @@ export default function StationSetup() {
                           <tr>
                             <th>Nozzle</th>
                             <th>Fuel</th>
-                            <th className="num">Current reading</th>
-                            <th className="num">Rate</th>
+                            <th className="num">Meter reading</th>
+                            <th className="num">Price</th>
                             <th />
                           </tr>
                         </thead>
@@ -372,10 +396,15 @@ export default function StationSetup() {
                                   {n.name}
                                 </span>
                               </td>
-                              <td>{n.fuelType}</td>
-                              <td className="num mono">{money(n.currentReading)}</td>
+                              <td>
+                                <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                                  <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                                  {n.fuelType}
+                                </span>
+                              </td>
+                              <td className="num mono">{money(n.lastReading)}</td>
                               <td className="num mono">
-                                {rates[n.fuelType] != null ? money(rates[n.fuelType]) : "—"}
+                                {active[n.fuelType] ? money(active[n.fuelType].price) : "—"}
                               </td>
                               <td className="num">
                                 <button
@@ -412,12 +441,13 @@ export default function StationSetup() {
               automatically — every shift's closing reading becomes the next one's opening.
             </li>
             <li>
-              Nobody types litres or sale amounts. Staff enter only the closing reading at
-              handover, and sales are computed as{" "}
-              <span className="mono">(closing − opening) × rate</span>.
+              Nobody types litres or sale amounts. Staff pick the nozzles they are
+              taking, and enter only the closing reading at handover — sales are{" "}
+              <span className="mono">(closing − opening) × price</span>.
             </li>
             <li>
-              Change a rate whenever it moves. Open shifts keep the rate they started with.
+              Change a price whenever it moves. A running shift keeps the price it
+              started with, and the old price stays in history.
             </li>
           </ul>
         </Panel>

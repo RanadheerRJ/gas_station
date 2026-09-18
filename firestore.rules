@@ -91,19 +91,15 @@ service cloud.firestore {
     match /stations/{stationId}/nozzles/{nozzleId} {
       allow read: if hasStationAccess(stationId);
       allow create, delete: if hasStationAccess(stationId) && isOwner();
-      // currentReading is advanced by closeShift via the Admin SDK.
+      // lastReading is advanced by closeShift via the Admin SDK.
       allow update: if hasStationAccess(stationId) && isOwner();
     }
 
-    match /stations/{stationId}/meta/{docId} {
+    /* Effective-dated price intervals. Written only by the setPrice
+       function, which closes the previous interval as it opens the next. */
+    match /stations/{stationId}/prices/{priceId} {
       allow read: if hasStationAccess(stationId);
-      allow write: if hasStationAccess(stationId) && isOwner();
-    }
-
-    match /stations/{stationId}/rateHistory/{recordId} {
-      allow read: if hasStationAccess(stationId);
-      allow create: if hasStationAccess(stationId) && isOwner();
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     /* ---------------- shifts ----------------

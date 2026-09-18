@@ -54,29 +54,44 @@ to a nozzle's meter.
 1. An owner registers **pumps** and **nozzles** once, entering each nozzle's
    current totaliser reading and the fuel it dispenses.
 2. The owner sets a **rate per fuel type**, updated whenever prices move.
-3. Anyone at the station **opens a shift**. That snapshots every nozzle's
-   current reading as the opening, and the rate in force — so a later rate
-   change never reprices a shift that already ran.
+3. An operator **starts a shift by ticking the nozzles they are taking**.
+   That snapshots each chosen nozzle's current reading as the opening, plus
+   the price in force — so a later price change never reprices a shift that
+   already ran. A nozzle can only be in one open shift, so several operators
+   work different pumps at the same time; the forecourt board shows each pump
+   as free or busy, and who is fuelling.
 4. At handover the operator enters **only the closing reading** per nozzle.
    Litres are `closing − opening`, and the amount is `litres × snapshotted
-   rate`. A meter that wraps past its digit limit is handled rather than
+   price`. A meter that wraps past its digit limit is handled rather than
    reported as a negative sale.
-5. Closing the shift **advances each nozzle's totaliser** to the closing
-   figure, so the next shift opens exactly where this one ended. Credit sales
-   post to customer accounts in the same transaction.
+5. Closing the shift **advances only that shift's nozzles** to their closing
+   figures, so the next shift on those nozzles opens exactly where this one
+   ended and a concurrent shift elsewhere is untouched. Credit sales post to
+   customer accounts in the same transaction.
 
 ### Cash reconciliation
 
 Closing a shift asks what was actually collected, and compares:
 
 ```
-expected cash = meter sales − credit − card/UPI − expenses
-variance      = cash counted − expected cash
+net due  = meter sales − expenses
+collected = cash + card + UPI + credit + other
+variance  = collected − net due
 ```
 
-A negative variance is a short drawer, shown in rust; within ₹1 it reads as
-balanced. The variance rolls up per day, per station, and across all stations
-on the owner's dashboard.
+Collections are split by mode (cash, card, UPI, credit, other) rather than a
+single figure, which is how a forecourt actually settles. A negative variance
+is a short drawer, shown in rust; within ₹1 it reads as balanced. The variance
+rolls up per day, per station, and across all stations on the owner's
+dashboard.
+
+### Prices are effective-dated
+
+A price is not a single current value but an interval:
+`effectiveFrom .. effectiveTo` (null while active). Setting a new price closes
+the previous interval and opens a new one in one transaction, so history is
+never overwritten and any past shift can be repriced with the figure that
+genuinely applied when it ran.
 
 `openShift` and `closeShift` are Cloud Functions rather than client writes,
 because advancing meters and posting credit must be atomic — a partial write
@@ -92,7 +107,7 @@ src/
   pages/      login, developer admin, owner dashboard, shifts, pump/rate
               setup, daily ledger, credit, staff
 functions/    createOwner, createStaff, addStation, resetPin, pinLogin,
-              openShift, closeShift
+              setPrice, openShift, closeShift
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -181,19 +196,19 @@ loginAttempts/{username}   failedCount, lastFailedAt  (no client access)
 
 stations/{stationId}/pumps/{pumpId}        name, createdAt
 stations/{stationId}/nozzles/{nozzleId}    pumpId, name, fuelType,
-                                           currentReading, createdAt
-stations/{stationId}/meta/rates            { [fuelType]: rate }
-stations/{stationId}/rateHistory/{id}      date, fuelType, rate, setBy,
-                                           setByName, at
+                                           lastReading, createdAt
+stations/{stationId}/prices/{priceId}      fuelType, price, effectiveFrom,
+                                           effectiveTo, setBy, setByName
 
 shifts/{stationId}/records/{shiftId}
-  name, status: 'open'|'closed', date,
-  openedAt, openedBy, openedByName,
-  closedAt, closedBy, closedByName,
-  readings: { [nozzleId]: { label, fuelType, opening, closing, rate } },
-  expenses:     [ { label, amount } ],
-  creditSales:  [ { customerId, name, amount } ],
-  digitalCollected, cashDeclared, note
+  employeeName, userId, status: 'open'|'closed', date,
+  startTime, endTime, openedByName, closedByName,
+  nozzles: [ { nozzleId, pumpId, label, fuelType,
+               openingReading, closingReading, price, priceId } ],
+  expenses:    [ { label, amount } ],
+  creditSales: [ { customerId, name, amount } ],
+  payments:    { cash, card, upi, credit, other },
+  note
 
 creditCustomers/{stationId}/customers/{customerId}
   name, phone, outstandingBalance, createdAt,
@@ -217,8 +232,10 @@ figure can never drift out of agreement with the meter it came from.
 - Shifts cannot be created or deleted from a client at all — only
   `openShift`/`closeShift` write them. Owner/manager may amend a closed
   shift; attendants cannot.
-- Pumps, nozzles and rates are readable by station staff but writable only by
-  the owner, so an attendant cannot reprice fuel or edit a meter.
+- Pumps and nozzles are readable by station staff but writable only by the
+  owner, so an attendant cannot edit a meter. Prices are written solely by the
+  `setPrice` function, which enforces owner-only and keeps the interval chain
+  gap-free.
 - Every shift records who opened it and who closed it, with timestamps.
 - `createStaff` re-checks server-side that the target station belongs to the
   calling owner before creating anything.

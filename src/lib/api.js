@@ -199,7 +199,7 @@ export async function addNozzle(stationId, payload) {
   const { openingReading, ...rest } = payload;
   const doc_ = {
     ...rest,
-    currentReading: Number(openingReading) || 0,
+    lastReading: Number(openingReading) || 0,
     createdAt: serverTimestamp(),
   };
   const ref = await addDoc(collection(db, "stations", stationId, "nozzles"), doc_);
@@ -216,40 +216,25 @@ export async function removePump(stationId, pumpId) {
   await deleteDoc(doc(db, "stations", stationId, "pumps", pumpId));
 }
 
-export async function getRates(stationId) {
-  if (isDemo) return demoBackend.getRates(stationId);
-  const [current, history] = await Promise.all([
-    getDoc(doc(db, "stations", stationId, "meta", "rates")),
-    getDocs(
-      query(
-        collection(db, "stations", stationId, "rateHistory"),
-        orderBy("at", "desc")
-      )
-    ),
-  ]);
-  return {
-    rates: current.exists() ? current.data() : {},
-    history: history.docs.map((d) => ({ id: d.id, ...d.data() })),
-  };
+/**
+ * Prices are effective-dated intervals, so a past shift can always be
+ * repriced with the rate that actually applied when it ran.
+ */
+export async function getPrices(stationId) {
+  if (isDemo) return demoBackend.getPrices(stationId);
+  const snap = await getDocs(
+    query(
+      collection(db, "stations", stationId, "prices"),
+      orderBy("effectiveFrom", "desc")
+    )
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function setRate(stationId, { fuelType, rate }, profile) {
-  if (isDemo) return demoBackend.setRate(stationId, { fuelType, rate }, profile);
-  await setDoc(
-    doc(db, "stations", stationId, "meta", "rates"),
-    { [fuelType]: Number(rate) },
-    { merge: true }
-  );
-  await addDoc(collection(db, "stations", stationId, "rateHistory"), {
-    date: new Date().toISOString().slice(0, 10),
-    fuelType,
-    rate: Number(rate),
-    setBy: profile.uid,
-    setByName: profile.name,
-    at: serverTimestamp(),
-  });
-  const fresh = await getDoc(doc(db, "stations", stationId, "meta", "rates"));
-  return fresh.data() || {};
+export async function setPrice(stationId, payload, profile) {
+  if (isDemo) return demoBackend.setPrice(stationId, payload, profile);
+  const res = await call("setPrice")({ stationId, ...payload });
+  return res.data;
 }
 
 /* ------------------------------------------------------------------ */

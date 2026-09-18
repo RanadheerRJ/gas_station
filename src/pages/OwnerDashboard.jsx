@@ -39,7 +39,7 @@ export default function OwnerDashboard() {
             const todays = shifts.filter((sh) => sh.date === today && sh.status === "closed");
             const totals = todays.map(shiftTotals);
             out[s.id] = {
-              sales: totals.reduce((n, t) => n + t.grossSales, 0),
+              sales: totals.reduce((n, t) => n + t.gross, 0),
               litres: totals.reduce((n, t) => n + t.totalLitres, 0),
               cash: totals.reduce((n, t) => n + (t.declared ?? 0), 0),
               variance: totals.reduce((n, t) => n + (t.variance ?? 0), 0),
@@ -47,7 +47,7 @@ export default function OwnerDashboard() {
                 (n, c) => n + Number(c.outstandingBalance || 0),
                 0
               ),
-              openShift: shifts.find((sh) => sh.status === "open") || null,
+              openShifts: shifts.filter((sh) => sh.status === "open"),
               closedToday: todays.length,
             };
           } catch {
@@ -206,8 +206,10 @@ export default function OwnerDashboard() {
                       <td>
                         {!sum ? (
                           <span className="muted small">—</span>
-                        ) : sum.openShift ? (
-                          <span className="tag">{sum.openShift.name} open</span>
+                        ) : sum.openShifts?.length ? (
+                          <span className="tag">
+                            {sum.openShifts.length} open
+                          </span>
                         ) : sum.closedToday > 0 ? (
                           <span className="tag green">
                             {sum.closedToday} closed

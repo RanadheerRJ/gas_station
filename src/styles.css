@@ -526,3 +526,161 @@ tr.total td {
     flex-wrap: wrap;
   }
 }
+
+/* ---------------- pump status board ---------------- */
+
+.pump-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.pump-tile {
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--green);
+  background: var(--panel);
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  text-align: left;
+  width: 100%;
+  border-radius: 2px;
+}
+
+.pump-tile.busy {
+  border-left-color: var(--rust);
+  background: #fdf8f7;
+}
+
+.pump-tile__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pump-tile__name {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pump-tile__meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.pump-tile__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.fuel-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+
+.fuel-dot--petrol { background: #3F7D58; }
+.fuel-dot--diesel { background: #2E4756; }
+.fuel-dot--premium { background: #E8A33D; }
+.fuel-dot--cng { background: #7A6BA8; }
+
+.fuel-key {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+  align-items: center;
+}
+
+.fuel-key span.k {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* nozzle pick list */
+
+.nozzle-pick {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #e9e5db;
+}
+
+.nozzle-pick:last-child { border-bottom: none; }
+
+.nozzle-pick.disabled {
+  background: #f6f4ef;
+  color: var(--muted);
+}
+
+.nozzle-pick input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--petrol);
+}
+
+.nozzle-pick__body { flex: 1; min-width: 0; }
+
+.nozzle-pick__title {
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.nozzle-pick__sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.price-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.price-card {
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  padding: 12px 13px;
+}
+
+.price-card__fuel {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-card__value {
+  font-family: var(--mono);
+  font-size: 23px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+}
+
+.price-card__since {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 3px;
+}
