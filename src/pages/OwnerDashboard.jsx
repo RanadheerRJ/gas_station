@@ -7,15 +7,12 @@ import { useStations } from "../state/useStations";
 import {
   addStation,
   listCustomers,
-  listEntries,
+  listShifts,
   readableError,
 } from "../lib/api";
-import {
-  entryCashPosition,
-  entrySalesTotal,
-  money,
-  todayISO,
-} from "../lib/format";
+import { money, todayISO } from "../lib/format";
+import { shiftTotals, varianceTone } from "../lib/shiftMath";
+import { PumpIcon, ShiftIcon, StationIcon } from "../components/icons";
 
 export default function OwnerDashboard() {
   const { profile } = useAuth();
@@ -35,20 +32,23 @@ export default function OwnerDashboard() {
       await Promise.all(
         stations.map(async (s) => {
           try {
-            const [entries, customers] = await Promise.all([
-              listEntries(s.id),
+            const [shifts, customers] = await Promise.all([
+              listShifts(s.id),
               listCustomers(s.id),
             ]);
-            const todays = entries.filter((e) => e.date === today);
+            const todays = shifts.filter((sh) => sh.date === today && sh.status === "closed");
+            const totals = todays.map(shiftTotals);
             out[s.id] = {
-              sales: todays.reduce((n, e) => n + entrySalesTotal(e), 0),
-              cash: todays.reduce((n, e) => n + entryCashPosition(e), 0),
+              sales: totals.reduce((n, t) => n + t.grossSales, 0),
+              litres: totals.reduce((n, t) => n + t.totalLitres, 0),
+              cash: totals.reduce((n, t) => n + (t.declared ?? 0), 0),
+              variance: totals.reduce((n, t) => n + (t.variance ?? 0), 0),
               outstanding: customers.reduce(
                 (n, c) => n + Number(c.outstandingBalance || 0),
                 0
               ),
-              logged: todays.length > 0,
-              entryCount: entries.length,
+              openShift: shifts.find((sh) => sh.status === "open") || null,
+              closedToday: todays.length,
             };
           } catch {
             out[s.id] = null;
@@ -66,7 +66,9 @@ export default function OwnerDashboard() {
     const vals = Object.values(summaries).filter(Boolean);
     return {
       sales: vals.reduce((n, v) => n + v.sales, 0),
+      litres: vals.reduce((n, v) => n + v.litres, 0),
       cash: vals.reduce((n, v) => n + v.cash, 0),
+      variance: vals.reduce((n, v) => n + v.variance, 0),
       outstanding: vals.reduce((n, v) => n + v.outstanding, 0),
     };
   }, [summaries]);
@@ -99,11 +101,13 @@ export default function OwnerDashboard() {
       <div className="content stack">
         <Panel title="Combined position today">
           <div className="row" style={{ gap: 40 }}>
+            <Stat label="Litres sold" value={money(totals.litres)} />
             <Stat label="Fuel sales" value={`₹ ${money(totals.sales)}`} />
+            <Stat label="Cash declared" value={`₹ ${money(totals.cash)}`} />
             <Stat
-              label="Cash in hand"
-              value={`₹ ${money(totals.cash)}`}
-              tone={totals.cash < 0 ? "neg" : undefined}
+              label="Cash variance"
+              value={`₹ ${money(totals.variance)}`}
+              tone={varianceTone(totals.variance)}
             />
             <Stat
               label="Outstanding credit"
@@ -166,10 +170,11 @@ export default function OwnerDashboard() {
               <thead>
                 <tr>
                   <th>Station</th>
+                  <th className="num">Litres</th>
                   <th className="num">Sales today</th>
-                  <th className="num">Cash position</th>
+                  <th className="num">Variance</th>
                   <th className="num">Outstanding credit</th>
-                  <th>Today's log</th>
+                  <th>Shift</th>
                   <th />
                 </tr>
               </thead>
@@ -182,23 +187,38 @@ export default function OwnerDashboard() {
                         <div style={{ fontWeight: 500 }}>{s.name}</div>
                         <div className="small muted">{s.address}</div>
                       </td>
+                      <td className="num mono">{sum ? money(sum.litres) : "—"}</td>
                       <td className="num mono">{sum ? money(sum.sales) : "—"}</td>
-                      <td className="num mono">{sum ? money(sum.cash) : "—"}</td>
+                      <td
+                        className="num mono"
+                        style={{
+                          color:
+                            sum && varianceTone(sum.variance) === "neg"
+                              ? "var(--rust)"
+                              : "var(--green)",
+                        }}
+                      >
+                        {sum ? money(sum.variance) : "—"}
+                      </td>
                       <td className="num mono">
                         {sum ? money(sum.outstanding) : "—"}
                       </td>
                       <td>
                         {!sum ? (
                           <span className="muted small">—</span>
-                        ) : sum.logged ? (
-                          <span className="tag green">entered</span>
+                        ) : sum.openShift ? (
+                          <span className="tag">{sum.openShift.name} open</span>
+                        ) : sum.closedToday > 0 ? (
+                          <span className="tag green">
+                            {sum.closedToday} closed
+                          </span>
                         ) : (
-                          <span className="tag rust">not entered</span>
+                          <span className="tag rust">none today</span>
                         )}
                       </td>
                       <td className="num">
-                        <Link className="small" to={`/owner/ledger?station=${s.id}`}>
-                          Open ledger
+                        <Link className="small" to={`/owner/shifts?station=${s.id}`}>
+                          Shifts
                         </Link>
                       </td>
                     </tr>
@@ -208,8 +228,9 @@ export default function OwnerDashboard() {
               <tfoot>
                 <tr>
                   <td>Total</td>
+                  <td className="num mono">{money(totals.litres)}</td>
                   <td className="num mono">{money(totals.sales)}</td>
-                  <td className="num mono">{money(totals.cash)}</td>
+                  <td className="num mono">{money(totals.variance)}</td>
                   <td className="num mono">{money(totals.outstanding)}</td>
                   <td colSpan={2} />
                 </tr>

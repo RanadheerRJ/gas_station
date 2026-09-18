@@ -388,3 +388,198 @@ exports.pinLogin = onCall(async (request) => {
     },
   };
 });
+
+/* ------------------------------------------------------------------ */
+/* openShift / closeShift                                              */
+/*                                                                     */
+/* These run server-side because closing a shift must atomically       */
+/* advance every nozzle's totaliser and post credit to customer        */
+/* accounts. A partial write here would corrupt the next shift's       */
+/* opening readings, so the whole thing is one transaction.            */
+/* ------------------------------------------------------------------ */
+
+/** Resolve the caller's access to a station from their claims. */
+async function assertStationAccess(request, stationId) {
+  const token = request.auth?.token;
+  if (!token) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  if (token.role === "owner") {
+    const snap = await db.collection("stations").doc(stationId).get();
+    if (!snap.exists || snap.get("ownerId") !== token.ownerId) {
+      throw new HttpsError("permission-denied", "That station is not yours.");
+    }
+    return;
+  }
+  if (token.stationId !== stationId) {
+    throw new HttpsError("permission-denied", "You cannot act on that station.");
+  }
+}
+
+exports.openShift = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  await assertStationAccess(request, stationId);
+
+  const name = requireString(request.data?.name || "Shift", "name", { max: 40 });
+  const shiftsRef = db.collection("shifts").doc(stationId).collection("records");
+
+  return db.runTransaction(async (tx) => {
+    const openSnap = await tx.get(shiftsRef.where("status", "==", "open").limit(1));
+    if (!openSnap.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "A shift is already open at this station. Close it first."
+      );
+    }
+
+    const [nozzleSnap, rateSnap] = await Promise.all([
+      tx.get(db.collection("stations").doc(stationId).collection("nozzles")),
+      tx.get(db.collection("stations").doc(stationId).collection("meta").doc("rates")),
+    ]);
+
+    if (nozzleSnap.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Add at least one pump and nozzle before opening a shift."
+      );
+    }
+    const rates = rateSnap.exists ? rateSnap.data() : {};
+
+    const pumpSnap = await tx.get(
+      db.collection("stations").doc(stationId).collection("pumps")
+    );
+    const pumpNames = {};
+    pumpSnap.forEach((p) => {
+      pumpNames[p.id] = p.get("name");
+    });
+
+    const readings = {};
+    const missing = new Set();
+    nozzleSnap.forEach((n) => {
+      const fuelType = n.get("fuelType");
+      if (rates[fuelType] == null) missing.add(fuelType);
+      readings[n.id] = {
+        label: `${pumpNames[n.get("pumpId")] || "Pump"} · ${n.get("name")}`,
+        fuelType,
+        opening: Number(n.get("currentReading")) || 0,
+        closing: "",
+        // Snapshot the rate so a later change never reprices this shift.
+        rate: Number(rates[fuelType]) || 0,
+      };
+    });
+
+    if (missing.size) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Set today's rate for ${[...missing].join(", ")} before opening a shift.`
+      );
+    }
+
+    const ref = shiftsRef.doc();
+    tx.set(ref, {
+      name,
+      status: "open",
+      date: new Date().toISOString().slice(0, 10),
+      openedAt: FieldValue.serverTimestamp(),
+      openedBy: request.auth.uid,
+      openedByName: request.auth.token.name || "",
+      readings,
+      expenses: [],
+      creditSales: [],
+      digitalCollected: 0,
+      cashDeclared: "",
+      note: "",
+    });
+    return { shiftId: ref.id };
+  });
+});
+
+exports.closeShift = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const shiftId = requireString(request.data?.shiftId, "shiftId");
+  await assertStationAccess(request, stationId);
+
+  const payload = request.data || {};
+  const shiftRef = db
+    .collection("shifts")
+    .doc(stationId)
+    .collection("records")
+    .doc(shiftId);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(shiftRef);
+    if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
+    if (snap.get("status") === "closed") {
+      throw new HttpsError("failed-precondition", "That shift is already closed.");
+    }
+
+    const readings = snap.get("readings") || {};
+    const incoming = payload.readings || {};
+
+    Object.keys(readings).forEach((nozzleId) => {
+      const closing = Number(incoming[nozzleId]?.closing);
+      if (!Number.isFinite(closing)) {
+        throw new HttpsError(
+          "invalid-argument",
+          `Closing reading missing for ${readings[nozzleId].label}.`
+        );
+      }
+      readings[nozzleId].closing = closing;
+    });
+
+    const expenses = (payload.expenses || []).map((e) => ({
+      label: String(e.label || "").trim(),
+      amount: Number(e.amount) || 0,
+    }));
+    const creditSales = (payload.creditSales || []).map((c) => ({
+      customerId: c.customerId || null,
+      name: String(c.name || "").trim(),
+      amount: Number(c.amount) || 0,
+    }));
+
+    // Advance each nozzle's totaliser to this shift's closing reading.
+    Object.entries(readings).forEach(([nozzleId, r]) => {
+      tx.update(
+        db.collection("stations").doc(stationId).collection("nozzles").doc(nozzleId),
+        { currentReading: Number(r.closing) }
+      );
+    });
+
+    // Post credit taken during the shift onto customer accounts.
+    creditSales.forEach((c) => {
+      if (!c.customerId) return;
+      const custRef = db
+        .collection("creditCustomers")
+        .doc(stationId)
+        .collection("customers")
+        .doc(c.customerId);
+      tx.set(
+        custRef,
+        {
+          outstandingBalance: FieldValue.increment(c.amount),
+          transactions: FieldValue.arrayUnion({
+            date: snap.get("date"),
+            type: "credit",
+            amount: c.amount,
+            note: `${snap.get("name")} shift`,
+          }),
+        },
+        { merge: true }
+      );
+    });
+
+    tx.update(shiftRef, {
+      readings,
+      expenses,
+      creditSales,
+      digitalCollected: Number(payload.digitalCollected) || 0,
+      cashDeclared: Number(payload.cashDeclared) || 0,
+      note: String(payload.note || "").trim(),
+      status: "closed",
+      closedAt: FieldValue.serverTimestamp(),
+      closedBy: request.auth.uid,
+      closedByName: request.auth.token.name || "",
+    });
+
+    return { ok: true, shiftId };
+  });
+});

@@ -4,9 +4,10 @@ import Login from "./pages/Login";
 import AdminInviteOwner from "./pages/AdminInviteOwner";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import OwnerStaff from "./pages/OwnerStaff";
-import StationLedger from "./pages/StationLedger";
+import DailyLedger from "./pages/DailyLedger";
 import CreditCustomers from "./pages/CreditCustomers";
-import AttendantEntry from "./pages/AttendantEntry";
+import Shifts from "./pages/Shifts";
+import StationSetup from "./pages/StationSetup";
 import { useAuth } from "./state/AuthContext";
 
 /** Where each role lands after sign-in. */
@@ -67,10 +68,26 @@ export default function App() {
           }
         />
         <Route
+          path="/owner/shifts"
+          element={
+            <Protect roles={["owner"]}>
+              <Shifts />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/setup"
+          element={
+            <Protect roles={["owner"]}>
+              <StationSetup />
+            </Protect>
+          }
+        />
+        <Route
           path="/owner/ledger"
           element={
             <Protect roles={["owner"]}>
-              <StationLedger />
+              <DailyLedger />
             </Protect>
           }
         />
@@ -94,7 +111,15 @@ export default function App() {
           path="/station"
           element={
             <Protect roles={["manager"]}>
-              <StationLedger />
+              <Shifts />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/ledger"
+          element={
+            <Protect roles={["manager"]}>
+              <DailyLedger />
             </Protect>
           }
         />
@@ -110,7 +135,7 @@ export default function App() {
           path="/today"
           element={
             <Protect roles={["attendant"]}>
-              <AttendantEntry />
+              <Shifts />
             </Protect>
           }
         />

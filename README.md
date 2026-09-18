@@ -9,9 +9,9 @@ Firestore + Cloud Functions behind it.
 | Role | Created by | Scope | Can |
 | --- | --- | --- | --- |
 | Developer | manual, once | — | Invite station owners, reset any owner's PIN |
-| Owner | Developer | all their stations | Add stations, invite staff, reset their staff's PINs, full ledger, credit accounts |
-| Manager | Owner | one station | Full ledger for that station, correct past entries |
-| Attendant | Owner | one station | Log today's sales, readings and cash — no edits, no deletes |
+| Owner | Developer | all their stations | Add stations, configure pumps/nozzles/rates, invite staff, reset PINs, full ledger |
+| Manager | Owner | one station | Open/close shifts, daily ledger, credit accounts |
+| Attendant | Owner | one station | Open and close shifts — no edits, no deletes |
 
 Nobody signs themselves up. Every account is created by the tier above it, via
 Cloud Functions using the Admin SDK.
@@ -46,15 +46,53 @@ Firebase Auth has no username+PIN mode, so it is built explicitly:
 Repeated failures against a username are rate-limited (8 attempts per 15
 minutes) in `loginAttempts/{username}`.
 
+## Sales are derived, never typed
+
+There is no manual sales entry anywhere in the app. Every figure traces back
+to a nozzle's meter.
+
+1. An owner registers **pumps** and **nozzles** once, entering each nozzle's
+   current totaliser reading and the fuel it dispenses.
+2. The owner sets a **rate per fuel type**, updated whenever prices move.
+3. Anyone at the station **opens a shift**. That snapshots every nozzle's
+   current reading as the opening, and the rate in force — so a later rate
+   change never reprices a shift that already ran.
+4. At handover the operator enters **only the closing reading** per nozzle.
+   Litres are `closing − opening`, and the amount is `litres × snapshotted
+   rate`. A meter that wraps past its digit limit is handled rather than
+   reported as a negative sale.
+5. Closing the shift **advances each nozzle's totaliser** to the closing
+   figure, so the next shift opens exactly where this one ended. Credit sales
+   post to customer accounts in the same transaction.
+
+### Cash reconciliation
+
+Closing a shift asks what was actually collected, and compares:
+
+```
+expected cash = meter sales − credit − card/UPI − expenses
+variance      = cash counted − expected cash
+```
+
+A negative variance is a short drawer, shown in rust; within ₹1 it reads as
+balanced. The variance rolls up per day, per station, and across all stations
+on the owner's dashboard.
+
+`openShift` and `closeShift` are Cloud Functions rather than client writes,
+because advancing meters and posting credit must be atomic — a partial write
+would corrupt the next shift's opening readings.
+
 ## Project layout
 
 ```
 src/
-  lib/        firebase init, api facade, formatters, local demo backend
+  lib/        firebase init, api facade, shift maths, formatters, demo backend
   state/      auth context, station loader
   components/ layout, ledger entry form, shared UI primitives
-  pages/      login, developer admin, owner dashboard, ledger, credit, staff
-functions/    createOwner, createStaff, addStation, resetPin, pinLogin
+  pages/      login, developer admin, owner dashboard, shifts, pump/rate
+              setup, daily ledger, credit, staff
+functions/    createOwner, createStaff, addStation, resetPin, pinLogin,
+              openShift, closeShift
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -141,21 +179,30 @@ usernames/{username}       uid                        (no client access)
 authSecrets/{uid}          pinHash, setBy, updatedAt  (no client access, ever)
 loginAttempts/{username}   failedCount, lastFailedAt  (no client access)
 
-ledger/{stationId}/entries/{entryId}
-  date, enteredBy, enteredByName, createdAt,
-  fuelSales:    { [fuelType]: { litres, ratePerLitre, amount } },
-  tankReadings: { [fuelType]: { opening, closing } },
-  cashIn, cashOut,
+stations/{stationId}/pumps/{pumpId}        name, createdAt
+stations/{stationId}/nozzles/{nozzleId}    pumpId, name, fuelType,
+                                           currentReading, createdAt
+stations/{stationId}/meta/rates            { [fuelType]: rate }
+stations/{stationId}/rateHistory/{id}      date, fuelType, rate, setBy,
+                                           setByName, at
+
+shifts/{stationId}/records/{shiftId}
+  name, status: 'open'|'closed', date,
+  openedAt, openedBy, openedByName,
+  closedAt, closedBy, closedByName,
+  readings: { [nozzleId]: { label, fuelType, opening, closing, rate } },
   expenses:     [ { label, amount } ],
-  creditSales:  [ { customerId, name, amount } ]
+  creditSales:  [ { customerId, name, amount } ],
+  digitalCollected, cashDeclared, note
 
 creditCustomers/{stationId}/customers/{customerId}
   name, phone, outstandingBalance, createdAt,
   transactions: [ { date, type: 'credit'|'payment', amount, note } ]
 ```
 
-Cash in hand for a day is derived, never stored:
-`fuel sales + cash in − credit sales − expenses − cash out`.
+Nothing financial is stored that can be computed. Litres, sale amounts,
+expected cash and variance are all derived from the readings above, so a
+figure can never drift out of agreement with the meter it came from.
 
 ## Security posture
 
@@ -167,9 +214,12 @@ Cash in hand for a day is derived, never stored:
 - Station access is resolved by a rules helper matching the station's
   `ownerId` against the caller's `ownerId` claim (owners span many stations)
   or the caller's `stationId` claim (single-station staff).
-- Ledger entries: anyone with station access can read and create; only
-  `owner` and `manager` may update or delete. Creates must carry the caller's
-  own uid in `enteredBy`, so entries are always attributable.
+- Shifts cannot be created or deleted from a client at all — only
+  `openShift`/`closeShift` write them. Owner/manager may amend a closed
+  shift; attendants cannot.
+- Pumps, nozzles and rates are readable by station staff but writable only by
+  the owner, so an attendant cannot reprice fuel or edit a meter.
+- Every shift records who opened it and who closed it, with timestamps.
 - `createStaff` re-checks server-side that the target station belongs to the
   calling owner before creating anything.
 - `resetPin` re-derives the caller's authority from their token and the

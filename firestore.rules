@@ -78,6 +78,45 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    /* ---------------- pumps, nozzles & rates ----------------
+       Equipment and pricing are owner-controlled. Staff read them so a
+       shift can snapshot readings and rates, but never change them.
+       Nozzle totalisers advance only via the closeShift function.        */
+
+    match /stations/{stationId}/pumps/{pumpId} {
+      allow read: if hasStationAccess(stationId);
+      allow write: if hasStationAccess(stationId) && isOwner();
+    }
+
+    match /stations/{stationId}/nozzles/{nozzleId} {
+      allow read: if hasStationAccess(stationId);
+      allow create, delete: if hasStationAccess(stationId) && isOwner();
+      // currentReading is advanced by closeShift via the Admin SDK.
+      allow update: if hasStationAccess(stationId) && isOwner();
+    }
+
+    match /stations/{stationId}/meta/{docId} {
+      allow read: if hasStationAccess(stationId);
+      allow write: if hasStationAccess(stationId) && isOwner();
+    }
+
+    match /stations/{stationId}/rateHistory/{recordId} {
+      allow read: if hasStationAccess(stationId);
+      allow create: if hasStationAccess(stationId) && isOwner();
+      allow update, delete: if false;
+    }
+
+    /* ---------------- shifts ----------------
+       Opening and closing run through Cloud Functions so meter
+       advancement and credit posting stay atomic. Clients may read, and
+       owner/manager may amend a closed shift's notes; attendants cannot.  */
+
+    match /shifts/{stationId}/records/{shiftId} {
+      allow read: if hasStationAccess(stationId);
+      allow create, delete: if false;
+      allow update: if hasStationAccess(stationId) && canAmend();
+    }
+
     /* ---------------- ledger ---------------- */
 
     match /ledger/{stationId}/entries/{entryId} {

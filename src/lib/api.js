@@ -170,43 +170,119 @@ export async function listStaff(profile) {
 }
 
 /* ------------------------------------------------------------------ */
-/* ledger                                                              */
+/* pumps, nozzles & rates                                              */
 /* ------------------------------------------------------------------ */
 
-export async function listEntries(stationId) {
-  if (isDemo) return demoBackend.listEntries(stationId);
+export async function listPumps(stationId) {
+  if (isDemo) return demoBackend.listPumps(stationId);
+  const [pumpSnap, nozzleSnap] = await Promise.all([
+    getDocs(collection(db, "stations", stationId, "pumps")),
+    getDocs(collection(db, "stations", stationId, "nozzles")),
+  ]);
+  return {
+    pumps: pumpSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    nozzles: nozzleSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
+}
+
+export async function addPump(stationId, payload) {
+  if (isDemo) return demoBackend.addPump(stationId, payload);
+  const ref = await addDoc(collection(db, "stations", stationId, "pumps"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  return { id: ref.id, ...payload };
+}
+
+export async function addNozzle(stationId, payload) {
+  if (isDemo) return demoBackend.addNozzle(stationId, payload);
+  const { openingReading, ...rest } = payload;
+  const doc_ = {
+    ...rest,
+    currentReading: Number(openingReading) || 0,
+    createdAt: serverTimestamp(),
+  };
+  const ref = await addDoc(collection(db, "stations", stationId, "nozzles"), doc_);
+  return { id: ref.id, ...doc_ };
+}
+
+export async function removeNozzle(stationId, nozzleId) {
+  if (isDemo) return demoBackend.removeNozzle(stationId, nozzleId);
+  await deleteDoc(doc(db, "stations", stationId, "nozzles", nozzleId));
+}
+
+export async function removePump(stationId, pumpId) {
+  if (isDemo) return demoBackend.removePump(stationId, pumpId);
+  await deleteDoc(doc(db, "stations", stationId, "pumps", pumpId));
+}
+
+export async function getRates(stationId) {
+  if (isDemo) return demoBackend.getRates(stationId);
+  const [current, history] = await Promise.all([
+    getDoc(doc(db, "stations", stationId, "meta", "rates")),
+    getDocs(
+      query(
+        collection(db, "stations", stationId, "rateHistory"),
+        orderBy("at", "desc")
+      )
+    ),
+  ]);
+  return {
+    rates: current.exists() ? current.data() : {},
+    history: history.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
+}
+
+export async function setRate(stationId, { fuelType, rate }, profile) {
+  if (isDemo) return demoBackend.setRate(stationId, { fuelType, rate }, profile);
+  await setDoc(
+    doc(db, "stations", stationId, "meta", "rates"),
+    { [fuelType]: Number(rate) },
+    { merge: true }
+  );
+  await addDoc(collection(db, "stations", stationId, "rateHistory"), {
+    date: new Date().toISOString().slice(0, 10),
+    fuelType,
+    rate: Number(rate),
+    setBy: profile.uid,
+    setByName: profile.name,
+    at: serverTimestamp(),
+  });
+  const fresh = await getDoc(doc(db, "stations", stationId, "meta", "rates"));
+  return fresh.data() || {};
+}
+
+/* ------------------------------------------------------------------ */
+/* shifts                                                              */
+/* ------------------------------------------------------------------ */
+
+export async function listShifts(stationId) {
+  if (isDemo) return demoBackend.listShifts(stationId);
   const snap = await getDocs(
-    query(collection(db, "ledger", stationId, "entries"), orderBy("date", "desc"))
+    query(collection(db, "shifts", stationId, "records"), orderBy("openedAt", "desc"))
   );
   return snap.docs.map((d) => ({ id: d.id, stationId, ...d.data() }));
 }
 
-export async function createEntry(stationId, entry, profile) {
-  const payload = {
-    ...entry,
-    enteredBy: profile.uid,
-    enteredByName: profile.name,
-  };
-  if (isDemo) return demoBackend.createEntry(stationId, payload);
-  const ref = await addDoc(collection(db, "ledger", stationId, "entries"), {
-    ...payload,
-    createdAt: serverTimestamp(),
-  });
-  return { id: ref.id, stationId, ...payload };
+export async function openShift(stationId, payload, profile) {
+  if (isDemo) return demoBackend.openShift(stationId, payload, profile);
+  const res = await call("openShift")({ stationId, ...payload });
+  return res.data;
 }
 
-export async function updateEntry(stationId, entryId, patch) {
-  if (isDemo) return demoBackend.updateEntry(stationId, entryId, patch);
-  await updateDoc(doc(db, "ledger", stationId, "entries", entryId), {
+export async function closeShift(stationId, shiftId, payload, profile) {
+  if (isDemo) return demoBackend.closeShift(stationId, shiftId, payload, profile);
+  const res = await call("closeShift")({ stationId, shiftId, ...payload });
+  return res.data;
+}
+
+export async function amendShift(stationId, shiftId, patch) {
+  if (isDemo) return demoBackend.amendShift(stationId, shiftId, patch);
+  await updateDoc(doc(db, "shifts", stationId, "records", shiftId), {
     ...patch,
-    updatedAt: serverTimestamp(),
+    amendedAt: serverTimestamp(),
   });
-  return { id: entryId, stationId, ...patch };
-}
-
-export async function deleteEntry(stationId, entryId) {
-  if (isDemo) return demoBackend.deleteEntry(stationId, entryId);
-  await deleteDoc(doc(db, "ledger", stationId, "entries", entryId));
+  return { id: shiftId, ...patch };
 }
 
 /* ------------------------------------------------------------------ */

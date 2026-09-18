@@ -1,6 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { backendInfo } from "../lib/api";
+import {
+  CreditIcon,
+  LedgerIcon,
+  PeopleIcon,
+  PumpIcon,
+  ShiftIcon,
+  StationIcon,
+} from "./icons";
 
 const ROLE_LABEL = {
   admin: "Developer",
@@ -14,21 +22,24 @@ const ROLE_LABEL = {
 function navFor(profile) {
   switch (profile.role) {
     case "admin":
-      return [{ to: "/admin", label: "Invite Owner", end: true }];
+      return [{ to: "/admin", label: "Invite Owner", icon: PeopleIcon, end: true }];
     case "owner":
       return [
-        { to: "/owner", label: "All stations", end: true },
-        { to: "/owner/ledger", label: "Station ledger" },
-        { to: "/owner/credit", label: "Credit customers" },
-        { to: "/owner/staff", label: "Staff & access" },
+        { to: "/owner", label: "All stations", icon: StationIcon, end: true },
+        { to: "/owner/shifts", label: "Shifts", icon: ShiftIcon },
+        { to: "/owner/setup", label: "Pumps & rates", icon: PumpIcon },
+        { to: "/owner/ledger", label: "Daily ledger", icon: LedgerIcon },
+        { to: "/owner/credit", label: "Credit customers", icon: CreditIcon },
+        { to: "/owner/staff", label: "Staff & access", icon: PeopleIcon },
       ];
     case "manager":
       return [
-        { to: "/station", label: "Station ledger", end: true },
-        { to: "/station/credit", label: "Credit customers" },
+        { to: "/station", label: "Shifts", icon: ShiftIcon, end: true },
+        { to: "/station/ledger", label: "Daily ledger", icon: LedgerIcon },
+        { to: "/station/credit", label: "Credit customers", icon: CreditIcon },
       ];
     case "attendant":
-      return [{ to: "/today", label: "Today's entry", end: true }];
+      return [{ to: "/today", label: "Shift", icon: ShiftIcon, end: true }];
     default:
       return [];
   }
@@ -50,11 +61,15 @@ export default function Layout() {
           </div>
         </div>
         <nav>
-          {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end}>
-              {l.label}
-            </NavLink>
-          ))}
+          {links.map((l) => {
+            const Icon = l.icon;
+            return (
+              <NavLink key={l.to} to={l.to} end={l.end}>
+                {Icon && <Icon size={16} />}
+                <span>{l.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="foot">
           {profile.username && (

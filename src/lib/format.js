@@ -43,30 +43,3 @@ export function formatStamp(value) {
     minute: "2-digit",
   });
 }
-
-/** Total of a ledger entry's fuel sales. */
-export function entrySalesTotal(entry) {
-  return Object.values(entry?.fuelSales || {}).reduce(
-    (sum, row) => sum + num(row?.amount),
-    0
-  );
-}
-
-export function entryExpensesTotal(entry) {
-  return (entry?.expenses || []).reduce((sum, e) => sum + num(e.amount), 0);
-}
-
-export function entryCreditTotal(entry) {
-  return (entry?.creditSales || []).reduce((sum, c) => sum + num(c.amount), 0);
-}
-
-/** Cash that should be in the drawer: sales + cash in − credit − expenses − cash out. */
-export function entryCashPosition(entry) {
-  return (
-    entrySalesTotal(entry) +
-    num(entry?.cashIn) -
-    entryCreditTotal(entry) -
-    entryExpensesTotal(entry) -
-    num(entry?.cashOut)
-  );
-}

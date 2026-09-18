@@ -112,7 +112,9 @@ th.num {
 }
 
 .sidebar nav a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   padding: 8px 10px;
   color: #cfd5d9;
   text-decoration: none;
