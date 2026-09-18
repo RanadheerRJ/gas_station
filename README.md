@@ -220,6 +220,10 @@ firestore.indexes.json
 
 ## From a fresh clone to a running station
 
+> **New to this?** [`SETUP.md`](SETUP.md) walks through the same thing in
+> plain language, one command at a time, including installing Node and what to
+> do when a step fails. This section is the condensed version.
+
 Nothing here assumes you were told anything in person. Follow it top to bottom
 and you end up with a working deployment and one account that can create all
 the others.
