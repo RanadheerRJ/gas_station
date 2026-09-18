@@ -518,33 +518,60 @@ tr.total td {
    is short, eased, and disabled outright for anyone who asks for less. */
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes sweep {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(300%); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* Page content settles in rather than snapping. */
 .content > * {
   animation: rise 240ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
 }
-.content > *:nth-child(2) { animation-delay: 30ms; }
-.content > *:nth-child(3) { animation-delay: 60ms; }
-.content > *:nth-child(4) { animation-delay: 90ms; }
-.content > *:nth-child(n + 5) { animation-delay: 110ms; }
+.content > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.content > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.content > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.content > *:nth-child(n + 5) {
+  animation-delay: 110ms;
+}
 
 button,
 .panel,
@@ -815,10 +842,18 @@ button:focus-visible {
   border: 1px solid rgba(0, 0, 0, 0.18);
 }
 
-.fuel-dot--petrol { background: #3F7D58; }
-.fuel-dot--diesel { background: #2E4756; }
-.fuel-dot--premium { background: #E8A33D; }
-.fuel-dot--cng { background: #7A6BA8; }
+.fuel-dot--petrol {
+  background: #3f7d58;
+}
+.fuel-dot--diesel {
+  background: #2e4756;
+}
+.fuel-dot--premium {
+  background: #e8a33d;
+}
+.fuel-dot--cng {
+  background: #7a6ba8;
+}
 
 .fuel-key {
   display: flex;
@@ -845,7 +880,9 @@ button:focus-visible {
   border-bottom: 1px solid #e9e5db;
 }
 
-.nozzle-pick:last-child { border-bottom: none; }
+.nozzle-pick:last-child {
+  border-bottom: none;
+}
 
 .nozzle-pick.disabled {
   background: #f6f4ef;
@@ -860,7 +897,10 @@ button:focus-visible {
   accent-color: var(--petrol);
 }
 
-.nozzle-pick__body { flex: 1; min-width: 0; }
+.nozzle-pick__body {
+  flex: 1;
+  min-width: 0;
+}
 
 .nozzle-pick__title {
   font-size: 13.5px;
@@ -1029,13 +1069,26 @@ button:focus-visible {
   text-shadow: 0 0 3px rgba(255, 255, 255, 0.85);
 }
 
-.tank-fill--petrol { background: rgba(63, 125, 88, 0.55); }
-.tank-fill--diesel { background: rgba(46, 71, 86, 0.5); }
-.tank-fill--premium { background: rgba(232, 163, 61, 0.55); }
-.tank-fill--cng { background: rgba(122, 107, 168, 0.5); }
+.tank-fill--petrol {
+  background: rgba(63, 125, 88, 0.55);
+}
+.tank-fill--diesel {
+  background: rgba(46, 71, 86, 0.5);
+}
+.tank-fill--premium {
+  background: rgba(232, 163, 61, 0.55);
+}
+.tank-fill--cng {
+  background: rgba(122, 107, 168, 0.5);
+}
 
-.tank-vessel.low { border-color: var(--amber); }
-.tank-vessel.critical { border-color: var(--rust); background: #faeeec; }
+.tank-vessel.low {
+  border-color: var(--amber);
+}
+.tank-vessel.critical {
+  border-color: var(--rust);
+  background: #faeeec;
+}
 
 .tank-vessel.retired {
   opacity: 0.45;

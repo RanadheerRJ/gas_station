@@ -1,7 +1,7 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
-import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
+import { Empty, Field, Notice, Panel } from "../components/ui";
 import StationPicker from "../components/StationPicker";
 import { NozzleIcon, PumpIcon, RateIcon, GaugeIcon } from "../components/icons";
 import { useAuth } from "../state/AuthContext";
@@ -105,7 +105,11 @@ export default function StationSetup() {
     <>
       <PageHeader
         title="Pumps, nozzles & rates"
-        sub={station ? `${station.name} · ${nozzles.length} nozzle${nozzles.length === 1 ? "" : "s"}` : ""}
+        sub={
+          station
+            ? `${station.name} · ${nozzles.length} nozzle${nozzles.length === 1 ? "" : "s"}`
+            : ""
+        }
       />
       <div className="content stack">
         {stations.length > 1 && (
@@ -137,7 +141,8 @@ export default function StationSetup() {
                 {activeFuels.map((fuel) => {
                   const rec = active[fuel];
                   const draft = rateDraft[fuel] ?? "";
-                  const changed = draft !== "" && num(draft) > 0 && num(draft) !== num(rec?.price);
+                  const changed =
+                    draft !== "" && num(draft) > 0 && num(draft) !== num(rec?.price);
                   return (
                     <div key={fuel} className="price-card">
                       <div className="price-card__fuel">
@@ -148,9 +153,14 @@ export default function StationSetup() {
                         {rec ? `₹ ${money(rec.price)}` : "Not set"}
                       </div>
                       <div className="price-card__since">
-                        {rec ? `Active since ${formatStamp(rec.effectiveFrom)}` : "Shifts cannot start"}
+                        {rec
+                          ? `Active since ${formatStamp(rec.effectiveFrom)}`
+                          : "Shifts cannot start"}
                       </div>
-                      <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: "nowrap" }}>
+                      <div
+                        className="row"
+                        style={{ gap: 6, marginTop: 10, flexWrap: "nowrap" }}
+                      >
                         <input
                           className="mono"
                           inputMode="decimal"
@@ -204,8 +214,13 @@ export default function StationSetup() {
                         {priceRecords.slice(0, 15).map((h) => (
                           <tr key={h.id}>
                             <td>
-                              <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                                <span className={`fuel-dot fuel-dot--${fuelClass(h.fuelType)}`} />
+                              <span
+                                className="row"
+                                style={{ gap: 6, alignItems: "center" }}
+                              >
+                                <span
+                                  className={`fuel-dot fuel-dot--${fuelClass(h.fuelType)}`}
+                                />
                                 {h.fuelType}
                               </span>
                             </td>
@@ -281,7 +296,9 @@ export default function StationSetup() {
                       <span className="row" style={{ gap: 7, alignItems: "center" }}>
                         <PumpIcon size={16} />
                         <strong>{p.name}</strong>
-                        <span className="tag">{mine.length} nozzle{mine.length === 1 ? "" : "s"}</span>
+                        <span className="tag">
+                          {mine.length} nozzle{mine.length === 1 ? "" : "s"}
+                        </span>
                       </span>
                       <span className="row" style={{ gap: 4 }}>
                         <button
@@ -289,7 +306,11 @@ export default function StationSetup() {
                           className="quiet"
                           onClick={() => {
                             setNozzleFor(nozzleFor === p.id ? null : p.id);
-                            setNozzleForm({ name: "", fuelType: "Petrol", openingReading: "" });
+                            setNozzleForm({
+                              name: "",
+                              fuelType: "Petrol",
+                              openingReading: "",
+                            });
                           }}
                         >
                           {nozzleFor === p.id ? "cancel" : "add nozzle"}
@@ -315,7 +336,10 @@ export default function StationSetup() {
                     {nozzleFor === p.id && (
                       <div
                         className="body"
-                        style={{ background: "#fffdf7", borderBottom: "1px solid var(--hairline)" }}
+                        style={{
+                          background: "#fffdf7",
+                          borderBottom: "1px solid var(--hairline)",
+                        }}
                       >
                         <div className="form-grid" style={{ marginBottom: 10 }}>
                           <Field label="Nozzle name">
@@ -396,20 +420,30 @@ export default function StationSetup() {
                           {mine.map((n) => (
                             <tr key={n.id}>
                               <td>
-                                <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                                <span
+                                  className="row"
+                                  style={{ gap: 6, alignItems: "center" }}
+                                >
                                   <NozzleIcon size={15} />
                                   {n.name}
                                 </span>
                               </td>
                               <td>
-                                <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                                  <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                                <span
+                                  className="row"
+                                  style={{ gap: 6, alignItems: "center" }}
+                                >
+                                  <span
+                                    className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`}
+                                  />
                                   {n.fuelType}
                                 </span>
                               </td>
                               <td className="num mono">{money(n.lastReading)}</td>
                               <td className="num mono">
-                                {active[n.fuelType] ? money(active[n.fuelType].price) : "—"}
+                                {active[n.fuelType]
+                                  ? money(active[n.fuelType].price)
+                                  : "—"}
                               </td>
                               <td className="num">
                                 <button
@@ -447,19 +481,23 @@ export default function StationSetup() {
             </span>
           }
         >
-          <ul className="small muted" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.75 }}>
+          <ul
+            className="small muted"
+            style={{ margin: 0, paddingLeft: 18, lineHeight: 1.75 }}
+          >
             <li>
-              Set each nozzle's meter reading once, here. After that the figure advances
-              automatically — every shift's closing reading becomes the next one's opening.
+              Set each nozzle’s meter reading once, here. After that the figure advances
+              automatically — every shift’s closing reading becomes the next one’s
+              opening.
             </li>
             <li>
-              Nobody types litres or sale amounts. Staff pick the nozzles they are
-              taking, and enter only the closing reading at handover — sales are{" "}
+              Nobody types litres or sale amounts. Staff pick the nozzles they are taking,
+              and enter only the closing reading at handover — sales are{" "}
               <span className="mono">(closing − opening) × price</span>.
             </li>
             <li>
-              Change a price whenever it moves. A running shift keeps the price it
-              started with, and the old price stays in history.
+              Change a price whenever it moves. A running shift keeps the price it started
+              with, and the old price stays in history.
             </li>
           </ul>
         </Panel>

@@ -22,7 +22,12 @@ export default function CreditCustomers() {
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "" });
-  const [tx, setTx] = useState({ type: "credit", amount: "", note: "", date: todayISO() });
+  const [tx, setTx] = useState({
+    type: "credit",
+    amount: "",
+    note: "",
+    date: todayISO(),
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -37,7 +42,9 @@ export default function CreditCustomers() {
     setLoading(true);
     try {
       const rows = await listCustomers(stationId);
-      rows.sort((a, b) => Number(b.outstandingBalance || 0) - Number(a.outstandingBalance || 0));
+      rows.sort(
+        (a, b) => Number(b.outstandingBalance || 0) - Number(a.outstandingBalance || 0)
+      );
       setCustomers(rows);
       setError("");
     } catch (err) {
@@ -80,13 +87,14 @@ export default function CreditCustomers() {
     if (!selected || !num(tx.amount)) return;
     setBusy(true);
     try {
-      const updated = await addCustomerTransaction(stationId, selected.id, {
+      // The callable returns a receipt, not the customer document; the
+      // reload below is what refreshes the drawer via the sync effect.
+      await addCustomerTransaction(stationId, selected.id, {
         date: tx.date,
         type: tx.type,
         amount: num(tx.amount),
         note: tx.note.trim(),
       });
-      setSelected(updated);
       setTx({ type: "credit", amount: "", note: "", date: todayISO() });
       await load();
     } catch (err) {
@@ -182,7 +190,11 @@ export default function CreditCustomers() {
                 </Field>
               </div>
               <div>
-                <button className="primary" type="submit" disabled={busy || !newCustomer.name.trim()}>
+                <button
+                  className="primary"
+                  type="submit"
+                  disabled={busy || !newCustomer.name.trim()}
+                >
                   {busy ? "Saving…" : "Add customer"}
                 </button>
               </div>
@@ -224,7 +236,10 @@ export default function CreditCustomers() {
                       <td className="mono small">{c.phone || "—"}</td>
                       <td className="num mono">{money(given)}</td>
                       <td className="num mono">{money(paid)}</td>
-                      <td className="num mono" style={{ color: bal > 0 ? "var(--rust)" : "var(--green)" }}>
+                      <td
+                        className="num mono"
+                        style={{ color: bal > 0 ? "var(--rust)" : "var(--green)" }}
+                      >
                         {money(bal)}
                       </td>
                       <td>
@@ -292,7 +307,9 @@ export default function CreditCustomers() {
                             <tr key={i}>
                               <td className="mono small">{formatDate(t.date)}</td>
                               <td>
-                                <span className={`tag ${t.type === "credit" ? "rust" : "green"}`}>
+                                <span
+                                  className={`tag ${t.type === "credit" ? "rust" : "green"}`}
+                                >
                                   {t.type}
                                 </span>
                               </td>
@@ -349,7 +366,11 @@ export default function CreditCustomers() {
                   />
                 </Field>
                 <div>
-                  <button className="primary" type="submit" disabled={busy || !num(tx.amount)}>
+                  <button
+                    className="primary"
+                    type="submit"
+                    disabled={busy || !num(tx.amount)}
+                  >
                     {busy ? "Posting…" : "Post to account"}
                   </button>
                 </div>

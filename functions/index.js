@@ -36,10 +36,37 @@ const LOCKOUT_MS = 15 * 60 * 1000;
  * cash and stock figures, so "1234" is not acceptable even if chosen.
  */
 const WEAK_PINS = new Set([
-  "0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999",
-  "1234", "2345", "3456", "4567", "5678", "6789", "0123",
-  "9876", "8765", "7654", "6543", "5432", "4321", "3210",
-  "1212", "1122", "6969", "1004", "2000", "2001", "1010",
+  "0000",
+  "1111",
+  "2222",
+  "3333",
+  "4444",
+  "5555",
+  "6666",
+  "7777",
+  "8888",
+  "9999",
+  "1234",
+  "2345",
+  "3456",
+  "4567",
+  "5678",
+  "6789",
+  "0123",
+  "9876",
+  "8765",
+  "7654",
+  "6543",
+  "5432",
+  "4321",
+  "3210",
+  "1212",
+  "1122",
+  "6969",
+  "1004",
+  "2000",
+  "2001",
+  "1010",
 ]);
 
 /* ------------------------------------------------------------------ */
@@ -151,7 +178,11 @@ async function provisionAccount({ name, phone, role, ownerId, stationIds, pin })
     // Roll back the half-created account so a retry can succeed cleanly.
     await auth.deleteUser(uid).catch(() => {});
     if (username) {
-      await db.collection("usernames").doc(username).delete().catch(() => {});
+      await db
+        .collection("usernames")
+        .doc(username)
+        .delete()
+        .catch(() => {});
     }
     throw err;
   }
@@ -310,10 +341,10 @@ exports.resetPin = onCall(async (request) => {
   // A rotated PIN clears any active lockout so the user isn't locked out of
   // their own fresh credentials.
   if (target.username) {
-    await db.collection("loginAttempts").doc(target.username).set(
-      { failedCount: 0 },
-      { merge: true }
-    );
+    await db
+      .collection("loginAttempts")
+      .doc(target.username)
+      .set({ failedCount: 0 }, { merge: true });
   }
 
   return { ok: true, username: target.username };
@@ -324,7 +355,9 @@ exports.resetPin = onCall(async (request) => {
 /* ------------------------------------------------------------------ */
 
 exports.pinLogin = onCall(async (request) => {
-  const username = String(request.data?.username || "").trim().toLowerCase();
+  const username = String(request.data?.username || "")
+    .trim()
+    .toLowerCase();
   const pin = String(request.data?.pin || "");
 
   // Deliberately vague message: never reveal which half was wrong.
@@ -683,7 +716,6 @@ exports.closeShift = onCall(async (request) => {
   });
 });
 
-
 /* ------------------------------------------------------------------ */
 /* shift expenses                                                      */
 /* ------------------------------------------------------------------ */
@@ -702,7 +734,11 @@ exports.addShiftExpense = onCall(async (request) => {
   }
   await assertStationAccess(request, stationId);
 
-  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const shiftRef = db
+    .collection("shifts")
+    .doc(stationId)
+    .collection("records")
+    .doc(shiftId);
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(shiftRef);
     if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
@@ -725,7 +761,11 @@ exports.removeShiftExpense = onCall(async (request) => {
   const index = Number(request.data?.index);
   await assertStationAccess(request, stationId);
 
-  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const shiftRef = db
+    .collection("shifts")
+    .doc(stationId)
+    .collection("records")
+    .doc(shiftId);
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(shiftRef);
     if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
@@ -751,17 +791,27 @@ exports.reviewShift = onCall(async (request) => {
 
   const role = request.auth?.token?.role;
   if (role !== "owner" && role !== "manager") {
-    throw new HttpsError("permission-denied", "Only an owner or manager can review shifts.");
+    throw new HttpsError(
+      "permission-denied",
+      "Only an owner or manager can review shifts."
+    );
   }
 
-  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const shiftRef = db
+    .collection("shifts")
+    .doc(stationId)
+    .collection("records")
+    .doc(shiftId);
   const snap = await shiftRef.get();
   if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
   const status = snap.get("status");
 
   if (action === "approve") {
     if (status !== "pending_review" && status !== "rejected") {
-      throw new HttpsError("failed-precondition", "Only a submitted shift can be approved.");
+      throw new HttpsError(
+        "failed-precondition",
+        "Only a submitted shift can be approved."
+      );
     }
     await shiftRef.update({
       status: "approved",
@@ -775,14 +825,18 @@ exports.reviewShift = onCall(async (request) => {
 
   if (action === "reject") {
     if (status !== "pending_review") {
-      throw new HttpsError("failed-precondition", "Only a submitted shift can be sent back.");
+      throw new HttpsError(
+        "failed-precondition",
+        "Only a submitted shift can be sent back."
+      );
     }
     await shiftRef.update({
       status: "rejected",
       rejectedBy: request.auth.uid,
       rejectedByName: request.auth.token.name || "",
       rejectedAt: FieldValue.serverTimestamp(),
-      rejectionReason: String(request.data?.reason || "").trim() || "Correction requested",
+      rejectionReason:
+        String(request.data?.reason || "").trim() || "Correction requested",
     });
     return { ok: true, status: "rejected" };
   }
@@ -799,7 +853,11 @@ exports.reviseShift = onCall(async (request) => {
   const shiftId = requireString(request.data?.shiftId, "shiftId");
   await assertStationAccess(request, stationId);
 
-  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const shiftRef = db
+    .collection("shifts")
+    .doc(stationId)
+    .collection("records")
+    .doc(shiftId);
   const snap = await shiftRef.get();
   if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
   if (snap.get("status") === "approved") {
@@ -932,13 +990,17 @@ exports.setPumpState = onCall(async (request) => {
     openSnap.forEach((d) => {
       if ((d.get("nozzles") || []).some((n) => n.pumpId === pumpId)) busy = true;
     });
-    if (busy) throw new HttpsError("failed-precondition", "This pump is in an open shift.");
+    if (busy)
+      throw new HttpsError("failed-precondition", "This pump is in an open shift.");
   }
 
   const stationRef = db.collection("stations").doc(stationId);
   const batch = db.batch();
   batch.update(stationRef.collection("pumps").doc(pumpId), { state });
-  const nozzles = await stationRef.collection("nozzles").where("pumpId", "==", pumpId).get();
+  const nozzles = await stationRef
+    .collection("nozzles")
+    .where("pumpId", "==", pumpId)
+    .get();
   nozzles.forEach((n) => batch.update(n.ref, { state }));
   await batch.commit();
   return { ok: true, state };
@@ -968,7 +1030,10 @@ exports.addTank = onCall(async (request) => {
   }
   const currentStock = Number(request.data?.currentStock) || 0;
   if (currentStock > capacity) {
-    throw new HttpsError("invalid-argument", "Opening stock is more than the tank holds.");
+    throw new HttpsError(
+      "invalid-argument",
+      "Opening stock is more than the tank holds."
+    );
   }
 
   const ref = await db.collection("stations").doc(stationId).collection("tanks").add({
@@ -1005,7 +1070,11 @@ exports.setTankState = onCall(async (request) => {
     throw new HttpsError("permission-denied", "That station is not yours.");
   }
 
-  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
+  const tankRef = db
+    .collection("stations")
+    .doc(stationId)
+    .collection("tanks")
+    .doc(tankId);
   const tank = await tankRef.get();
   if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
   if (state === "retired" && Number(tank.get("currentStock")) > 0) {
@@ -1035,7 +1104,11 @@ exports.updateTank = onCall(async (request) => {
     throw new HttpsError("permission-denied", "That station is not yours.");
   }
 
-  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
+  const tankRef = db
+    .collection("stations")
+    .doc(stationId)
+    .collection("tanks")
+    .doc(tankId);
   const tank = await tankRef.get();
   if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
 
@@ -1092,8 +1165,16 @@ exports.recordDip = onCall(async (request) => {
       ? null
       : Number(request.data.waterCm);
 
-  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
-  const readingRef = db.collection("tankReadings").doc(stationId).collection("readings").doc();
+  const tankRef = db
+    .collection("stations")
+    .doc(stationId)
+    .collection("tanks")
+    .doc(tankId);
+  const readingRef = db
+    .collection("tankReadings")
+    .doc(stationId)
+    .collection("readings")
+    .doc();
 
   return db.runTransaction(async (tx) => {
     const tank = await tx.get(tankRef);
@@ -1149,8 +1230,16 @@ exports.recordDelivery = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Record the delivery temperature.");
   }
 
-  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
-  const readingRef = db.collection("tankReadings").doc(stationId).collection("readings").doc();
+  const tankRef = db
+    .collection("stations")
+    .doc(stationId)
+    .collection("tanks")
+    .doc(tankId);
+  const readingRef = db
+    .collection("tankReadings")
+    .doc(stationId)
+    .collection("readings")
+    .doc();
 
   return db.runTransaction(async (tx) => {
     const tank = await tx.get(tankRef);
@@ -1190,5 +1279,73 @@ exports.recordDelivery = onCall(async (request) => {
       lastDipBy: request.auth.token.name || "",
     });
     return { ok: true };
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* credit customer ledger                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Post a credit sale or a repayment against a customer's account.
+ *
+ * This runs server-side in a transaction for the same reason closeShift and
+ * recordDip do: two people taking payments at once must not clobber each
+ * other. A client-side read-modify-write would silently lose one of them,
+ * and the figure it corrupts is somebody's outstanding debt.
+ */
+exports.recordCustomerPayment = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const customerId = requireString(request.data?.customerId, "customerId");
+  const type = requireString(request.data?.type, "type", { max: 16 });
+  await assertStationAccess(request, stationId);
+
+  if (type !== "credit" && type !== "payment") {
+    throw new HttpsError("invalid-argument", "Type must be credit or payment.");
+  }
+  const amount = Number(request.data?.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new HttpsError("invalid-argument", "Enter an amount greater than zero.");
+  }
+
+  const date =
+    typeof request.data?.date === "string" && request.data.date
+      ? request.data.date
+      : new Date().toISOString().slice(0, 10);
+
+  const custRef = db
+    .collection("creditCustomers")
+    .doc(stationId)
+    .collection("customers")
+    .doc(customerId);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(custRef);
+    if (!snap.exists) throw new HttpsError("not-found", "Customer not found.");
+
+    // A repayment reduces the debt; a credit sale increases it.
+    const delta = type === "credit" ? amount : -amount;
+    const balance = Number(snap.get("outstandingBalance")) || 0;
+    if (type === "payment" && amount > balance) {
+      throw new HttpsError(
+        "failed-precondition",
+        `That is more than the ${balance} outstanding on this account.`
+      );
+    }
+
+    tx.update(custRef, {
+      outstandingBalance: FieldValue.increment(delta),
+      transactions: FieldValue.arrayUnion({
+        date,
+        type,
+        amount,
+        note: String(request.data?.note || "").trim(),
+        recordedBy: request.auth.uid,
+        recordedByName: request.auth.token.name || "",
+        recordedAt: new Date().toISOString(),
+      }),
+    });
+
+    return { ok: true, outstandingBalance: balance + delta };
   });
 });

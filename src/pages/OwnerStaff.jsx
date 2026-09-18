@@ -78,7 +78,10 @@ export default function OwnerStaff() {
 
   return (
     <>
-      <PageHeader title="Staff & access" sub="Managers and attendants you have issued logins to" />
+      <PageHeader
+        title="Staff & access"
+        sub="Managers and attendants you have issued logins to"
+      />
       <div className="content stack">
         {credentials && (
           <Panel title="New staff credentials">
@@ -165,7 +168,7 @@ export default function OwnerStaff() {
           {loading ? (
             <Empty>Loading…</Empty>
           ) : staff.length === 0 ? (
-            <Empty>You haven't issued any staff logins yet.</Empty>
+            <Empty>You haven’t issued any staff logins yet.</Empty>
           ) : (
             <table>
               <thead>

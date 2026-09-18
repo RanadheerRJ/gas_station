@@ -109,9 +109,7 @@ export function validateDip({ stockLitres, temperatureC, waterCm }, tank = {}) {
   } else if (stock < 0) {
     problems.push("Stock cannot be negative.");
   } else if (capacity > 0 && stock > capacity) {
-    problems.push(
-      `Stock of ${stock} L is more than the tank holds (${capacity} L).`
-    );
+    problems.push(`Stock of ${stock} L is more than the tank holds (${capacity} L).`);
   }
 
   if (temperatureC === "" || temperatureC == null) {
@@ -144,7 +142,12 @@ export function validateDip({ stockLitres, temperatureC, waterCm }, tank = {}) {
  * actual dip is the figure worth investigating — a persistent negative is how
  * a leaking tank announces itself.
  */
-export function reconcileTank({ openingStock, delivered = 0, soldLitres = 0, closingStock }) {
+export function reconcileTank({
+  openingStock,
+  delivered = 0,
+  soldLitres = 0,
+  closingStock,
+}) {
   const book = round2(num(openingStock) + num(delivered) - num(soldLitres));
   const actual = round2(num(closingStock));
   const variance = round2(actual - book);

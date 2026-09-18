@@ -14,14 +14,12 @@ import {
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -246,7 +244,9 @@ export async function setPrice(stationId, payload, profile) {
 export async function listShifts(stationId) {
   if (isDemo) return demoBackend.listShifts(stationId);
   const snap = await getDocs(
-    query(collection(db, "shifts", stationId, "records"), orderBy("openedAt", "desc"))
+    // startTime is the field openShift actually writes; ordering by anything
+    // else returns an empty set in Firestore rather than failing loudly.
+    query(collection(db, "shifts", stationId, "records"), orderBy("startTime", "desc"))
   );
   return snap.docs.map((d) => ({ id: d.id, stationId, ...d.data() }));
 }
@@ -369,20 +369,22 @@ export async function createCustomer(stationId, payload) {
   return { id: ref.id, ...payload, outstandingBalance: 0, transactions: [] };
 }
 
+/**
+ * Post a credit sale or a repayment. Balance arithmetic happens server-side
+ * in a transaction — a read-modify-write from the client would lose one of
+ * two concurrent payments, and this is real money.
+ */
 export async function addCustomerTransaction(stationId, customerId, tx) {
   if (isDemo) return demoBackend.addCustomerTransaction(stationId, customerId, tx);
-
-  const ref = doc(db, "creditCustomers", stationId, "customers", customerId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error("Customer not found.");
-  const data = snap.data();
-  const delta = tx.type === "credit" ? Number(tx.amount) : -Number(tx.amount);
-  const next = {
-    transactions: [...(data.transactions || []), tx],
-    outstandingBalance: Number(data.outstandingBalance || 0) + delta,
-  };
-  await setDoc(ref, next, { merge: true });
-  return { id: customerId, ...data, ...next };
+  const res = await call("recordCustomerPayment")({
+    stationId,
+    customerId,
+    type: tx.type,
+    amount: tx.amount,
+    note: tx.note || "",
+    date: tx.date,
+  });
+  return res.data;
 }
 
 /** Client-side PIN validation, mirroring the server's rules. */

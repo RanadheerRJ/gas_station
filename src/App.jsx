@@ -50,7 +50,10 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to={HOME[profile.role] || "/"} replace />} />
+      <Route
+        path="/login"
+        element={<Navigate to={HOME[profile.role] || "/"} replace />}
+      />
       <Route element={<Layout />}>
         <Route
           path="/admin"
@@ -157,7 +160,10 @@ export default function App() {
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to={HOME[profile.role] || "/login"} replace />} />
+      <Route
+        path="*"
+        element={<Navigate to={HOME[profile.role] || "/login"} replace />}
+      />
     </Routes>
   );
 }

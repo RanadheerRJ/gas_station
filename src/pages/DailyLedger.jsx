@@ -35,7 +35,9 @@ export default function DailyLedger() {
     setLoading(true);
     try {
       // Everything handed in, whatever its review state.
-      setShifts((await listShifts(stationId)).filter((s) => s.status !== SHIFT_STATUS.OPEN));
+      setShifts(
+        (await listShifts(stationId)).filter((s) => s.status !== SHIFT_STATUS.OPEN)
+      );
       setError("");
     } catch (err) {
       setError(readableError(err));
@@ -129,7 +131,9 @@ export default function DailyLedger() {
 
         {error && <Notice kind="error">{error}</Notice>}
 
-        <Panel title={`This month · ${monthTotals.days} day${monthTotals.days === 1 ? "" : "s"}`}>
+        <Panel
+          title={`This month · ${monthTotals.days} day${monthTotals.days === 1 ? "" : "s"}`}
+        >
           <div className="row" style={{ gap: 40 }}>
             <Stat label="Litres sold" value={money(monthTotals.litres)} />
             <Stat label="Fuel sales" value={`₹ ${money(monthTotals.sales)}`} />
@@ -210,7 +214,10 @@ export default function DailyLedger() {
                       {open && (
                         <tr>
                           <td colSpan={9} style={{ background: "#fbfaf6" }}>
-                            <div className="row" style={{ gap: 28, alignItems: "flex-start" }}>
+                            <div
+                              className="row"
+                              style={{ gap: 28, alignItems: "flex-start" }}
+                            >
                               <div style={{ flex: "1 1 380px", minWidth: 320 }}>
                                 <h3 style={{ marginBottom: 6 }}>Shifts</h3>
                                 <table>
@@ -242,12 +249,23 @@ export default function DailyLedger() {
                                             {shift.employeeName}
                                           </span>
                                         </td>
-                                        <td className="num mono">{money(totals.totalLitres)}</td>
-                                        <td className="num mono">{money(totals.gross)}</td>
-                                        <td className="num mono">{money(totals.variance)}</td>
+                                        <td className="num mono">
+                                          {money(totals.totalLitres)}
+                                        </td>
+                                        <td className="num mono">
+                                          {money(totals.gross)}
+                                        </td>
+                                        <td className="num mono">
+                                          {money(totals.variance)}
+                                        </td>
                                         <td className="small">
-                                          {shift.employeeName || shift.closedByName || "—"}
-                                          <div className="muted" style={{ fontSize: 11.5 }}>
+                                          {shift.employeeName ||
+                                            shift.closedByName ||
+                                            "—"}
+                                          <div
+                                            className="muted"
+                                            style={{ fontSize: 11.5 }}
+                                          >
                                             {formatStamp(shift.endTime)}
                                           </div>
                                         </td>

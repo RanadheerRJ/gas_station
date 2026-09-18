@@ -156,13 +156,31 @@ service cloud.firestore {
       allow update, delete: if hasStationAccess(stationId) && canAmend();
     }
 
-    /* ---------------- credit customers ---------------- */
+    /* ---------------- credit customers ----------------
+       Mirrors the ledger pattern: staff may open an account, but the money
+       on it moves only through the recordCustomerPayment function, which
+       increments inside a transaction. A client read-modify-write would
+       lose one of two concurrent payments.
 
-    /* Walk-in credit accounts are also opened server-side by closeShift
-       when a payer has no existing record, so no debt is ever anonymous. */
+       Walk-in accounts are also opened server-side by closeShift when a
+       payer has no existing record, so no debt is ever anonymous.         */
+
     match /creditCustomers/{stationId}/customers/{customerId} {
-      allow read, create, update: if hasStationAccess(stationId);
-      allow delete: if hasStationAccess(stationId) && canAmend();
+      allow read: if hasStationAccess(stationId);
+
+      // A new account always starts square and empty.
+      allow create: if hasStationAccess(stationId)
+                    && request.resource.data.outstandingBalance == 0
+                    && request.resource.data.transactions.size() == 0;
+
+      // Contact details are correctable; the balance and its history are not.
+      allow update: if hasStationAccess(stationId)
+                    && request.resource.data.outstandingBalance
+                       == resource.data.outstandingBalance
+                    && request.resource.data.transactions
+                       == resource.data.transactions;
+
+      allow delete: if false;
     }
 
     /* Anything not matched above is denied. */

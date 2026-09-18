@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
 import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
 import StationPicker from "../components/StationPicker";
-import { CashIcon, GaugeIcon, NozzleIcon, PumpIcon, ShiftIcon, StatusDot } from "../components/icons";
+import { CashIcon, GaugeIcon, PumpIcon, ShiftIcon, StatusDot } from "../components/icons";
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
@@ -27,7 +27,6 @@ import {
   VARIANCE_TOLERANCE,
   litresBetween,
   nozzleOccupancy,
-  paymentsTotal,
   pumpOccupancy,
   shiftTotals,
   validateClosing,
@@ -101,11 +100,10 @@ export default function Shifts() {
   const station = stations.find((s) => s.id === stationId);
   const canReview = profile.role === "owner" || profile.role === "manager";
 
-  const occupancy = useMemo(() => pumpOccupancy(pumps, nozzles, openShifts), [
-    pumps,
-    nozzles,
-    openShifts,
-  ]);
+  const occupancy = useMemo(
+    () => pumpOccupancy(pumps, nozzles, openShifts),
+    [pumps, nozzles, openShifts]
+  );
   const nozzleBusy = useMemo(() => nozzleOccupancy(openShifts), [openShifts]);
 
   const busyCount = Object.values(occupancy).filter((o) => o.busy).length;
@@ -145,7 +143,11 @@ export default function Shifts() {
     setBusy(true);
     setError("");
     try {
-      await openShift(stationId, { employeeName: profile.name, nozzleIds: picked }, profile);
+      await openShift(
+        stationId,
+        { employeeName: profile.name, nozzleIds: picked },
+        profile
+      );
       setPicked([]);
       setStarting(false);
       await load();
@@ -351,7 +353,13 @@ export default function Shifts() {
                   ? "Starting…"
                   : `Start shift on ${picked.length} nozzle${picked.length === 1 ? "" : "s"}`}
               </button>
-              <button type="button" onClick={() => { setStarting(false); setPicked([]); }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStarting(false);
+                  setPicked([]);
+                }}
+              >
                 Cancel
               </button>
             </div>
@@ -420,7 +428,9 @@ export default function Shifts() {
                     <tr key={n.nozzleId}>
                       <td>
                         <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                          <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                          <span
+                            className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`}
+                          />
                           {n.label}
                         </span>
                       </td>
@@ -463,7 +473,7 @@ export default function Shifts() {
           title="Closed shifts"
           note={
             awaiting.length
-              ? `${awaiting.length} awaiting the owner's sign-off`
+              ? `${awaiting.length} awaiting the owner’s sign-off`
               : "All shifts signed off."
           }
           flush
@@ -593,10 +603,13 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
   );
 
   // Expenses were logged during the shift and are not re-entered here.
-  const expenses = shift.expenses || [];
+  // Memoised so the empty-array fallback is not a fresh object each render,
+  // which would retrigger the totals useMemo below on every keystroke.
+  const expenses = useMemo(() => shift.expenses || [], [shift.expenses]);
 
   const preview = useMemo(
-    () => shiftTotals({ nozzles: withClosings, expenses, creditSales, payments, testing }),
+    () =>
+      shiftTotals({ nozzles: withClosings, expenses, creditSales, payments, testing }),
     [withClosings, expenses, creditSales, payments, testing]
   );
 
@@ -629,7 +642,7 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
     <Panel
       title={
         <span className="row" style={{ gap: 7, alignItems: "center" }}>
-          <GaugeIcon /> Close {shift.employeeName}'s shift
+          <GaugeIcon /> Close {shift.employeeName}’s shift
         </span>
       }
       note={`Started ${formatStamp(shift.startTime)} · goes to the owner for review once submitted`}
@@ -659,7 +672,9 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
                     <tr key={n.nozzleId}>
                       <td>
                         <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                          <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
+                          <span
+                            className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`}
+                          />
                           {n.label}
                         </span>
                       </td>
@@ -746,9 +761,7 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
                   style={{ textAlign: "right" }}
                   value={payments[mode]}
                   readOnly={mode === "credit"}
-                  onChange={(e) =>
-                    setPayments((p) => ({ ...p, [mode]: e.target.value }))
-                  }
+                  onChange={(e) => setPayments((p) => ({ ...p, [mode]: e.target.value }))}
                   placeholder="0.00"
                 />
               </Field>
@@ -1170,8 +1183,8 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
         </table>
       </div>
       <div className="small muted" style={{ marginTop: 6 }}>
-        A walk-in is matched on phone number; if the number is new, a customer
-        account is opened automatically so the balance can be chased later.
+        A walk-in is matched on phone number; if the number is new, a customer account is
+        opened automatically so the balance can be chased later.
       </div>
     </div>
   );
@@ -1179,13 +1192,15 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
 
 /** Small status chip for the settled-shifts register. */
 function StatusTag({ status }) {
-  if (status === SHIFT_STATUS.APPROVED) return <span className="tag green">Approved</span>;
-  if (status === SHIFT_STATUS.REJECTED) return <span className="tag rust">Sent back</span>;
+  if (status === SHIFT_STATUS.APPROVED)
+    return <span className="tag green">Approved</span>;
+  if (status === SHIFT_STATUS.REJECTED)
+    return <span className="tag rust">Sent back</span>;
   return <span className="tag">Pending review</span>;
 }
 
 /**
- * The owner's review of a handed-in shift. Until it is approved, expenses,
+ * The owner’s review of a handed-in shift. Until it is approved, expenses,
  * testing and the payment split all stay editable — mistakes get caught here,
  * not with a correction entry three days later.
  */
@@ -1492,7 +1507,11 @@ function ClosedShiftDetail({
                   Approve
                 </button>
                 {shift.status === SHIFT_STATUS.PENDING_REVIEW && (
-                  <button type="button" disabled={busy} onClick={() => setRejecting((r) => !r)}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setRejecting((r) => !r)}
+                  >
                     Send back
                   </button>
                 )}

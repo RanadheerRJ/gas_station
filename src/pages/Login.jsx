@@ -69,8 +69,8 @@ export default function Login() {
               {busy ? "Checking…" : "Sign in"}
             </button>
             <p className="small muted" style={{ margin: 0 }}>
-              Accounts are issued by your station owner or the system developer.
-              There is no self sign-up.
+              Accounts are issued by your station owner or the system developer. There is
+              no self sign-up.
             </p>
           </form>
         </div>

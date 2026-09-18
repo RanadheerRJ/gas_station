@@ -12,7 +12,9 @@ export function registerServiceWorker() {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {
-      // An unavailable service worker costs offline support, nothing more.
+      // An unavailable service worker costs offline support, nothing more,
+      // so a failure here is deliberately swallowed.
+      return undefined;
     });
   });
 }

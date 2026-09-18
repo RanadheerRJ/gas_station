@@ -21,7 +21,7 @@ const ROLE_LABEL = {
 };
 
 /** Nav is strictly role-scoped: a developer only invites owners, an
- *  attendant only sees today's entry. */
+ *  attendant only sees today’s entry. */
 function navFor(profile) {
   switch (profile.role) {
     case "admin":
@@ -52,11 +52,13 @@ function navFor(profile) {
 
 export default function Layout() {
   const { profile, logout } = useAuth();
-  if (!profile) return null;
-
-  const links = navFor(profile);
+  // Hooks must run before any early return, or signing out changes the hook
+  // order between renders and React throws.
   const online = useConnection();
   const install = useInstallPrompt();
+
+  if (!profile) return null;
+  const links = navFor(profile);
 
   return (
     <div className="shell">
@@ -94,16 +96,15 @@ export default function Layout() {
         {!online && (
           <div className="conn-banner">
             <span className="live-dot">●</span>
-            Offline — showing the last data loaded. Anything you save will fail
-            until the connection returns.
+            Offline — showing the last data loaded. Anything you save will fail until the
+            connection returns.
           </div>
         )}
 
         {install.available && (
           <div className="install-bar">
             <span style={{ flex: 1 }}>
-              Install Station Ledger on this device for full-screen use and
-              faster starts.
+              Install Station Ledger on this device for full-screen use and faster starts.
             </span>
             <button type="button" onClick={install.prompt}>
               Install
@@ -124,8 +125,8 @@ export default function Layout() {
             }}
           >
             Demo mode — no Firebase project configured, data is stored in this browser.
-            Add <span className="mono">.env.local</span> credentials to use live
-            Firestore and Cloud Functions.
+            Add <span className="mono">.env.local</span> credentials to use live Firestore
+            and Cloud Functions.
           </div>
         )}
         <Outlet />
@@ -145,7 +146,6 @@ export function PageHeader({ title, sub, actions }) {
     </div>
   );
 }
-
 
 /** True while the browser reports a usable connection. */
 function useConnection() {

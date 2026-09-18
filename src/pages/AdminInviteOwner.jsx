@@ -99,7 +99,11 @@ export default function AdminInviteOwner() {
           <form className="stack" onSubmit={submit}>
             <div className="form-grid">
               <Field label="Owner name">
-                <input value={form.ownerName} onChange={set("ownerName")} placeholder="Ravi Kumar" />
+                <input
+                  value={form.ownerName}
+                  onChange={set("ownerName")}
+                  placeholder="Ravi Kumar"
+                />
               </Field>
               <Field label="Phone number">
                 <input
@@ -192,23 +196,27 @@ export default function AdminInviteOwner() {
         </Panel>
 
         <Panel title="How this works">
-          <ul className="small muted" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+          <ul
+            className="small muted"
+            style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}
+          >
             <li>
-              The owner account is created by the <span className="mono">createOwner</span> Cloud
-              Function using the Admin SDK. Nothing is written from this browser.
+              The owner account is created by the{" "}
+              <span className="mono">createOwner</span> Cloud Function using the Admin
+              SDK. Nothing is written from this browser.
             </li>
             <li>
               The PIN is hashed with bcrypt into{" "}
-              <span className="mono">authSecrets/&#123;uid&#125;</span>, a collection no client can
-              read or write.
+              <span className="mono">authSecrets/&#123;uid&#125;</span>, a collection no
+              client can read or write.
             </li>
             <li>
-              You choose the owner's opening PIN and hand it over. Only its hash is kept, so
-              it cannot be read back — use <em>Reset PIN</em> below if it is ever lost.
+              You choose the owner’s opening PIN and hand it over. Only its hash is kept,
+              so it cannot be read back — use <em>Reset PIN</em> below if it is ever lost.
             </li>
             <li>
-              Owners create their own managers and attendants from their dashboard — you never
-              need to issue staff logins.
+              Owners create their own managers and attendants from their dashboard — you
+              never need to issue staff logins.
             </li>
           </ul>
         </Panel>

@@ -62,7 +62,11 @@ export default function ResetPinPanel({ target, onDone }) {
       </div>
       {error && <Notice kind="error">{error}</Notice>}
       <div className="row">
-        <button className="primary" type="submit" disabled={busy || !pinReady(pin, confirm)}>
+        <button
+          className="primary"
+          type="submit"
+          disabled={busy || !pinReady(pin, confirm)}
+        >
           {busy ? "Setting…" : "Set new PIN"}
         </button>
         <button type="button" onClick={() => onDone?.()} disabled={busy}>

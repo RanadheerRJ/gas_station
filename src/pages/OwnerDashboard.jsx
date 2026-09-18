@@ -13,7 +13,6 @@ import {
 } from "../lib/api";
 import { money, todayISO } from "../lib/format";
 import { SHIFT_STATUS, shiftTotals, varianceTone } from "../lib/shiftMath";
-import { PumpIcon, ShiftIcon, StationIcon } from "../components/icons";
 
 export default function OwnerDashboard() {
   const { profile } = useAuth();
@@ -25,7 +24,7 @@ export default function OwnerDashboard() {
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(null);
 
-  // Per-station roll-up: today's sales, today's cash, total outstanding credit.
+  // Per-station roll-up: today’s sales, today’s cash, total outstanding credit.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -60,7 +59,8 @@ export default function OwnerDashboard() {
               ),
               openShifts: shifts.filter((sh) => sh.status === "open"),
               closedToday: todays.length,
-              approvedToday: todays.filter((sh) => sh.status === SHIFT_STATUS.APPROVED).length,
+              approvedToday: todays.filter((sh) => sh.status === SHIFT_STATUS.APPROVED)
+                .length,
             };
           } catch {
             out[s.id] = null;
@@ -93,10 +93,7 @@ export default function OwnerDashboard() {
     setError("");
     setBusy(true);
     try {
-      await addStation(
-        { name: form.name.trim(), address: form.address.trim() },
-        profile
-      );
+      await addStation({ name: form.name.trim(), address: form.address.trim() }, profile);
       setForm({ name: "", address: "" });
       setShowAdd(false);
       await reload();
@@ -134,7 +131,11 @@ export default function OwnerDashboard() {
             <Stat label="Fuel sales" value={`₹ ${money(totals.sales)}`} />
             <Stat label="Testing" value={`₹ ${money(totals.testing)}`} />
             <Stat label="Cash declared" value={`₹ ${money(totals.cash)}`} />
-            <Stat label="Cash to receive" value={`₹ ${money(totals.handover)}`} tone="pos" />
+            <Stat
+              label="Cash to receive"
+              value={`₹ ${money(totals.handover)}`}
+              tone="pos"
+            />
             <Stat
               label="Cash variance"
               value={`₹ ${money(totals.variance)}`}
@@ -151,7 +152,7 @@ export default function OwnerDashboard() {
         {totals.pending > 0 && (
           <Notice>
             {totals.pending} shift{totals.pending === 1 ? "" : "s"} awaiting your
-            sign-off. Open a station's shift register to review the figures, adjust
+            sign-off. Open a station’s shift register to review the figures, adjust
             expenses or testing, and approve.
           </Notice>
         )}
@@ -246,20 +247,14 @@ export default function OwnerDashboard() {
                       >
                         {sum ? money(sum.variance) : "—"}
                       </td>
-                      <td className="num mono">
-                        {sum ? money(sum.outstanding) : "—"}
-                      </td>
+                      <td className="num mono">{sum ? money(sum.outstanding) : "—"}</td>
                       <td>
                         {!sum ? (
                           <span className="muted small">—</span>
                         ) : sum.openShifts?.length ? (
-                          <span className="tag">
-                            {sum.openShifts.length} open
-                          </span>
+                          <span className="tag">{sum.openShifts.length} open</span>
                         ) : sum.closedToday > 0 ? (
-                          <span className="tag green">
-                            {sum.closedToday} closed
-                          </span>
+                          <span className="tag green">{sum.closedToday} closed</span>
                         ) : (
                           <span className="tag rust">none today</span>
                         )}
@@ -270,7 +265,10 @@ export default function OwnerDashboard() {
                         )}
                       </td>
                       <td className="num">
-                        <span className="row" style={{ gap: 10, justifyContent: "flex-end" }}>
+                        <span
+                          className="row"
+                          style={{ gap: 10, justifyContent: "flex-end" }}
+                        >
                           <Link className="small" to={`/owner/shifts?station=${s.id}`}>
                             Shifts
                           </Link>
@@ -318,9 +316,9 @@ export default function OwnerDashboard() {
           <Panel title={`Archive ${deleting.name}`}>
             <div className="stack" style={{ gap: 10 }}>
               <Notice>
-                Archiving hides this station from the day-to-day screens. Nothing
-                is deleted — its shifts, ledger and credit history stay intact, and
-                you can reopen it from this page at any time.
+                Archiving hides this station from the day-to-day screens. Nothing is
+                deleted — its shifts, ledger and credit history stay intact, and you can
+                reopen it from this page at any time.
               </Notice>
               {error && <Notice kind="error">{error}</Notice>}
               <div className="row">

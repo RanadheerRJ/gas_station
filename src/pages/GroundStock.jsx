@@ -124,7 +124,6 @@ export default function GroundStock() {
   };
 
   const active = useMemo(() => tanks.filter((t) => t.state !== "retired"), [tanks]);
-  const retired = useMemo(() => tanks.filter((t) => t.state === "retired"), [tanks]);
   const byProduct = useMemo(() => stockByProduct(active), [active]);
   const station = stations.find((s) => s.id === stationId);
   const selectedTank = tanks.find((t) => t.id === selected) || null;
@@ -192,9 +191,8 @@ export default function GroundStock() {
 
         {wet.length > 0 && (
           <Notice kind="error">
-            Water above {WATER_LIMIT_CM} cm in{" "}
-            {wet.map((t) => t.name).join(", ")}. Water corrodes the tank and dilutes
-            the next delivery — have it drawn off.
+            Water above {WATER_LIMIT_CM} cm in {wet.map((t) => t.name).join(", ")}. Water
+            corrodes the tank and dilutes the next delivery — have it drawn off.
           </Notice>
         )}
 
@@ -242,7 +240,9 @@ export default function GroundStock() {
                       <TankVessel tank={t} />
                       <div className="tank-card__body">
                         <div className="tank-card__name">
-                          <span className={`fuel-dot fuel-dot--${fuelClass(t.fuelType)}`} />
+                          <span
+                            className={`fuel-dot fuel-dot--${fuelClass(t.fuelType)}`}
+                          />
                           {t.name}
                         </div>
                         <div className="tank-card__fuel">{t.fuelType}</div>
@@ -279,10 +279,7 @@ export default function GroundStock() {
               <div className="row" style={{ gap: 40, flexWrap: "wrap" }}>
                 <Stat label="Stock in ground" value={`${money(totals.stock)} L`} />
                 <Stat label="Space for delivery" value={`${money(totals.ullage)} L`} />
-                <Stat
-                  label="Total capacity"
-                  value={`${money(totals.capacity)} L`}
-                />
+                <Stat label="Total capacity" value={`${money(totals.capacity)} L`} />
               </div>
             </>
           )}
@@ -328,9 +325,7 @@ export default function GroundStock() {
                 tank={selectedTank}
                 busy={busy}
                 onSubmit={(delivery) =>
-                  run(() =>
-                    recordDelivery(stationId, selectedTank.id, delivery, profile)
-                  )
+                  run(() => recordDelivery(stationId, selectedTank.id, delivery, profile))
                 }
               />
             )}
@@ -410,9 +405,7 @@ export default function GroundStock() {
                         className="num mono"
                         style={{ color: up ? "var(--green)" : "var(--rust)" }}
                       >
-                        {d.change == null
-                          ? "—"
-                          : `${up ? "+" : ""}${money(d.change)}`}
+                        {d.change == null ? "—" : `${up ? "+" : ""}${money(d.change)}`}
                       </td>
                       <td className="num mono">{money(d.stockLitres)}</td>
                       <td className="num mono">
@@ -571,7 +564,8 @@ function DipForm({ tank, onSubmit, busy }) {
       tankStatus({
         ...tank,
         currentStock: form.stockLitres === "" ? tank.currentStock : num(form.stockLitres),
-        temperatureC: form.temperatureC === "" ? tank.temperatureC : num(form.temperatureC),
+        temperatureC:
+          form.temperatureC === "" ? tank.temperatureC : num(form.temperatureC),
       }),
     [tank, form.stockLitres, form.temperatureC]
   );
@@ -688,7 +682,10 @@ function DeliveryForm({ tank, onSubmit, busy }) {
           <input
             className="mono"
             inputMode="decimal"
-            style={{ textAlign: "right", borderColor: overfills ? "var(--rust)" : undefined }}
+            style={{
+              textAlign: "right",
+              borderColor: overfills ? "var(--rust)" : undefined,
+            }}
             value={form.litres}
             onChange={set("litres")}
             placeholder={money(st.ullage)}

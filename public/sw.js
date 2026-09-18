@@ -30,9 +30,7 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys
-            .filter((k) => k !== SHELL && k !== ASSETS)
-            .map((k) => caches.delete(k))
+          keys.filter((k) => k !== SHELL && k !== ASSETS).map((k) => caches.delete(k))
         )
       )
       .then(() => self.clients.claim())
@@ -67,9 +65,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(SHELL).then((c) => c.put("/index.html", copy));
           return res;
         })
-        .catch(() =>
-          caches.match("/index.html").then((r) => r || caches.match("/"))
-        )
+        .catch(() => caches.match("/index.html").then((r) => r || caches.match("/")))
     );
     return;
   }

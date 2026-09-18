@@ -9,7 +9,11 @@ export function Panel({ title, actions, children, flush = false, note }) {
             <h2>{title}</h2>
             {note && <div className="small muted">{note}</div>}
           </div>
-          {actions && <div className="row" style={{ gap: 8 }}>{actions}</div>}
+          {actions && (
+            <div className="row" style={{ gap: 8 }}>
+              {actions}
+            </div>
+          )}
         </header>
       )}
       <div className="body">{children}</div>
@@ -40,7 +44,8 @@ export function Stat({ label, value, tone }) {
 
 export function Notice({ kind = "info", children }) {
   if (!children) return null;
-  const cls = kind === "error" ? "notice error" : kind === "good" ? "notice good" : "notice";
+  const cls =
+    kind === "error" ? "notice error" : kind === "good" ? "notice good" : "notice";
   return <div className={cls}>{children}</div>;
 }
 
@@ -73,9 +78,9 @@ export function CredentialPanel({ username, pin, onDismiss, subject }) {
   return (
     <div className="stack" style={{ gap: 10 }}>
       <Notice kind="good">
-        Account created for {subject}. Share the username and the PIN you chose —
-        only its hash is stored, so it cannot be looked up later. If it is lost you
-        can set a new one from this page.
+        Account created for {subject}. Share the username and the PIN you chose — only its
+        hash is stored, so it cannot be looked up later. If it is lost you can set a new
+        one from this page.
       </Notice>
       <div className="credential">
         <div>

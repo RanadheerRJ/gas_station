@@ -21,9 +21,20 @@ function seed() {
   const mgrId = uid("u");
   const attId = uid("u");
 
-  const t1 = uid("t"), t2 = uid("t"), t3 = uid("t"), t4 = uid("t"), t5 = uid("t");
-  const p1 = uid("p"), p2 = uid("p"), p3 = uid("p");
-  const n1 = uid("n"), n2 = uid("n"), n3 = uid("n"), n4 = uid("n"), n5 = uid("n"), n6 = uid("n");
+  const t1 = uid("t"),
+    t2 = uid("t"),
+    t3 = uid("t"),
+    t4 = uid("t"),
+    t5 = uid("t");
+  const p1 = uid("p"),
+    p2 = uid("p"),
+    p3 = uid("p");
+  const n1 = uid("n"),
+    n2 = uid("n"),
+    n3 = uid("n"),
+    n4 = uid("n"),
+    n5 = uid("n"),
+    n6 = uid("n");
 
   const cust1 = uid("c");
   const cust2 = uid("c");
@@ -76,7 +87,6 @@ function seed() {
       note: "",
     };
   };
-
 
   return {
     users: {
@@ -159,95 +169,344 @@ function seed() {
     },
     nozzles: {
       [s1]: [
-        { id: n1, pumpId: p1, name: "N1", fuelType: "Petrol", lastReading: 148230.5, createdAt: nowISO() },
-        { id: n2, pumpId: p1, name: "N2", fuelType: "Diesel", lastReading: 203411.0, createdAt: nowISO() },
-        { id: n3, pumpId: p2, name: "N1", fuelType: "Petrol", lastReading: 96755.25, createdAt: nowISO() },
-        { id: n4, pumpId: p2, name: "N2", fuelType: "Diesel", lastReading: 121008.75, createdAt: nowISO() },
+        {
+          id: n1,
+          pumpId: p1,
+          name: "N1",
+          fuelType: "Petrol",
+          lastReading: 148230.5,
+          createdAt: nowISO(),
+        },
+        {
+          id: n2,
+          pumpId: p1,
+          name: "N2",
+          fuelType: "Diesel",
+          lastReading: 203411.0,
+          createdAt: nowISO(),
+        },
+        {
+          id: n3,
+          pumpId: p2,
+          name: "N1",
+          fuelType: "Petrol",
+          lastReading: 96755.25,
+          createdAt: nowISO(),
+        },
+        {
+          id: n4,
+          pumpId: p2,
+          name: "N2",
+          fuelType: "Diesel",
+          lastReading: 121008.75,
+          createdAt: nowISO(),
+        },
       ],
       [s2]: [
-        { id: n5, pumpId: p3, name: "N1", fuelType: "Petrol", lastReading: 54120.0, createdAt: nowISO() },
-        { id: n6, pumpId: p3, name: "N2", fuelType: "Diesel", lastReading: 77310.5, createdAt: nowISO() },
+        {
+          id: n5,
+          pumpId: p3,
+          name: "N1",
+          fuelType: "Petrol",
+          lastReading: 54120.0,
+          createdAt: nowISO(),
+        },
+        {
+          id: n6,
+          pumpId: p3,
+          name: "N2",
+          fuelType: "Diesel",
+          lastReading: 77310.5,
+          createdAt: nowISO(),
+        },
       ],
     },
     tanks: {
       [s1]: [
-        { id: t1, stationId: s1, name: "Tank 1", fuelType: "Petrol", capacity: 20000,
-          state: "active", currentStock: 13400, temperatureC: 31.5, waterCm: 0.4,
-          lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
-        { id: t2, stationId: s1, name: "Tank 2", fuelType: "Diesel", capacity: 30000,
-          state: "active", currentStock: 8600, temperatureC: 29.8, waterCm: 1.1,
-          lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
-        { id: t3, stationId: s1, name: "Tank 3", fuelType: "Diesel", capacity: 30000,
-          state: "active", currentStock: 26900, temperatureC: 28.4, waterCm: 0.2,
-          lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
+        {
+          id: t1,
+          stationId: s1,
+          name: "Tank 1",
+          fuelType: "Petrol",
+          capacity: 20000,
+          state: "active",
+          currentStock: 13400,
+          temperatureC: 31.5,
+          waterCm: 0.4,
+          lastDipAt: nowISO(),
+          lastDipBy: "Suresh Babu",
+          createdAt: nowISO(),
+        },
+        {
+          id: t2,
+          stationId: s1,
+          name: "Tank 2",
+          fuelType: "Diesel",
+          capacity: 30000,
+          state: "active",
+          currentStock: 8600,
+          temperatureC: 29.8,
+          waterCm: 1.1,
+          lastDipAt: nowISO(),
+          lastDipBy: "Suresh Babu",
+          createdAt: nowISO(),
+        },
+        {
+          id: t3,
+          stationId: s1,
+          name: "Tank 3",
+          fuelType: "Diesel",
+          capacity: 30000,
+          state: "active",
+          currentStock: 26900,
+          temperatureC: 28.4,
+          waterCm: 0.2,
+          lastDipAt: nowISO(),
+          lastDipBy: "Suresh Babu",
+          createdAt: nowISO(),
+        },
       ],
       [s2]: [
-        { id: t4, stationId: s2, name: "Tank 1", fuelType: "Petrol", capacity: 15000,
-          state: "active", currentStock: 2100, temperatureC: 33.2, waterCm: 0.6,
-          lastDipAt: nowISO(), lastDipBy: "Ravi Kumar", createdAt: nowISO() },
-        { id: t5, stationId: s2, name: "Tank 2", fuelType: "Diesel", capacity: 20000,
-          state: "active", currentStock: 14750, temperatureC: 30.1, waterCm: 0.3,
-          lastDipAt: nowISO(), lastDipBy: "Ravi Kumar", createdAt: nowISO() },
+        {
+          id: t4,
+          stationId: s2,
+          name: "Tank 1",
+          fuelType: "Petrol",
+          capacity: 15000,
+          state: "active",
+          currentStock: 2100,
+          temperatureC: 33.2,
+          waterCm: 0.6,
+          lastDipAt: nowISO(),
+          lastDipBy: "Ravi Kumar",
+          createdAt: nowISO(),
+        },
+        {
+          id: t5,
+          stationId: s2,
+          name: "Tank 2",
+          fuelType: "Diesel",
+          capacity: 20000,
+          state: "active",
+          currentStock: 14750,
+          temperatureC: 30.1,
+          waterCm: 0.3,
+          lastDipAt: nowISO(),
+          lastDipBy: "Ravi Kumar",
+          createdAt: nowISO(),
+        },
       ],
     },
     dips: {
       [s1]: [
-        { id: uid("dp"), tankId: t1, stationId: s1, stockLitres: 15200, temperatureC: 30.2,
-          waterCm: 0.4, note: "Morning dip", recordedByName: "Suresh Babu",
-          recordedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-        { id: uid("dp"), tankId: t1, stationId: s1, stockLitres: 13400, temperatureC: 31.5,
-          waterCm: 0.4, note: "", recordedByName: "Suresh Babu",
-          recordedAt: new Date(Date.now() - 3600000).toISOString() },
-        { id: uid("dp"), tankId: t2, stationId: s1, stockLitres: 8600, temperatureC: 29.8,
-          waterCm: 1.1, note: "Water creeping up, watch it", recordedByName: "Suresh Babu",
-          recordedAt: new Date(Date.now() - 3600000).toISOString() },
+        {
+          id: uid("dp"),
+          tankId: t1,
+          stationId: s1,
+          stockLitres: 15200,
+          temperatureC: 30.2,
+          waterCm: 0.4,
+          note: "Morning dip",
+          recordedByName: "Suresh Babu",
+          recordedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+        },
+        {
+          id: uid("dp"),
+          tankId: t1,
+          stationId: s1,
+          stockLitres: 13400,
+          temperatureC: 31.5,
+          waterCm: 0.4,
+          note: "",
+          recordedByName: "Suresh Babu",
+          recordedAt: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          id: uid("dp"),
+          tankId: t2,
+          stationId: s1,
+          stockLitres: 8600,
+          temperatureC: 29.8,
+          waterCm: 1.1,
+          note: "Water creeping up, watch it",
+          recordedByName: "Suresh Babu",
+          recordedAt: new Date(Date.now() - 3600000).toISOString(),
+        },
       ],
       [s2]: [],
     },
     prices: {
       [s1]: [
-        { id: uid("pr"), stationId: s1, fuelType: "Petrol", price: 104.2,
+        {
+          id: uid("pr"),
+          stationId: s1,
+          fuelType: "Petrol",
+          price: 104.2,
           effectiveFrom: new Date(Date.now() - 3 * 86400000).toISOString(),
-          effectiveTo: new Date(Date.now() - 86400000).toISOString(), setByName: "Ravi Kumar" },
-        { id: uid("pr"), stationId: s1, fuelType: "Diesel", price: 91.2,
+          effectiveTo: new Date(Date.now() - 86400000).toISOString(),
+          setByName: "Ravi Kumar",
+        },
+        {
+          id: uid("pr"),
+          stationId: s1,
+          fuelType: "Diesel",
+          price: 91.2,
           effectiveFrom: new Date(Date.now() - 3 * 86400000).toISOString(),
-          effectiveTo: new Date(Date.now() - 86400000).toISOString(), setByName: "Ravi Kumar" },
-        { id: uid("pr"), stationId: s1, fuelType: "Petrol", price: 104.8,
+          effectiveTo: new Date(Date.now() - 86400000).toISOString(),
+          setByName: "Ravi Kumar",
+        },
+        {
+          id: uid("pr"),
+          stationId: s1,
+          fuelType: "Petrol",
+          price: 104.8,
           effectiveFrom: new Date(Date.now() - 86400000).toISOString(),
-          effectiveTo: null, setByName: "Ravi Kumar" },
-        { id: uid("pr"), stationId: s1, fuelType: "Diesel", price: 91.6,
+          effectiveTo: null,
+          setByName: "Ravi Kumar",
+        },
+        {
+          id: uid("pr"),
+          stationId: s1,
+          fuelType: "Diesel",
+          price: 91.6,
           effectiveFrom: new Date(Date.now() - 86400000).toISOString(),
-          effectiveTo: null, setByName: "Ravi Kumar" },
+          effectiveTo: null,
+          setByName: "Ravi Kumar",
+        },
       ],
       [s2]: [
-        { id: uid("pr"), stationId: s2, fuelType: "Petrol", price: 105.2,
+        {
+          id: uid("pr"),
+          stationId: s2,
+          fuelType: "Petrol",
+          price: 105.2,
           effectiveFrom: new Date(Date.now() - 2 * 86400000).toISOString(),
-          effectiveTo: null, setByName: "Ravi Kumar" },
-        { id: uid("pr"), stationId: s2, fuelType: "Diesel", price: 92.1,
+          effectiveTo: null,
+          setByName: "Ravi Kumar",
+        },
+        {
+          id: uid("pr"),
+          stationId: s2,
+          fuelType: "Diesel",
+          price: 92.1,
           effectiveFrom: new Date(Date.now() - 2 * 86400000).toISOString(),
-          effectiveTo: null, setByName: "Ravi Kumar" },
+          effectiveTo: null,
+          setByName: "Ravi Kumar",
+        },
       ],
     },
     shifts: {
       [s1]: [
-        mkShift(s1, 1, "Mahesh N", attId, [
-          { nozzleId: n1, pumpId: p1, label: "Pump 1 · N1", fuelType: "Petrol", openingReading: 147180.5, closingReading: 147705.5, price: 104.8 },
-          { nozzleId: n2, pumpId: p1, label: "Pump 1 · N2", fuelType: "Diesel", openingReading: 202495.0, closingReading: 203080.0, price: 91.6 },
-        ], -240),
-        mkShift(s1, 1, "Suresh Babu", mgrId, [
-          { nozzleId: n3, pumpId: p2, label: "Pump 2 · N1", fuelType: "Petrol", openingReading: 96240.25, closingReading: 96520.25, price: 104.8 },
-          { nozzleId: n4, pumpId: p2, label: "Pump 2 · N2", fuelType: "Diesel", openingReading: 120520.75, closingReading: 120870.75, price: 91.6 },
-        ], 0),
-        mkShift(s1, 2, "Mahesh N", attId, [
-          { nozzleId: n1, pumpId: p1, label: "Pump 1 · N1", fuelType: "Petrol", openingReading: 146700.5, closingReading: 147180.5, price: 104.2 },
-          { nozzleId: n2, pumpId: p1, label: "Pump 1 · N2", fuelType: "Diesel", openingReading: 201950.0, closingReading: 202495.0, price: 91.2 },
-        ], 120),
+        mkShift(
+          s1,
+          1,
+          "Mahesh N",
+          attId,
+          [
+            {
+              nozzleId: n1,
+              pumpId: p1,
+              label: "Pump 1 · N1",
+              fuelType: "Petrol",
+              openingReading: 147180.5,
+              closingReading: 147705.5,
+              price: 104.8,
+            },
+            {
+              nozzleId: n2,
+              pumpId: p1,
+              label: "Pump 1 · N2",
+              fuelType: "Diesel",
+              openingReading: 202495.0,
+              closingReading: 203080.0,
+              price: 91.6,
+            },
+          ],
+          -240
+        ),
+        mkShift(
+          s1,
+          1,
+          "Suresh Babu",
+          mgrId,
+          [
+            {
+              nozzleId: n3,
+              pumpId: p2,
+              label: "Pump 2 · N1",
+              fuelType: "Petrol",
+              openingReading: 96240.25,
+              closingReading: 96520.25,
+              price: 104.8,
+            },
+            {
+              nozzleId: n4,
+              pumpId: p2,
+              label: "Pump 2 · N2",
+              fuelType: "Diesel",
+              openingReading: 120520.75,
+              closingReading: 120870.75,
+              price: 91.6,
+            },
+          ],
+          0
+        ),
+        mkShift(
+          s1,
+          2,
+          "Mahesh N",
+          attId,
+          [
+            {
+              nozzleId: n1,
+              pumpId: p1,
+              label: "Pump 1 · N1",
+              fuelType: "Petrol",
+              openingReading: 146700.5,
+              closingReading: 147180.5,
+              price: 104.2,
+            },
+            {
+              nozzleId: n2,
+              pumpId: p1,
+              label: "Pump 1 · N2",
+              fuelType: "Diesel",
+              openingReading: 201950.0,
+              closingReading: 202495.0,
+              price: 91.2,
+            },
+          ],
+          120
+        ),
       ],
       [s2]: [
-        mkShift(s2, 1, "Ravi Kumar", ownerId, [
-          { nozzleId: n5, pumpId: p3, label: "Pump 1 · N1", fuelType: "Petrol", openingReading: 53480.0, closingReading: 54120.0, price: 105.2 },
-          { nozzleId: n6, pumpId: p3, label: "Pump 1 · N2", fuelType: "Diesel", openingReading: 76580.5, closingReading: 77310.5, price: 92.1 },
-        ], 0),
+        mkShift(
+          s2,
+          1,
+          "Ravi Kumar",
+          ownerId,
+          [
+            {
+              nozzleId: n5,
+              pumpId: p3,
+              label: "Pump 1 · N1",
+              fuelType: "Petrol",
+              openingReading: 53480.0,
+              closingReading: 54120.0,
+              price: 105.2,
+            },
+            {
+              nozzleId: n6,
+              pumpId: p3,
+              label: "Pump 1 · N2",
+              fuelType: "Diesel",
+              openingReading: 76580.5,
+              closingReading: 77310.5,
+              price: 92.1,
+            },
+          ],
+          0
+        ),
       ],
     },
     credit: {
@@ -339,10 +598,37 @@ function uniqueUsername(base) {
 
 /** Mirrors WEAK_PINS in functions/index.js. */
 const WEAK_PINS = new Set([
-  "0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999",
-  "1234", "2345", "3456", "4567", "5678", "6789", "0123",
-  "9876", "8765", "7654", "6543", "5432", "4321", "3210",
-  "1212", "1122", "6969", "1004", "2000", "2001", "1010",
+  "0000",
+  "1111",
+  "2222",
+  "3333",
+  "4444",
+  "5555",
+  "6666",
+  "7777",
+  "8888",
+  "9999",
+  "1234",
+  "2345",
+  "3456",
+  "4567",
+  "5678",
+  "6789",
+  "0123",
+  "9876",
+  "8765",
+  "7654",
+  "6543",
+  "5432",
+  "4321",
+  "3210",
+  "1212",
+  "1122",
+  "6969",
+  "1004",
+  "2000",
+  "2001",
+  "1010",
 ]);
 
 export function pinProblem(pin) {
@@ -389,7 +675,9 @@ export const demoBackend = {
   async pinLogin({ username, pin }) {
     await delay();
     const d = db();
-    const uname = String(username || "").trim().toLowerCase();
+    const uname = String(username || "")
+      .trim()
+      .toLowerCase();
     const targetUid = d.usernames[uname];
     if (!targetUid || d.pins[uname] !== String(pin)) {
       throw new Error("Incorrect username or PIN.");
@@ -516,7 +804,8 @@ export const demoBackend = {
 
     if (state === "archived") {
       const openShift = (d.shifts[stationId] || []).some((sh) => sh.status === "open");
-      if (openShift) throw new Error("Close the open shift before archiving this station.");
+      if (openShift)
+        throw new Error("Close the open shift before archiving this station.");
       const owing = (d.credit[stationId] || []).reduce(
         (n, c) => n + Number(c.outstandingBalance || 0),
         0
@@ -591,7 +880,8 @@ export const demoBackend = {
     }
     if (patch.capacity != null) {
       const cap = Number(patch.capacity);
-      if (!Number.isFinite(cap) || cap <= 0) throw new Error("Capacity must be a number.");
+      if (!Number.isFinite(cap) || cap <= 0)
+        throw new Error("Capacity must be a number.");
       if (cap < Number(tank.currentStock)) {
         throw new Error("Capacity cannot be less than the stock already in the tank.");
       }
@@ -643,7 +933,8 @@ export const demoBackend = {
     }
 
     const stock = Number(reading.stockLitres);
-    if (!Number.isFinite(stock) || stock < 0) throw new Error("Enter the stock in litres.");
+    if (!Number.isFinite(stock) || stock < 0)
+      throw new Error("Enter the stock in litres.");
     if (stock > Number(tank.capacity)) {
       throw new Error(`Stock of ${stock} L is more than the tank holds.`);
     }
@@ -814,7 +1105,8 @@ export const demoBackend = {
       (sh) =>
         sh.status === "open" && (sh.nozzles || []).some((n) => n.nozzleId === nozzleId)
     );
-    if (state === "retired" && open) throw new Error("That nozzle is part of an open shift.");
+    if (state === "retired" && open)
+      throw new Error("That nozzle is part of an open shift.");
     nozzle.state = state;
     commit();
     return clone(nozzle);
@@ -829,7 +1121,8 @@ export const demoBackend = {
     if (state !== "active" && state !== "retired") throw new Error("Unknown state.");
     if (state === "retired") {
       const busy = (d.shifts[stationId] || []).some(
-        (sh) => sh.status === "open" && (sh.nozzles || []).some((n) => n.pumpId === pumpId)
+        (sh) =>
+          sh.status === "open" && (sh.nozzles || []).some((n) => n.pumpId === pumpId)
       );
       if (busy) throw new Error("This pump is in an open shift.");
     }
@@ -886,7 +1179,8 @@ export const demoBackend = {
   async listShifts(stationId) {
     await delay(80);
     const rows = db().shifts[stationId] || [];
-    return clone([...rows].sort((a, b) => (a.openedAt < b.openedAt ? 1 : -1)));
+    // Mirror the Firestore ordering exactly: startTime, newest first.
+    return clone([...rows].sort((a, b) => (a.startTime < b.startTime ? 1 : -1)));
   },
 
   /**
@@ -1045,7 +1339,12 @@ export const demoBackend = {
       if (!cust) return;
       cust.transactions = [
         ...(cust.transactions || []),
-        { date: shift.date, type: "credit", amount: c.amount, note: `${shift.employeeName} shift` },
+        {
+          date: shift.date,
+          type: "credit",
+          amount: c.amount,
+          note: `${shift.employeeName} shift`,
+        },
       ];
       cust.outstandingBalance = Number(cust.outstandingBalance || 0) + c.amount;
     });
@@ -1053,7 +1352,6 @@ export const demoBackend = {
     commit();
     return clone(shift);
   },
-
 
   /**
    * Expenses are logged as they happen during the shift, not remembered
@@ -1160,11 +1458,6 @@ export const demoBackend = {
     return clone(shift);
   },
 
-
-
-
-
-
   async listCustomers(stationId) {
     await delay(80);
     return clone(db().credit[stationId] || []);
@@ -1187,16 +1480,30 @@ export const demoBackend = {
     return row;
   },
 
+  /** Mirrors the recordCustomerPayment callable, including its guards. */
   async addCustomerTransaction(stationId, customerId, tx) {
     await delay(160);
     const d = db();
     const cust = (d.credit[stationId] || []).find((c) => c.id === customerId);
     if (!cust) throw new Error("Customer not found.");
-    cust.transactions = [...(cust.transactions || []), clone(tx)];
-    const delta = tx.type === "credit" ? Number(tx.amount) : -Number(tx.amount);
-    cust.outstandingBalance = Number(cust.outstandingBalance || 0) + delta;
+
+    if (tx.type !== "credit" && tx.type !== "payment") {
+      throw new Error("Type must be credit or payment.");
+    }
+    const amount = Number(tx.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Enter an amount greater than zero.");
+    }
+    const balance = Number(cust.outstandingBalance || 0);
+    if (tx.type === "payment" && amount > balance) {
+      throw new Error(`That is more than the ${balance} outstanding on this account.`);
+    }
+
+    const delta = tx.type === "credit" ? amount : -amount;
+    cust.transactions = [...(cust.transactions || []), { ...clone(tx), amount }];
+    cust.outstandingBalance = balance + delta;
     commit();
-    return clone(cust);
+    return { ok: true, outstandingBalance: cust.outstandingBalance };
   },
 
   /** Demo-only: the seeded logins shown on the sign-in screen. */
