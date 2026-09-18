@@ -260,6 +260,49 @@ export async function closeShift(stationId, shiftId, payload, profile) {
   return res.data;
 }
 
+/* ------------------------------ tanks ------------------------------ */
+
+export async function listTanks(stationId) {
+  if (isDemo) return demoBackend.listTanks(stationId);
+  const [tankSnap, dipSnap] = await Promise.all([
+    getDocs(query(collection(db, "stations", stationId, "tanks"), orderBy("createdAt"))),
+    getDocs(
+      query(
+        collection(db, "tankReadings", stationId, "readings"),
+        orderBy("recordedAt", "desc")
+      )
+    ),
+  ]);
+  return {
+    tanks: tankSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    dips: dipSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
+}
+
+export async function addTank(stationId, tank) {
+  if (isDemo) return demoBackend.addTank(stationId, tank);
+  const res = await call("addTank")({ stationId, ...tank });
+  return res.data;
+}
+
+export async function removeTank(stationId, tankId) {
+  if (isDemo) return demoBackend.removeTank(stationId, tankId);
+  const res = await call("removeTank")({ stationId, tankId });
+  return res.data;
+}
+
+export async function recordDip(stationId, tankId, reading, profile) {
+  if (isDemo) return demoBackend.recordDip(stationId, tankId, reading, profile);
+  const res = await call("recordDip")({ stationId, tankId, ...reading });
+  return res.data;
+}
+
+export async function recordDelivery(stationId, tankId, delivery, profile) {
+  if (isDemo) return demoBackend.recordDelivery(stationId, tankId, delivery, profile);
+  const res = await call("recordDelivery")({ stationId, tankId, ...delivery });
+  return res.data;
+}
+
 export async function addShiftExpense(stationId, shiftId, expense) {
   if (isDemo) return demoBackend.addShiftExpense(stationId, shiftId, expense);
   const res = await call("addShiftExpense")({ stationId, shiftId, ...expense });

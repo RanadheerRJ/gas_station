@@ -8,7 +8,7 @@
  * hashes in a collection no client can read.
  */
 
-const KEY = "stationledger.demo.v4";
+const KEY = "stationledger.demo.v5";
 
 const uid = (p) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 const nowISO = () => new Date().toISOString();
@@ -21,6 +21,7 @@ function seed() {
   const mgrId = uid("u");
   const attId = uid("u");
 
+  const t1 = uid("t"), t2 = uid("t"), t3 = uid("t"), t4 = uid("t"), t5 = uid("t");
   const p1 = uid("p"), p2 = uid("p"), p3 = uid("p");
   const n1 = uid("n"), n2 = uid("n"), n3 = uid("n"), n4 = uid("n"), n5 = uid("n"), n6 = uid("n");
 
@@ -167,6 +168,41 @@ function seed() {
         { id: n5, pumpId: p3, name: "N1", fuelType: "Petrol", lastReading: 54120.0, createdAt: nowISO() },
         { id: n6, pumpId: p3, name: "N2", fuelType: "Diesel", lastReading: 77310.5, createdAt: nowISO() },
       ],
+    },
+    tanks: {
+      [s1]: [
+        { id: t1, stationId: s1, name: "Tank 1", fuelType: "Petrol", capacity: 20000,
+          deadStock: 800, currentStock: 13400, temperatureC: 31.5, waterCm: 0.4,
+          lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
+        { id: t2, stationId: s1, name: "Tank 2", fuelType: "Diesel", capacity: 30000,
+          deadStock: 1200, currentStock: 8600, temperatureC: 29.8, waterCm: 1.1,
+          lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
+        { id: t3, stationId: s1, name: "Tank 3", fuelType: "Diesel", capacity: 30000,
+          deadStock: 1200, currentStock: 26900, temperatureC: 28.4, waterCm: 0.2,
+          lastDipAt: nowISO(), lastDipBy: "Suresh Babu", createdAt: nowISO() },
+      ],
+      [s2]: [
+        { id: t4, stationId: s2, name: "Tank 1", fuelType: "Petrol", capacity: 15000,
+          deadStock: 600, currentStock: 2100, temperatureC: 33.2, waterCm: 0.6,
+          lastDipAt: nowISO(), lastDipBy: "Ravi Kumar", createdAt: nowISO() },
+        { id: t5, stationId: s2, name: "Tank 2", fuelType: "Diesel", capacity: 20000,
+          deadStock: 900, currentStock: 14750, temperatureC: 30.1, waterCm: 0.3,
+          lastDipAt: nowISO(), lastDipBy: "Ravi Kumar", createdAt: nowISO() },
+      ],
+    },
+    dips: {
+      [s1]: [
+        { id: uid("dp"), tankId: t1, stationId: s1, stockLitres: 15200, temperatureC: 30.2,
+          waterCm: 0.4, note: "Morning dip", recordedByName: "Suresh Babu",
+          recordedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+        { id: uid("dp"), tankId: t1, stationId: s1, stockLitres: 13400, temperatureC: 31.5,
+          waterCm: 0.4, note: "", recordedByName: "Suresh Babu",
+          recordedAt: new Date(Date.now() - 3600000).toISOString() },
+        { id: uid("dp"), tankId: t2, stationId: s1, stockLitres: 8600, temperatureC: 29.8,
+          waterCm: 1.1, note: "Water creeping up, watch it", recordedByName: "Suresh Babu",
+          recordedAt: new Date(Date.now() - 3600000).toISOString() },
+      ],
+      [s2]: [],
     },
     prices: {
       [s1]: [
@@ -480,11 +516,177 @@ export const demoBackend = {
     delete d.prices[stationId];
     delete d.credit[stationId];
     delete d.ledger[stationId];
+    if (d.tanks) delete d.tanks[stationId];
+    if (d.dips) delete d.dips[stationId];
     Object.values(d.users).forEach((u) => {
       if (u.stationIds) u.stationIds = u.stationIds.filter((id) => id !== stationId);
     });
     commit();
     return { ok: true };
+  },
+
+  /* ---------------- tanks & ground stock ---------------- */
+
+  async listTanks(stationId) {
+    await delay(140);
+    const d = db();
+    return {
+      tanks: clone(d.tanks?.[stationId] || []),
+      dips: clone(d.dips?.[stationId] || []),
+    };
+  },
+
+  async addTank(stationId, { name, fuelType, capacity, deadStock, currentStock }) {
+    await delay(170);
+    const d = db();
+    d.tanks ||= {};
+    d.tanks[stationId] ||= [];
+    const cap = Number(capacity) || 0;
+    if (cap <= 0) throw new Error("Give the tank a capacity in litres.");
+    const dead = Number(deadStock) || 0;
+    if (dead >= cap) throw new Error("Dead stock cannot exceed the tank's capacity.");
+    const stock = Number(currentStock) || 0;
+    if (stock > cap) throw new Error("Opening stock is more than the tank holds.");
+
+    const row = {
+      id: uid("t"),
+      stationId,
+      name: String(name || "").trim() || `Tank ${d.tanks[stationId].length + 1}`,
+      fuelType,
+      capacity: cap,
+      deadStock: dead,
+      currentStock: stock,
+      temperatureC: null,
+      waterCm: null,
+      lastDipAt: null,
+      lastDipBy: null,
+      createdAt: nowISO(),
+    };
+    d.tanks[stationId].push(row);
+    commit();
+    return clone(row);
+  },
+
+  async removeTank(stationId, tankId) {
+    await delay(150);
+    const d = db();
+    d.tanks ||= {};
+    const tank = (d.tanks[stationId] || []).find((t) => t.id === tankId);
+    if (!tank) throw new Error("Tank not found.");
+    if (Number(tank.currentStock) > Number(tank.deadStock)) {
+      throw new Error(
+        "This tank still holds sellable stock. Draw it down before removing it."
+      );
+    }
+    d.tanks[stationId] = d.tanks[stationId].filter((t) => t.id !== tankId);
+    d.dips ||= {};
+    d.dips[stationId] = (d.dips[stationId] || []).filter((x) => x.tankId !== tankId);
+    commit();
+    return { ok: true };
+  },
+
+  /**
+   * Record a dip. The reading replaces the tank's stock rather than adjusting
+   * it: the stick is the authority, not the running total.
+   */
+  async recordDip(stationId, tankId, reading, caller) {
+    await delay(180);
+    const d = db();
+    d.tanks ||= {};
+    d.dips ||= {};
+    const tank = (d.tanks[stationId] || []).find((t) => t.id === tankId);
+    if (!tank) throw new Error("Tank not found.");
+
+    const stock = Number(reading.stockLitres);
+    if (!Number.isFinite(stock) || stock < 0) throw new Error("Enter the stock in litres.");
+    if (stock > Number(tank.capacity)) {
+      throw new Error(`Stock of ${stock} L is more than the tank holds.`);
+    }
+    const temp = Number(reading.temperatureC);
+    if (!Number.isFinite(temp)) throw new Error("Record the fuel temperature.");
+    if (temp < 5 || temp > 55) {
+      throw new Error(`A reading of ${temp} °C is implausible. Check the probe.`);
+    }
+    const water =
+      reading.waterCm === "" || reading.waterCm == null ? null : Number(reading.waterCm);
+
+    const previous = Number(tank.currentStock);
+    const row = {
+      id: uid("dp"),
+      tankId,
+      stationId,
+      stockLitres: stock,
+      previousStock: previous,
+      change: Math.round((stock - previous) * 100) / 100,
+      temperatureC: temp,
+      waterCm: water,
+      note: String(reading.note || "").trim(),
+      recordedByName: caller?.name || "",
+      recordedBy: caller?.uid || null,
+      recordedAt: nowISO(),
+    };
+
+    tank.currentStock = stock;
+    tank.temperatureC = temp;
+    tank.waterCm = water;
+    tank.lastDipAt = row.recordedAt;
+    tank.lastDipBy = row.recordedByName;
+
+    d.dips[stationId] ||= [];
+    d.dips[stationId].unshift(row);
+    commit();
+    return { tank: clone(tank), dip: clone(row) };
+  },
+
+  /** Book a tanker delivery into a tank. */
+  async recordDelivery(stationId, tankId, delivery, caller) {
+    await delay(180);
+    const d = db();
+    d.tanks ||= {};
+    d.dips ||= {};
+    const tank = (d.tanks[stationId] || []).find((t) => t.id === tankId);
+    if (!tank) throw new Error("Tank not found.");
+
+    const litres = Number(delivery.litres);
+    if (!Number.isFinite(litres) || litres <= 0) {
+      throw new Error("Enter the delivered quantity in litres.");
+    }
+    const after = Number(tank.currentStock) + litres;
+    if (after > Number(tank.capacity)) {
+      throw new Error(
+        `${litres} L would overfill the tank — only ` +
+          `${Math.round(Number(tank.capacity) - Number(tank.currentStock))} L of ullage.`
+      );
+    }
+    const temp = Number(delivery.temperatureC);
+    if (!Number.isFinite(temp)) throw new Error("Record the delivery temperature.");
+
+    const row = {
+      id: uid("dp"),
+      tankId,
+      stationId,
+      kind: "delivery",
+      stockLitres: after,
+      previousStock: Number(tank.currentStock),
+      change: litres,
+      temperatureC: temp,
+      waterCm: tank.waterCm ?? null,
+      invoice: String(delivery.invoice || "").trim(),
+      note: String(delivery.note || "").trim(),
+      recordedByName: caller?.name || "",
+      recordedBy: caller?.uid || null,
+      recordedAt: nowISO(),
+    };
+
+    tank.currentStock = after;
+    tank.temperatureC = temp;
+    tank.lastDipAt = row.recordedAt;
+    tank.lastDipBy = row.recordedByName;
+
+    d.dips[stationId] ||= [];
+    d.dips[stationId].unshift(row);
+    commit();
+    return { tank: clone(tank), dip: clone(row) };
   },
 
   async listStations(profile) {

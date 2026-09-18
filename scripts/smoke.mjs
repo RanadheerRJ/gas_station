@@ -79,6 +79,7 @@ ok("weak PIN rejected on reset too", weakReset);
 
 console.log("\nshift maths");
 const sm = await import("../src/lib/shiftMath.js");
+const tm = await import("../src/lib/tankMath.js");
 ok("litres = closing - opening", sm.litresBetween(1000, 1250.5) === 250.5);
 ok("meter rollover handled", sm.litresBetween(999900, 100) === 200, String(sm.litresBetween(999900, 100)));
 {
@@ -446,6 +447,153 @@ console.log("\nstation delete");
 
   await be.deleteStation(mine[0].id, prof);
   ok("station is gone after delete", (await be.listStations(prof)).length === 0);
+}
+
+
+console.log("\ntank maths");
+{
+  const t = { capacity: 20000, currentStock: 12500, deadStock: 800, fuelType: "Petrol", temperatureC: 32 };
+  const st = tm.tankStatus(t);
+  ok("fill percent from capacity", st.fillPercent === 62.5, String(st.fillPercent));
+  ok("dead stock is not sellable", st.usable === 11700, String(st.usable));
+  ok("ullage is the room left", st.ullage === 7500, String(st.ullage));
+  ok("a half-full tank reads ok", st.level === "ok");
+
+  ok("a quarter-full tank reads low",
+     tm.tankStatus({ ...t, currentStock: 3000 }).level === "low");
+  ok("at or below the heel reads dry",
+     tm.tankStatus({ ...t, currentStock: 800 }).level === "dry");
+  ok("an empty capacity never divides by zero",
+     tm.fillPercent(100, 0) === 0);
+
+  // Warm fuel occupies more space, so correcting to 15 C must shrink it.
+  const warm = tm.volumeAt15(10000, 35, "Petrol");
+  ok("warm petrol corrects down", warm < 10000 && warm > 9700, String(warm));
+  const cold = tm.volumeAt15(10000, 5, "Petrol");
+  ok("cold petrol corrects up", cold > 10000, String(cold));
+  ok("fuel at the reference temperature is unchanged",
+     tm.volumeAt15(10000, 15, "Diesel") === 10000);
+  ok("petrol swings more than diesel for the same heat",
+     Math.abs(10000 - tm.volumeAt15(10000, 35, "Petrol")) >
+     Math.abs(10000 - tm.volumeAt15(10000, 35, "Diesel")));
+  ok("no temperature means no correction", tm.volumeAt15(10000, "", "Petrol") === null);
+
+  ok("petrol groups as MS", tm.tankGroup("Premium Petrol") === "MS");
+  ok("diesel groups as HSD", tm.tankGroup("Diesel") === "HSD");
+}
+
+console.log("\ndip validation");
+{
+  const tank = { capacity: 20000, fuelType: "Diesel" };
+  ok("a good dip passes",
+     tm.validateDip({ stockLitres: 9000, temperatureC: 30, waterCm: 0.5 }, tank).length === 0);
+  ok("missing stock is caught",
+     tm.validateDip({ stockLitres: "", temperatureC: 30 }, tank).length > 0);
+  ok("missing temperature is caught",
+     tm.validateDip({ stockLitres: 9000, temperatureC: "" }, tank).length > 0);
+  ok("stock beyond capacity is caught",
+     tm.validateDip({ stockLitres: 25000, temperatureC: 30 }, tank).length > 0);
+  ok("negative stock is caught",
+     tm.validateDip({ stockLitres: -5, temperatureC: 30 }, tank).length > 0);
+  ok("an implausible probe reading is caught",
+     tm.validateDip({ stockLitres: 9000, temperatureC: 95 }, tank).length > 0);
+  ok("a freezing reading is caught",
+     tm.validateDip({ stockLitres: 9000, temperatureC: -4 }, tank).length > 0);
+}
+
+console.log("\nstock reconciliation");
+{
+  const r = tm.reconcileTank({ openingStock: 15000, delivered: 5000, soldLitres: 7500, closingStock: 12480 });
+  ok("book stock = opening + delivered - sold", r.book === 12500, String(r.book));
+  ok("variance is actual less book", r.variance === -20, String(r.variance));
+  ok("a small loss is within tolerance", r.withinTolerance);
+
+  const leak = tm.reconcileTank({ openingStock: 15000, delivered: 0, soldLitres: 5000, closingStock: 9800 });
+  ok("a 200 L shortfall breaches tolerance", leak.withinTolerance === false,
+     String(leak.variancePercent));
+
+  const sold = tm.litresSoldSince([
+    { status: "approved", endTime: new Date(Date.now() - 3600000).toISOString(),
+      nozzles: [{ fuelType: "Diesel", openingReading: 100, closingReading: 400 }] },
+    { status: "approved", endTime: new Date(Date.now() - 3600000).toISOString(),
+      nozzles: [{ fuelType: "Petrol", openingReading: 100, closingReading: 900 }] },
+    { status: "open", endTime: null,
+      nozzles: [{ fuelType: "Diesel", openingReading: 0, closingReading: 999 }] },
+  ], "Diesel", new Date(Date.now() - 86400000).toISOString());
+  ok("only the matching product is counted", sold === 300, String(sold));
+}
+
+console.log("\ntanks & ground stock");
+{
+  const st = ownerStations[0].id;
+  const { tanks: seeded } = await be.listTanks(st);
+  ok("station seeded with tanks", seeded.length === 3, `got ${seeded.length}`);
+
+  const made = await be.addTank(st, {
+    name: "Tank 4", fuelType: "Petrol", capacity: 10000, deadStock: 500, currentStock: 4000,
+  });
+  ok("owner adds a tank", made.capacity === 10000);
+  ok("a new tank has no temperature yet", made.temperatureC === null);
+
+  let noCap = false;
+  try { await be.addTank(st, { name: "Bad", fuelType: "Petrol", capacity: 0 }); } catch { noCap = true; }
+  ok("a tank needs a capacity", noCap);
+  let deadTooBig = false;
+  try { await be.addTank(st, { name: "Bad", fuelType: "Petrol", capacity: 1000, deadStock: 1000 }); } catch { deadTooBig = true; }
+  ok("dead stock cannot exceed capacity", deadTooBig);
+  let overFull = false;
+  try { await be.addTank(st, { name: "Bad", fuelType: "Petrol", capacity: 1000, currentStock: 5000 }); } catch { overFull = true; }
+  ok("opening stock cannot exceed capacity", overFull);
+
+  // A dip replaces the stock figure and stamps the temperature.
+  const { tank: dipped, dip } = await be.recordDip(st, made.id, {
+    stockLitres: 3600, temperatureC: 31.4, waterCm: 0.3, note: "Evening dip",
+  }, owner);
+  ok("dip sets the tank stock", dipped.currentStock === 3600);
+  ok("dip records the temperature", dipped.temperatureC === 31.4);
+  ok("dip records who took it", dip.recordedByName === owner.name);
+  ok("dip keeps the previous figure", dip.previousStock === 4000);
+  ok("dip computes the change", dip.change === -400, String(dip.change));
+  ok("dip is timestamped", !!dip.recordedAt);
+
+  let hotProbe = false;
+  try { await be.recordDip(st, made.id, { stockLitres: 3000, temperatureC: 90 }, owner); } catch { hotProbe = true; }
+  ok("an implausible temperature is rejected", hotProbe);
+  let noTemp = false;
+  try { await be.recordDip(st, made.id, { stockLitres: 3000, temperatureC: "" }, owner); } catch { noTemp = true; }
+  ok("a dip without temperature is rejected", noTemp);
+  let tooMuch = false;
+  try { await be.recordDip(st, made.id, { stockLitres: 99999, temperatureC: 30 }, owner); } catch { tooMuch = true; }
+  ok("a dip beyond capacity is rejected", tooMuch);
+
+  // Deliveries add to stock and must respect ullage.
+  const { tank: filled } = await be.recordDelivery(st, made.id, {
+    litres: 5000, temperatureC: 33, invoice: "TL-1",
+  }, owner);
+  ok("delivery adds to stock", filled.currentStock === 8600, String(filled.currentStock));
+
+  let overfill = false;
+  try { await be.recordDelivery(st, made.id, { litres: 9000, temperatureC: 33 }, owner); } catch { overfill = true; }
+  ok("a delivery that would overfill is refused", overfill);
+
+  const { dips } = await be.listTanks(st);
+  ok("readings are logged newest first",
+     new Date(dips[0].recordedAt) >= new Date(dips[1].recordedAt));
+  ok("the delivery is in the log", dips.some((x) => x.kind === "delivery"));
+
+  // A tank holding sellable stock must be drawn down before removal.
+  let stillWet = false;
+  try { await be.removeTank(st, made.id); } catch { stillWet = true; }
+  ok("a tank with stock cannot be removed", stillWet);
+  await be.recordDip(st, made.id, { stockLitres: 400, temperatureC: 30 }, owner);
+  await be.removeTank(st, made.id);
+  ok("an empty tank can be removed",
+     (await be.listTanks(st)).tanks.every((x) => x.id !== made.id));
+  ok("its readings go with it",
+     (await be.listTanks(st)).dips.every((x) => x.tankId !== made.id));
+
+  const rollup = tm.stockByProduct((await be.listTanks(st)).tanks);
+  ok("stock rolls up per product", rollup.Diesel.tanks === 2, JSON.stringify(rollup.Diesel));
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

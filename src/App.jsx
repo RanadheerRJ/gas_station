@@ -8,6 +8,7 @@ import DailyLedger from "./pages/DailyLedger";
 import CreditCustomers from "./pages/CreditCustomers";
 import Shifts from "./pages/Shifts";
 import StationSetup from "./pages/StationSetup";
+import GroundStock from "./pages/GroundStock";
 import { useAuth } from "./state/AuthContext";
 
 /** Where each role lands after sign-in. */
@@ -84,6 +85,14 @@ export default function App() {
           }
         />
         <Route
+          path="/owner/stock"
+          element={
+            <Protect roles={["owner"]}>
+              <GroundStock />
+            </Protect>
+          }
+        />
+        <Route
           path="/owner/ledger"
           element={
             <Protect roles={["owner"]}>
@@ -112,6 +121,14 @@ export default function App() {
           element={
             <Protect roles={["manager"]}>
               <Shifts />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/stock"
+          element={
+            <Protect roles={["manager"]}>
+              <GroundStock />
             </Protect>
           }
         />

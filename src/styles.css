@@ -684,3 +684,152 @@ tr.total td {
   color: var(--muted);
   margin-top: 3px;
 }
+
+/* ---------------- ground stock: tank farm ---------------- */
+
+.tank-farm {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.tank-card {
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+}
+
+.tank-card.selected {
+  border-color: var(--petrol);
+  background: #fdfcf8;
+}
+
+.tank-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tank-card__name {
+  font-weight: 600;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tank-card__fuel {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.tank-card__figure {
+  font-family: var(--mono);
+  font-size: 17px;
+  margin-top: 8px;
+  line-height: 1.2;
+}
+
+.tank-card__figure span {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.tank-card__meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+/* A horizontal cylinder drawn side-on, the way the vessel actually sits
+   in the ground: straight barrel, elliptical dished end, fuel lying flat. */
+.tank-vessel {
+  position: relative;
+  width: 62px;
+  height: 104px;
+  flex: none;
+  border: 1.5px solid var(--graphite);
+  border-radius: 26px / 16px;
+  background: #f1eee6;
+  overflow: hidden;
+}
+
+.tank-vessel__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: height 220ms ease;
+}
+
+/* The unpumpable heel at the bottom, hatched so it reads as unavailable. */
+.tank-vessel__dead {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(31, 42, 51, 0.28) 0,
+    rgba(31, 42, 51, 0.28) 2px,
+    transparent 2px,
+    transparent 5px
+  );
+  border-top: 1px solid rgba(31, 42, 51, 0.4);
+}
+
+/* Fill-level ticks at quarter marks, like a sight glass. */
+.tank-vessel__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tank-vessel__ticks i {
+  position: absolute;
+  right: 0;
+  width: 7px;
+  height: 1px;
+  background: rgba(31, 42, 51, 0.25);
+}
+
+.tank-vessel__pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+.tank-fill--petrol { background: rgba(63, 125, 88, 0.55); }
+.tank-fill--diesel { background: rgba(46, 71, 86, 0.5); }
+.tank-fill--premium { background: rgba(232, 163, 61, 0.55); }
+.tank-fill--cng { background: rgba(122, 107, 168, 0.5); }
+
+.tank-vessel.low { border-color: var(--rust); }
+.tank-vessel.dry { border-color: var(--rust); background: #faeeec; }
+
+/* Temperature chip: reads as an instrument, not a badge. */
+.temp-chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border: 1px solid var(--hairline);
+  background: #f4f1ea;
+  color: #4a4a43;
+  white-space: nowrap;
+}
+
+.temp-chip.warm {
+  border-color: #e3c5c1;
+  background: #faeeec;
+  color: var(--rust);
+}

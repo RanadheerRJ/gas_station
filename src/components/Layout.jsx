@@ -8,6 +8,7 @@ import {
   PumpIcon,
   ShiftIcon,
   StationIcon,
+  TankIcon,
 } from "./icons";
 
 const ROLE_LABEL = {
@@ -28,6 +29,7 @@ function navFor(profile) {
         { to: "/owner", label: "All stations", icon: StationIcon, end: true },
         { to: "/owner/shifts", label: "Shifts", icon: ShiftIcon },
         { to: "/owner/setup", label: "Pumps & rates", icon: PumpIcon },
+        { to: "/owner/stock", label: "Ground stock", icon: TankIcon },
         { to: "/owner/ledger", label: "Daily ledger", icon: LedgerIcon },
         { to: "/owner/credit", label: "Credit customers", icon: CreditIcon },
         { to: "/owner/staff", label: "Staff & access", icon: PeopleIcon },
@@ -35,6 +37,7 @@ function navFor(profile) {
     case "manager":
       return [
         { to: "/station", label: "Shifts", icon: ShiftIcon, end: true },
+        { to: "/station/stock", label: "Ground stock", icon: TankIcon },
         { to: "/station/ledger", label: "Daily ledger", icon: LedgerIcon },
         { to: "/station/credit", label: "Credit customers", icon: CreditIcon },
       ];

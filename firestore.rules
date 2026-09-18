@@ -98,6 +98,25 @@ service cloud.firestore {
       allow update: if hasStationAccess(stationId) && isOwner();
     }
 
+    /* ---------------- tanks & ground stock ----------------
+       Tanks are owner-configured plant. Their stock level is advanced only
+       by the recordDip / recordDelivery functions, which validate the
+       reading against capacity and keep the dip log in step — so a client
+       can never quietly move stock without leaving a reading behind.      */
+
+    match /stations/{stationId}/tanks/{tankId} {
+      allow read: if hasStationAccess(stationId);
+      allow write: if false;
+    }
+
+    /* Dip and delivery readings: append-only history, written server-side.
+       Nobody edits a dip after the fact; a wrong reading is superseded by
+       taking another one, which is how a paper dip book works too.        */
+    match /tankReadings/{stationId}/readings/{readingId} {
+      allow read: if hasStationAccess(stationId);
+      allow write: if false;
+    }
+
     /* Effective-dated price intervals. Written only by the setPrice
        function, which closes the previous interval as it opens the next. */
     match /stations/{stationId}/prices/{priceId} {

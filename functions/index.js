@@ -898,3 +898,196 @@ exports.deleteStation = onCall(async (request) => {
 
   return { ok: true };
 });
+
+/* ------------------------------------------------------------------ */
+/* tanks & ground stock                                                */
+/* ------------------------------------------------------------------ */
+
+const TEMP_MIN = 5;
+const TEMP_MAX = 55;
+
+exports.addTank = onCall(async (request) => {
+  const ownerUid = assertOwner(request);
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const name = requireString(request.data?.name, "name", { max: 40 });
+  const fuelType = requireString(request.data?.fuelType, "fuelType", { max: 40 });
+
+  const stationSnap = await db.collection("stations").doc(stationId).get();
+  if (!stationSnap.exists || stationSnap.get("ownerId") !== ownerUid) {
+    throw new HttpsError("permission-denied", "That station is not yours.");
+  }
+
+  const capacity = Number(request.data?.capacity);
+  if (!Number.isFinite(capacity) || capacity <= 0) {
+    throw new HttpsError("invalid-argument", "Give the tank a capacity in litres.");
+  }
+  const deadStock = Number(request.data?.deadStock) || 0;
+  if (deadStock >= capacity) {
+    throw new HttpsError("invalid-argument", "Dead stock cannot exceed capacity.");
+  }
+  const currentStock = Number(request.data?.currentStock) || 0;
+  if (currentStock > capacity) {
+    throw new HttpsError("invalid-argument", "Opening stock is more than the tank holds.");
+  }
+
+  const ref = await db.collection("stations").doc(stationId).collection("tanks").add({
+    name,
+    fuelType,
+    capacity,
+    deadStock,
+    currentStock,
+    temperatureC: null,
+    waterCm: null,
+    lastDipAt: null,
+    lastDipBy: null,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { tankId: ref.id };
+});
+
+exports.removeTank = onCall(async (request) => {
+  const ownerUid = assertOwner(request);
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const tankId = requireString(request.data?.tankId, "tankId");
+
+  const stationSnap = await db.collection("stations").doc(stationId).get();
+  if (!stationSnap.exists || stationSnap.get("ownerId") !== ownerUid) {
+    throw new HttpsError("permission-denied", "That station is not yours.");
+  }
+
+  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
+  const tank = await tankRef.get();
+  if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
+  if (Number(tank.get("currentStock")) > Number(tank.get("deadStock"))) {
+    throw new HttpsError(
+      "failed-precondition",
+      "This tank still holds sellable stock. Draw it down before removing it."
+    );
+  }
+  await tankRef.delete();
+  return { ok: true };
+});
+
+/**
+ * Record a dip. The stick is the authority: the reading replaces the tank's
+ * stock rather than adjusting it, and the previous figure is kept on the
+ * reading so a variance can always be reconstructed.
+ */
+exports.recordDip = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const tankId = requireString(request.data?.tankId, "tankId");
+  await assertStationAccess(request, stationId);
+
+  const stock = Number(request.data?.stockLitres);
+  if (!Number.isFinite(stock) || stock < 0) {
+    throw new HttpsError("invalid-argument", "Enter the stock in litres.");
+  }
+  const temperatureC = Number(request.data?.temperatureC);
+  if (!Number.isFinite(temperatureC)) {
+    throw new HttpsError("invalid-argument", "Record the fuel temperature.");
+  }
+  if (temperatureC < TEMP_MIN || temperatureC > TEMP_MAX) {
+    throw new HttpsError(
+      "invalid-argument",
+      `A reading of ${temperatureC} °C is implausible. Check the probe.`
+    );
+  }
+  const waterCm =
+    request.data?.waterCm === "" || request.data?.waterCm == null
+      ? null
+      : Number(request.data.waterCm);
+
+  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
+  const readingRef = db.collection("tankReadings").doc(stationId).collection("readings").doc();
+
+  return db.runTransaction(async (tx) => {
+    const tank = await tx.get(tankRef);
+    if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
+    if (stock > Number(tank.get("capacity"))) {
+      throw new HttpsError(
+        "invalid-argument",
+        `Stock of ${stock} L is more than the tank holds.`
+      );
+    }
+    const previousStock = Number(tank.get("currentStock")) || 0;
+    const recordedAt = new Date().toISOString();
+
+    tx.set(readingRef, {
+      tankId,
+      kind: "dip",
+      stockLitres: stock,
+      previousStock,
+      change: Math.round((stock - previousStock) * 100) / 100,
+      temperatureC,
+      waterCm,
+      note: String(request.data?.note || "").trim(),
+      recordedBy: request.auth.uid,
+      recordedByName: request.auth.token.name || "",
+      recordedAt,
+    });
+    tx.update(tankRef, {
+      currentStock: stock,
+      temperatureC,
+      waterCm,
+      lastDipAt: recordedAt,
+      lastDipBy: request.auth.token.name || "",
+    });
+    return { ok: true };
+  });
+});
+
+/** Book a tanker delivery, refusing anything that would overfill the tank. */
+exports.recordDelivery = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const tankId = requireString(request.data?.tankId, "tankId");
+  await assertStationAccess(request, stationId);
+
+  const litres = Number(request.data?.litres);
+  if (!Number.isFinite(litres) || litres <= 0) {
+    throw new HttpsError("invalid-argument", "Enter the delivered quantity in litres.");
+  }
+  const temperatureC = Number(request.data?.temperatureC);
+  if (!Number.isFinite(temperatureC)) {
+    throw new HttpsError("invalid-argument", "Record the delivery temperature.");
+  }
+
+  const tankRef = db.collection("stations").doc(stationId).collection("tanks").doc(tankId);
+  const readingRef = db.collection("tankReadings").doc(stationId).collection("readings").doc();
+
+  return db.runTransaction(async (tx) => {
+    const tank = await tx.get(tankRef);
+    if (!tank.exists) throw new HttpsError("not-found", "Tank not found.");
+    const previousStock = Number(tank.get("currentStock")) || 0;
+    const capacity = Number(tank.get("capacity")) || 0;
+    const after = previousStock + litres;
+    if (after > capacity) {
+      throw new HttpsError(
+        "failed-precondition",
+        `${litres} L would overfill the tank — only ${Math.round(capacity - previousStock)} L of ullage.`
+      );
+    }
+    const recordedAt = new Date().toISOString();
+
+    tx.set(readingRef, {
+      tankId,
+      kind: "delivery",
+      stockLitres: after,
+      previousStock,
+      change: litres,
+      temperatureC,
+      waterCm: tank.get("waterCm") ?? null,
+      invoice: String(request.data?.invoice || "").trim(),
+      note: String(request.data?.note || "").trim(),
+      recordedBy: request.auth.uid,
+      recordedByName: request.auth.token.name || "",
+      recordedAt,
+    });
+    tx.update(tankRef, {
+      currentStock: after,
+      temperatureC,
+      lastDipAt: recordedAt,
+      lastDipBy: request.auth.token.name || "",
+    });
+    return { ok: true };
+  });
+});

@@ -129,6 +129,45 @@ to be reconstructed from memory at handover. By the time the shift closes the
 expenses are already in, which is what keeps closing short: meter readings, the
 day's testing figures, and the cash count.
 
+### Ground stock and temperature
+
+Nozzle meters say what was sold; the tanks say what is actually in the ground.
+The two are independent measurements of the same thing, which is what makes
+them worth comparing — a persistent gap is how a leaking tank, an unbooked
+delivery or a lying meter announces itself.
+
+An owner sets up each tank once with its capacity and its **dead stock**: the
+heel at the bottom that sits below the suction line and can never be pumped
+out. Every tank is drawn as a cylinder filled to its actual level, with the
+dead stock hatched so it is visually obvious that it is not sellable, and
+quarter-height ticks like a sight glass. A tank under a quarter full turns rust
+and raises a reorder notice.
+
+**Temperature is recorded with every dip, and is not optional.** Petroleum
+expands as it warms, so the same fuel reads as more litres at 34 °C than at
+15 °C. Without the thermometer reading, two dips of the same tank are not
+comparable and neither can be checked against a delivery invoice — which is
+quoted at 15 °C. Each dip therefore stores its temperature, and the page shows
+both the observed volume and its equivalent at 15 °C:
+
+```
+volume at 15 °C = observed × (1 − α × (T − 15))
+α = 0.0012 per °C for MS (petrol), 0.00084 for HSD (diesel)
+```
+
+This is a linear approximation of the ASTM D1250 correction. It is deliberately
+not the full table lookup, which needs the product's density at 15 °C — a
+figure a forecourt does not measure at every dip. Across the 5–55 °C band a
+station actually sees, the approximation is well within a tenth of a percent.
+
+Readings are **append-only**. A wrong dip is not edited; it is superseded by
+taking another one, exactly as a paper dip book works. Each reading keeps the
+previous stock figure alongside the new one, so any change can be reconstructed
+long afterwards. Deliveries are booked the same way and are refused outright if
+the quantity would exceed the tank's ullage. Water depth is captured too, since
+water in the bottom of a tank corrodes it and dilutes the next delivery; above
+2.5 cm the page raises it.
+
 ### Credit sales do not need an existing customer
 
 Most credit at a forecourt is a known hauler, but plenty of it is a walk-in.
@@ -155,14 +194,16 @@ would corrupt the next shift's opening readings.
 
 ```
 src/
-  lib/        firebase init, api facade, shift maths, formatters, demo backend
+  lib/        firebase init, api facade, shift maths, tank maths, formatters,
+              demo backend
   state/      auth context, station loader
   components/ layout, ledger entry form, shared UI primitives
   pages/      login, developer admin, owner dashboard, shifts, pump/rate
-              setup, daily ledger, credit, staff
+              setup, ground stock, daily ledger, credit, staff
 functions/    createOwner, createStaff, addStation, deleteStation, resetPin,
               pinLogin, setPrice, openShift, closeShift, addShiftExpense,
-              removeShiftExpense, reviseShift, reviewShift
+              removeShiftExpense, reviseShift, reviewShift, addTank,
+              removeTank, recordDip, recordDelivery
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -254,6 +295,14 @@ stations/{stationId}/nozzles/{nozzleId}    pumpId, name, fuelType,
                                            lastReading, createdAt
 stations/{stationId}/prices/{priceId}      fuelType, price, effectiveFrom,
                                            effectiveTo, setBy, setByName
+stations/{stationId}/tanks/{tankId}        name, fuelType, capacity, deadStock,
+                                           currentStock, temperatureC, waterCm,
+                                           lastDipAt, lastDipBy, createdAt
+
+tankReadings/{stationId}/readings/{readingId}   append-only dip log
+  tankId, kind: 'dip'|'delivery', stockLitres, previousStock, change,
+  temperatureC, waterCm, invoice, note,
+  recordedBy, recordedByName, recordedAt
 
 shifts/{stationId}/records/{shiftId}
   employeeName, userId, date,
@@ -299,6 +348,13 @@ figure can never drift out of agreement with the meter it came from.
   refuses while a shift is open, and cascades through pumps, nozzles, prices,
   shift records and the credit ledger. The UI additionally requires the owner
   to type the station's exact name, because it is unrecoverable.
+- Tanks accept no client writes. Stock moves only through `recordDip` and
+  `recordDelivery`, which validate against capacity and ullage and write the
+  reading and the new level in one transaction — so stock can never shift
+  without a dated reading behind it. Dip history is append-only in both the
+  rules and the UI.
+- Adding or removing a tank is owner-only and re-checks station ownership
+  server-side; a tank still holding sellable stock cannot be removed.
 - Pumps and nozzles are readable by station staff but writable only by the
   owner, so an attendant cannot edit a meter. Prices are written solely by the
   `setPrice` function, which enforces owner-only and keeps the interval chain

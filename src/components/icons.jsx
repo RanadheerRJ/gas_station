@@ -138,3 +138,13 @@ export function StatusDot({ tone = "green", title }) {
     </svg>
   );
 }
+
+/** An underground storage tank, drawn side-on with a fill line. */
+export function TankIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="6" width="18" height="12" rx="5" ry="6" />
+      <path d="M3 13c2.5 1.4 5 1.4 7.5 0s5 -1.4 7.5 0 2.5 1.4 3 1.1" />
+    </svg>
+  );
+}
