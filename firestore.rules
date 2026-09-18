@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------------- helpers ---------------- */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function claims() {
+      return request.auth.token;
+    }
+
+    function isAdmin() {
+      return signedIn() && claims().admin == true;
+    }
+
+    function isOwner() {
+      return signedIn() && claims().role == 'owner';
+    }
+
+    function isManager() {
+      return signedIn() && claims().role == 'manager';
+    }
+
+    // Owner or manager: the two roles allowed to rewrite history.
+    function canAmend() {
+      return isOwner() || isManager();
+    }
+
+    function stationDoc(stationId) {
+      return get(/databases/$(database)/documents/stations/$(stationId)).data;
+    }
+
+    // An owner reaches every station carrying their ownerId claim;
+    // single-station staff reach only the station in their stationId claim.
+    function hasStationAccess(stationId) {
+      return signedIn() && (
+        (isOwner() && stationDoc(stationId).ownerId == claims().ownerId) ||
+        (claims().stationId == stationId)
+      );
+    }
+
+    /* ---------------- accounts & stations ----------------
+       All writes go through Cloud Functions (Admin SDK bypasses rules).
+       Clients get read access only, and only to what concerns them.      */
+
+    match /users/{uid} {
+      allow read: if signedIn() && (
+        request.auth.uid == uid ||
+        (isOwner() && resource.data.ownerId == claims().ownerId)
+      );
+      allow write: if false;
+    }
+
+    match /usernames/{username} {
+      allow read, write: if false;
+    }
+
+    match /authSecrets/{uid} {
+      allow read, write: if false;
+    }
+
+    match /loginAttempts/{username} {
+      allow read, write: if false;
+    }
+
+    match /stations/{stationId} {
+      allow read: if signedIn() && (
+        (isOwner() && resource.data.ownerId == claims().ownerId) ||
+        claims().stationId == stationId
+      );
+      allow write: if false;
+    }
+
+    /* ---------------- ledger ---------------- */
+
+    match /ledger/{stationId}/entries/{entryId} {
+      allow read: if hasStationAccess(stationId);
+      allow create: if hasStationAccess(stationId)
+                    && request.resource.data.enteredBy == request.auth.uid;
+      // Attendants log the day; only owner/manager may correct it later.
+      allow update, delete: if hasStationAccess(stationId) && canAmend();
+    }
+
+    /* ---------------- credit customers ---------------- */
+
+    match /creditCustomers/{stationId}/customers/{customerId} {
+      allow read, create, update: if hasStationAccess(stationId);
+      allow delete: if hasStationAccess(stationId) && canAmend();
+    }
+
+    /* Anything not matched above is denied. */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
