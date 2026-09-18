@@ -19,6 +19,7 @@ import {
 import { activePrices } from "../lib/shiftMath";
 import { fuelClass } from "./Shifts";
 import { formatStamp, money, num } from "../lib/format";
+import { LoadingPanels } from "../components/motion.jsx";
 
 const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 
@@ -95,7 +96,7 @@ export default function StationSetup() {
       <>
         <PageHeader title="Pumps & rates" />
         <div className="content">
-          <Empty>Loading…</Empty>
+          <LoadingPanels count={1} lines={2} />
         </div>
       </>
     );
@@ -280,7 +281,7 @@ export default function StationSetup() {
           </div>
 
           {loading ? (
-            <Empty>Loading equipment…</Empty>
+            <LoadingPanels count={2} lines={3} label="Loading equipment" />
           ) : pumps.length === 0 ? (
             <Empty>No pumps yet. Add your first pump above.</Empty>
           ) : (

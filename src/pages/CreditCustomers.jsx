@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
 import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
+import { LoadingPanels, NumberRoll, useAnimatedList } from "../components/motion.jsx";
 import StationPicker from "../components/StationPicker";
 import { useStations } from "../state/useStations";
 import {
@@ -64,6 +65,9 @@ export default function CreditCustomers() {
   );
   const settled = customers.filter((c) => Number(c.outstandingBalance || 0) <= 0).length;
 
+  // Keeps a removed customer mounted long enough to collapse out of the table.
+  const customerRows = useAnimatedList(customers);
+
   const addCustomer = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -117,7 +121,7 @@ export default function CreditCustomers() {
       <>
         <PageHeader title="Credit customers" />
         <div className="content">
-          <Empty>Loading…</Empty>
+          <LoadingPanels count={1} lines={2} />
         </div>
       </>
     );
@@ -156,11 +160,22 @@ export default function CreditCustomers() {
           <div className="row" style={{ gap: 40 }}>
             <Stat
               label="Total outstanding"
-              value={`₹ ${money(totalOutstanding)}`}
+              amount={totalOutstanding}
+              format={money}
+              prefix="₹ "
               tone={totalOutstanding > 0 ? "neg" : "pos"}
             />
-            <Stat label="Customers" value={String(customers.length)} />
-            <Stat label="Fully settled" value={String(settled)} tone="pos" />
+            <Stat
+              label="Customers"
+              amount={customers.length}
+              format={(n) => String(Math.round(n))}
+            />
+            <Stat
+              label="Fully settled"
+              amount={settled}
+              format={(n) => String(Math.round(n))}
+              tone="pos"
+            />
           </div>
         </Panel>
 
@@ -204,7 +219,7 @@ export default function CreditCustomers() {
 
         <Panel title="Customer balances" flush>
           {loading ? (
-            <Empty>Loading…</Empty>
+            <LoadingPanels count={2} lines={3} label="Loading customers" />
           ) : customers.length === 0 ? (
             <Empty>No credit customers at this station.</Empty>
           ) : (
@@ -221,7 +236,7 @@ export default function CreditCustomers() {
                 </tr>
               </thead>
               <tbody>
-                {customers.map((c) => {
+                {customerRows.map(({ item: c, exiting }) => {
                   const txs = c.transactions || [];
                   const given = txs
                     .filter((t) => t.type === "credit")
@@ -231,7 +246,7 @@ export default function CreditCustomers() {
                     .reduce((n, t) => n + num(t.amount), 0);
                   const bal = Number(c.outstandingBalance || 0);
                   return (
-                    <tr key={c.id}>
+                    <tr key={c.id} className={exiting ? "row-exit" : "row-enter"}>
                       <td style={{ fontWeight: 500 }}>{c.name}</td>
                       <td className="mono small">{c.phone || "—"}</td>
                       <td className="num mono">{money(given)}</td>
@@ -240,7 +255,7 @@ export default function CreditCustomers() {
                         className="num mono"
                         style={{ color: bal > 0 ? "var(--rust)" : "var(--green)" }}
                       >
-                        {money(bal)}
+                        <NumberRoll value={bal} format={money} />
                       </td>
                       <td>
                         {bal > 0 ? (

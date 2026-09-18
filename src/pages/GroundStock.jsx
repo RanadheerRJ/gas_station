@@ -24,6 +24,7 @@ import {
   validateDip,
 } from "../lib/tankMath";
 import { fuelClass } from "./Shifts";
+import { LoadingPanels, NumberRoll, useAnimatedList } from "../components/motion.jsx";
 
 const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 
@@ -124,6 +125,10 @@ export default function GroundStock() {
   };
 
   const active = useMemo(() => tanks.filter((t) => t.state !== "retired"), [tanks]);
+
+  // Retiring a tank removes it from this list; hold it for one beat so the
+  // card collapses instead of disappearing between renders.
+  const tankRows = useAnimatedList(active);
   const byProduct = useMemo(() => stockByProduct(active), [active]);
   const station = stations.find((s) => s.id === stationId);
   const selectedTank = tanks.find((t) => t.id === selected) || null;
@@ -146,7 +151,7 @@ export default function GroundStock() {
       <>
         <PageHeader title="Ground stock" />
         <div className="content">
-          <Empty>Loading…</Empty>
+          <LoadingPanels count={1} lines={2} />
         </div>
       </>
     );
@@ -213,7 +218,7 @@ export default function GroundStock() {
           note="Each vessel is drawn to its current level. Tap one to dip it or book a delivery."
         >
           {loading ? (
-            <Empty>Loading tanks…</Empty>
+            <LoadingPanels count={2} lines={3} label="Loading tanks" />
           ) : tanks.length === 0 ? (
             <Empty>
               No tanks set up yet.
@@ -224,13 +229,15 @@ export default function GroundStock() {
           ) : (
             <>
               <div className="tank-farm">
-                {active.map((t) => {
+                {tankRows.map(({ item: t, exiting }) => {
                   const st = tankStatus(t);
                   const warm = num(t.temperatureC) > 35;
                   return (
                     <div
                       key={t.id}
-                      className={`tank-card${selected === t.id ? " selected" : ""}`}
+                      className={`tank-card${selected === t.id ? " selected" : ""} ${
+                        exiting ? "row-exit" : "row-enter"
+                      }`}
                       onClick={() => {
                         setSelected(selected === t.id ? null : t.id);
                         setMode("dip");
@@ -248,7 +255,9 @@ export default function GroundStock() {
                         <div className="tank-card__fuel">{t.fuelType}</div>
 
                         <div className="tank-card__figure">
-                          {money(st.stock)} <span>L</span>
+                          {/* Stock changes when a dip or delivery is recorded;
+                              counting makes the direction of the change plain. */}
+                          <NumberRoll value={st.stock} format={money} /> <span>L</span>
                           <div className="tank-card__fuel">
                             of {money(st.capacity)} L · {money(st.ullage)} L space
                           </div>
@@ -277,9 +286,21 @@ export default function GroundStock() {
 
               <div className="divider" />
               <div className="row" style={{ gap: 40, flexWrap: "wrap" }}>
-                <Stat label="Stock in ground" value={`${money(totals.stock)} L`} />
-                <Stat label="Space for delivery" value={`${money(totals.ullage)} L`} />
-                <Stat label="Total capacity" value={`${money(totals.capacity)} L`} />
+                <Stat
+                  label="Stock in ground"
+                  amount={totals.stock}
+                  format={(n) => `${money(n)} L`}
+                />
+                <Stat
+                  label="Space for delivery"
+                  amount={totals.ullage}
+                  format={(n) => `${money(n)} L`}
+                />
+                <Stat
+                  label="Total capacity"
+                  amount={totals.capacity}
+                  format={(n) => `${money(n)} L`}
+                />
               </div>
             </>
           )}

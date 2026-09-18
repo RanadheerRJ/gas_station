@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { backendInfo } from "../lib/api";
 import { watchConnection } from "../lib/pwa";
@@ -54,8 +54,9 @@ export default function Layout() {
   const { profile, logout } = useAuth();
   // Hooks must run before any early return, or signing out changes the hook
   // order between renders and React throws.
-  const online = useConnection();
+  const { online, restored } = useConnection();
   const install = useInstallPrompt();
+  const { pathname } = useLocation();
 
   if (!profile) return null;
   const links = navFor(profile);
@@ -101,6 +102,13 @@ export default function Layout() {
           </div>
         )}
 
+        {online && restored && (
+          <div className="conn-banner restored">
+            <span>●</span>
+            Back online — saving works again.
+          </div>
+        )}
+
         {install.available && (
           <div className="install-bar">
             <span style={{ flex: 1 }}>
@@ -129,7 +137,11 @@ export default function Layout() {
             and Cloud Functions.
           </div>
         )}
-        <Outlet />
+        {/* Keyed on the path so the fade replays on every navigation rather
+            than only on first mount. */}
+        <div className="route-fade" key={pathname}>
+          <Outlet />
+        </div>
       </div>
     </div>
   );
@@ -148,10 +160,34 @@ export function PageHeader({ title, sub, actions }) {
 }
 
 /** True while the browser reports a usable connection. */
+/**
+ * Connection state, plus a brief "back online" acknowledgement.
+ *
+ * Dropping the offline bar the instant the network returns leaves the user
+ * unsure whether it recovered or they imagined it, so the bar turns green and
+ * states the fact for a couple of seconds before collapsing.
+ */
 function useConnection() {
   const [online, setOnline] = useState(true);
+  const [restored, setRestored] = useState(false);
+  const wasOffline = useRef(false);
+
   useEffect(() => watchConnection(setOnline), []);
-  return online;
+
+  useEffect(() => {
+    if (!online) {
+      wasOffline.current = true;
+      setRestored(false);
+      return undefined;
+    }
+    if (!wasOffline.current) return undefined;
+    wasOffline.current = false;
+    setRestored(true);
+    const timer = setTimeout(() => setRestored(false), 2600);
+    return () => clearTimeout(timer);
+  }, [online]);
+
+  return { online, restored };
 }
 
 /**

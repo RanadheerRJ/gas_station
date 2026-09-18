@@ -33,6 +33,13 @@ import {
   varianceLabel,
   varianceTone,
 } from "../lib/shiftMath";
+import {
+  LoadingPanels,
+  NumberRoll,
+  prefersReducedMotion,
+  useOneShot,
+  useStatusChange,
+} from "../components/motion.jsx";
 
 export const fuelClass = (fuelType = "") => {
   const f = fuelType.toLowerCase();
@@ -163,7 +170,7 @@ export default function Shifts() {
       <>
         <PageHeader title="Shifts" />
         <div className="content">
-          <Empty>Loading…</Empty>
+          <LoadingPanels count={1} lines={2} />
         </div>
       </>
     );
@@ -479,7 +486,7 @@ export default function Shifts() {
           flush
         >
           {loading ? (
-            <Empty>Loading…</Empty>
+            <LoadingPanels count={2} lines={4} label="Loading shifts" />
           ) : settled.length === 0 ? (
             <Empty>No shifts closed yet.</Empty>
           ) : (
@@ -811,18 +818,44 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
 function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
+  // Counts rejected submissions so the amount box knocks each time, not just
+  // the first time.
+  const [rejects, setRejects] = useState(0);
+  // The row being removed is held for the length of its collapse, so the rows
+  // below slide up instead of jumping.
+  const [removing, setRemoving] = useState(null);
+  const amountShake = useOneShot(rejects, { className: "shake" });
 
   const rows = shift.expenses || [];
   const total = rows.reduce((n, e) => n + num(e.amount), 0);
   const ready = label.trim() && num(amount) > 0;
 
   const submit = async () => {
-    if (!ready) return;
+    if (!ready) {
+      setRejects((n) => n + 1);
+      return;
+    }
     const ok = await onAdd({ label: label.trim(), amount: num(amount) });
     if (ok) {
       setLabel("");
       setAmount("");
+    } else {
+      setRejects((n) => n + 1);
     }
+  };
+
+  // Expenses are keyed by position, so the collapse has to finish before the
+  // row actually leaves the array or the wrong row would animate.
+  const remove = (index) => {
+    if (prefersReducedMotion()) {
+      onRemove(index);
+      return;
+    }
+    setRemoving(index);
+    setTimeout(() => {
+      setRemoving(null);
+      onRemove(index);
+    }, 180);
   };
 
   return (
@@ -838,7 +871,7 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
         <table style={{ marginBottom: 8 }}>
           <tbody>
             {rows.map((e, i) => (
-              <tr key={i}>
+              <tr key={i} className={removing === i ? "row-exit" : "row-enter"}>
                 <td>{e.label}</td>
                 <td className="num mono" style={{ width: 130 }}>
                   {money(e.amount)}
@@ -847,8 +880,8 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
                   <button
                     type="button"
                     className="quiet"
-                    disabled={busy}
-                    onClick={() => onRemove(i)}
+                    disabled={busy || removing !== null}
+                    onClick={() => remove(i)}
                   >
                     remove
                   </button>
@@ -869,7 +902,7 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
           onKeyDown={(e) => e.key === "Enter" && submit()}
         />
         <input
-          className="mono"
+          className={`mono ${amountShake}`.trim()}
           inputMode="decimal"
           style={{ textAlign: "right", width: 130 }}
           value={amount}
@@ -955,7 +988,11 @@ function HandoverSummary({ totals }) {
             </tr>
             <tr className="total">
               <td>Net due</td>
-              <td className="num mono">{money(totals.net)}</td>
+              <td className="num mono">
+                {/* Recomputes as expenses and testing are entered, so it
+                    counts to the new figure rather than jumping. */}
+                <NumberRoll value={totals.net} format={money} />
+              </td>
             </tr>
             <tr>
               <td className="muted">Less card, UPI &amp; credit</td>
@@ -964,7 +1001,7 @@ function HandoverSummary({ totals }) {
             <tr className="total">
               <td>Cash to hand over</td>
               <td className="num mono" style={{ color: "var(--green)" }}>
-                {money(totals.handover)}
+                <NumberRoll value={totals.handover} format={money} />
               </td>
             </tr>
           </tbody>
@@ -1190,13 +1227,32 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
   );
 }
 
-/** Small status chip for the settled-shifts register. */
+/**
+ * Small status chip for the settled-shifts register.
+ *
+ * A shift moving from pending review to approved or sent back is the whole
+ * point of this screen, so the chip marks itself for one beat when the status
+ * changes rather than silently swapping colour.
+ */
 function StatusTag({ status }) {
-  if (status === SHIFT_STATUS.APPROVED)
-    return <span className="tag green">Approved</span>;
-  if (status === SHIFT_STATUS.REJECTED)
-    return <span className="tag rust">Sent back</span>;
-  return <span className="tag">Pending review</span>;
+  const changed = useStatusChange(status);
+  const tone =
+    status === SHIFT_STATUS.APPROVED
+      ? " green"
+      : status === SHIFT_STATUS.REJECTED
+        ? " rust"
+        : "";
+  const label =
+    status === SHIFT_STATUS.APPROVED
+      ? "Approved"
+      : status === SHIFT_STATUS.REJECTED
+        ? "Sent back"
+        : "Pending review";
+  return (
+    <span className={`tag${tone}`} data-changed={changed || undefined}>
+      {label}
+    </span>
+  );
 }
 
 /**

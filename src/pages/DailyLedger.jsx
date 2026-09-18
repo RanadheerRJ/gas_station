@@ -8,6 +8,7 @@ import { useStations } from "../state/useStations";
 import { listShifts, readableError } from "../lib/api";
 import { formatDate, formatStamp, money, num } from "../lib/format";
 import { SHIFT_STATUS, shiftTotals, varianceLabel, varianceTone } from "../lib/shiftMath";
+import { LoadingPanels } from "../components/motion.jsx";
 
 /**
  * The daily ledger is now entirely DERIVED from closed shifts — there is no
@@ -106,7 +107,7 @@ export default function DailyLedger() {
       <>
         <PageHeader title="Daily ledger" />
         <div className="content">
-          <Empty>Loading…</Empty>
+          <LoadingPanels count={1} lines={2} />
         </div>
       </>
     );
@@ -156,7 +157,7 @@ export default function DailyLedger() {
           flush
         >
           {loading ? (
-            <Empty>Loading…</Empty>
+            <LoadingPanels count={2} lines={4} label="Loading ledger" />
           ) : days.length === 0 ? (
             <Empty>
               No closed shifts yet. Sales appear here once a shift is closed with its

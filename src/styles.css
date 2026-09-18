@@ -12,6 +12,26 @@
 
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Motion tokens. Every duration and curve in this file comes from here, so
+     the whole instrument panel can be retimed in one place. The curves are
+     deliberately unbouncy: nothing overshoots, because a gauge that wobbles
+     past its value reads as imprecise. */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-instant: 90ms;
+  --duration-fast: 140ms;
+  --duration-base: 180ms;
+  --duration-slow: 220ms;
+  --duration-page: 260ms;
+  /* Long-running, non-informational loops: slow on purpose so they read as
+     ambient status rather than as something demanding attention. */
+  --duration-loop: 1100ms;
+  --duration-skeleton: 1400ms;
+  /* A tank filling is a physical quantity moving, so it is allowed to take
+     longer than a UI transition. */
+  --duration-fill: 760ms;
 }
 
 * {
@@ -558,7 +578,7 @@ tr.total td {
 
 /* Page content settles in rather than snapping. */
 .content > * {
-  animation: rise 240ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  animation: rise var(--duration-page) var(--ease-out) both;
 }
 .content > *:nth-child(2) {
   animation-delay: 30ms;
@@ -581,10 +601,10 @@ button,
 input,
 select {
   transition:
-    background-color 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease,
-    transform 120ms ease;
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-instant) var(--ease-out);
 }
 
 /* A pressed control should feel like it took the press. */
@@ -612,13 +632,222 @@ button:focus-visible {
   inset: 0;
   width: 33%;
   background: var(--amber);
-  animation: sweep 1100ms ease-in-out infinite;
+  animation: sweep var(--duration-loop) ease-in-out infinite;
 }
 
 .live-dot {
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
+/* ---------------- route transitions ----------------
+   One short fade-and-lift per navigation. Keyed on the pathname so it
+   replays on every route change, not just first mount. */
+
+.route-fade {
+  animation: route-in var(--duration-page) var(--ease-out) both;
+}
+
+@keyframes route-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- numeric readouts ----------------
+   Counting figures are rendered with tabular digits so the width does not
+   jitter while the value animates. A gauge whose columns dance is unreadable. */
+
+.num-roll {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A settled figure ticks its colour once, like a needle coming to rest. */
+.num-roll[data-settling="up"] {
+  animation: tick-up var(--duration-slow) var(--ease-out);
+}
+.num-roll[data-settling="down"] {
+  animation: tick-down var(--duration-slow) var(--ease-out);
+}
+
+@keyframes tick-up {
+  from {
+    color: var(--green);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+@keyframes tick-down {
+  from {
+    color: var(--rust);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+/* ---------------- status changes ----------------
+   A shift moving between states gets one brief sweep across the badge so the
+   change is noticed even if the reviewer was looking elsewhere. */
+
+.badge,
+.tag {
+  transition:
+    background-color var(--duration-slow) var(--ease-out),
+    border-color var(--duration-slow) var(--ease-out),
+    color var(--duration-slow) var(--ease-out);
+}
+
+.badge[data-changed="true"],
+.tag[data-changed="true"] {
+  animation: badge-flip var(--duration-slow) var(--ease-out);
+}
+
+@keyframes badge-flip {
+  from {
+    opacity: 0.4;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- input feedback ----------------
+   Rejection is a short lateral knock: three small moves, no easing overshoot,
+   over before it registers as an effect. Acceptance is a colour settle only. */
+
+.shake {
+  animation: knock var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes knock {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+.field-accepted {
+  animation: accept-settle var(--duration-slow) var(--ease-out);
+}
+
+@keyframes accept-settle {
+  from {
+    border-color: var(--green);
+  }
+  to {
+    border-color: var(--hairline);
+  }
+}
+
+/* ---------------- list enter and exit ----------------
+   Rows arrive by sliding up a few pixels; removed rows collapse their own
+   height so the rows below travel rather than jumping. */
+
+.row-enter {
+  animation: row-in var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row-exit {
+  animation: row-out var(--duration-base) var(--ease-in) both;
+  overflow: hidden;
+}
+
+@keyframes row-out {
+  from {
+    opacity: 1;
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}
+
+/* ---------------- skeletons ----------------
+   Loading placeholders are paper-coloured blocks that breathe, not grey
+   shimmer bars. They mirror the shape of the content that will replace them. */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--hairline) 0%,
+    #e7e2d6 50%,
+    var(--hairline) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-breathe var(--duration-skeleton) var(--ease-standard) infinite;
+  border-radius: 1px;
+}
+
+@keyframes skeleton-breathe {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-line {
+  height: 10px;
+  margin: 8px 0;
+}
+.skeleton-line.wide {
+  width: 100%;
+}
+.skeleton-line.half {
+  width: 52%;
+}
+.skeleton-line.short {
+  width: 28%;
+}
+.skeleton-num {
+  height: 22px;
+  width: 96px;
+}
+
+.skeleton-panel {
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  padding: 14px 16px;
+}
+
+/* Anyone who has asked their system for less movement gets none of it. All
+   information carried by motion is also carried by colour and text, so
+   collapsing every duration loses nothing but the movement itself. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -626,6 +855,23 @@ button:focus-visible {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Translation is removed outright rather than merely shortened, so nothing
+     lands off-position if a frame is dropped. */
+  .route-fade,
+  .row-enter,
+  .shake,
+  .badge[data-changed="true"],
+  .tag[data-changed="true"] {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .skeleton {
+    animation: none !important;
+    background: var(--hairline) !important;
   }
 }
 
@@ -639,11 +885,29 @@ button:focus-visible {
   font-size: 12.5px;
   background: var(--rust);
   color: #fff;
-  animation: rise 200ms ease both;
+  animation: rise var(--duration-base) var(--ease-out) both;
 }
 
+/* The reconnect acknowledgement uses the same slot, in green, and eases out
+   of the way on its own rather than vanishing. */
 .conn-banner.restored {
   background: var(--green);
+  animation:
+    rise var(--duration-base) var(--ease-out) both,
+    bar-collapse var(--duration-slow) var(--ease-in) 2.4s both;
+}
+
+@keyframes bar-collapse {
+  from {
+    opacity: 1;
+    max-height: 60px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
 }
 
 /* ---------------- install prompt ---------------- */
@@ -656,7 +920,7 @@ button:focus-visible {
   background: var(--graphite);
   color: #e7ebee;
   font-size: 13px;
-  animation: rise 240ms ease both;
+  animation: rise var(--duration-slow) var(--ease-out) both;
 }
 
 .install-bar button {
@@ -1028,7 +1292,7 @@ button:focus-visible {
   right: 0;
   bottom: 0;
   /* Long and heavily eased: fuel finding its level, not a progress bar. */
-  transition: height 760ms cubic-bezier(0.22, 0.75, 0.3, 1);
+  transition: height var(--duration-fill) var(--ease-out);
 }
 
 /* A brighter line where the fuel meets air, so the level reads at a glance. */

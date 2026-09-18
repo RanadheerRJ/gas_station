@@ -7,6 +7,7 @@ import PinField, { pinReady } from "../components/PinField";
 import ResetPinPanel from "../components/ResetPinPanel";
 import { createStaff, listStaff, readableError } from "../lib/api";
 import { formatStamp } from "../lib/format";
+import { LoadingPanels } from "../components/motion.jsx";
 
 export default function OwnerStaff() {
   const { profile } = useAuth();
@@ -166,7 +167,7 @@ export default function OwnerStaff() {
 
         <Panel title="Existing staff" flush>
           {loading ? (
-            <Empty>Loading…</Empty>
+            <LoadingPanels count={2} lines={3} label="Loading staff" />
           ) : staff.length === 0 ? (
             <Empty>You haven’t issued any staff logins yet.</Empty>
           ) : (

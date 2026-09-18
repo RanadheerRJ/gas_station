@@ -201,86 +201,219 @@ src/
   components/ layout, ledger entry form, shared UI primitives
   pages/      login, developer admin, owner dashboard, shifts, pump/rate
               setup, ground stock, daily ledger, credit, staff
+  components/motion.jsx   counting figures, one-shot cues, animated lists,
+                          skeletons
 functions/    createOwner, createStaff, addStation, setStationState, resetPin,
               pinLogin, setPrice, setPumpState, openShift, closeShift,
               addShiftExpense, removeShiftExpense, reviseShift, reviewShift,
-              addTank, updateTank, setTankState, recordDip, recordDelivery
+              addTank, updateTank, setTankState, recordDip, recordDelivery,
+              recordCustomerPayment
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
+src/lib/*.test.js         unit tests for the shift and tank maths
 firestore.rules
+firestore.indexes.json
 ```
 
-## Firebase setup
+## From a fresh clone to a running station
 
-1. Create a Firebase project. Enable **Authentication** (Email/Password, for
-   the developer account only) and **Cloud Firestore**.
-2. Register a Web app, then copy its config into `.env.local`:
+Nothing here assumes you were told anything in person. Follow it top to bottom
+and you end up with a working deployment and one account that can create all
+the others.
 
-   ```bash
-   cp .env.example .env.local
-   # fill in VITE_FIREBASE_* from Project settings > Your apps
-   ```
+### 0. Prerequisites
 
-3. Install and log in to the CLI, then pick the project:
+- **Node 20.** The Cloud Functions runtime is pinned to Node 20 in
+  `functions/package.json`; building the front end on a much newer major is
+  fine, but deploying functions on a mismatched runtime is not.
+- **A Firebase project on the Blaze plan.** Cloud Functions v2 will not deploy
+  on Spark. There is no way around this — every account-creation and
+  money-writing path in this app is a callable function.
+- **`firebase-tools`**, installed below.
 
-   ```bash
-   npm i -g firebase-tools
-   firebase login
-   firebase use --add
-   ```
+### 1. Run it with no backend at all
 
-### Deploy rules and functions
+Before touching Firebase, confirm the app works:
 
 ```bash
+npm install
+npm run dev          # http://localhost:5173
+```
+
+With no `.env.local` present the app runs entirely in `localStorage`, seeded
+with two stations, several days of shifts, tanks and credit customers. The
+sign-in screen lists the demo logins and their PINs. Click through all four
+roles here first; it costs nothing and makes the rest of this obvious.
+
+### 2. Create the Firebase project
+
+1. Create a project in the [Firebase console](https://console.firebase.google.com).
+2. **Build → Authentication → Get started**, and enable the
+   **Email/Password** provider. This is used by exactly one account, the
+   developer. Everyone else signs in with a username and PIN against a custom
+   token, which needs no provider enabled.
+3. **Build → Firestore Database → Create database**. Start in **production
+   mode** — the rules in this repo replace the defaults in step 4. Pick the
+   region closest to the stations; it cannot be changed later.
+4. **Project settings → General → Your apps → Web app** (`</>`). Register the
+   app and copy the config object.
+
+### 3. Point the app at the project
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in each value from the config object you just copied:
+
+| Variable | Where it comes from | Required |
+| --- | --- | --- |
+| `VITE_FIREBASE_API_KEY` | `apiKey` | yes |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `authDomain` | yes |
+| `VITE_FIREBASE_PROJECT_ID` | `projectId` | yes |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `storageBucket` | yes |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` | yes |
+| `VITE_FIREBASE_APP_ID` | `appId` | yes |
+| `VITE_FUNCTIONS_REGION` | region you deploy functions to | no, defaults to `us-central1` |
+
+The app switches out of demo mode as soon as `VITE_FIREBASE_PROJECT_ID` is
+set, so fill in all of them or none of them. `.env.local` is git-ignored and
+must stay that way — these values are public-by-design client config, but the
+file is a habit worth keeping clean.
+
+If you deploy functions somewhere other than `us-central1`, set
+`VITE_FUNCTIONS_REGION` to match or every callable will fail with a CORS-ish
+`internal` error that tells you nothing.
+
+### 4. Deploy rules, indexes and functions
+
+```bash
+npm i -g firebase-tools
+firebase login
+firebase use --add          # select the project, give it the alias "default"
+
 cd functions && npm install && cd ..
 
 firebase deploy --only firestore:rules,firestore:indexes
 firebase deploy --only functions
 ```
 
-Cloud Functions v2 requires the Blaze plan.
+Deploy the rules **before** anyone signs in. A database left in production-mode
+defaults denies everything, and one left in test-mode defaults allows the
+world to read your ledgers.
 
-### Set the developer's admin claim
+The first functions deploy also enables the required Google Cloud APIs and
+takes several minutes. If it fails asking you to enable Cloud Build or
+Artifact Registry, accept and run it again.
 
-The developer is the one account the app does not create:
+### 5. Create the developer account
 
-1. Firebase console → Authentication → **Add user** (email + password).
-2. Project settings → Service accounts → **Generate new private key**, saved
-   as `serviceAccountKey.json` in the repo root (already git-ignored).
-3. Run it once:
+The developer is the only account the app cannot create, because there is
+nobody yet to create it. It is made by hand, once.
+
+1. **Authentication → Users → Add user.** Give it an email and a password.
+   This account signs in with email and password, not a PIN.
+2. **Project settings → Service accounts → Generate new private key.** Save
+   the downloaded file as `serviceAccountKey.json` in the repo root. It is
+   git-ignored. Treat it as a root password: it bypasses every security rule
+   in this repo. Delete it when you are done.
+3. Grant the claim:
 
    ```bash
+   cd functions && npm install && cd ..   # the script uses firebase-admin
    node scripts/setAdminClaim.js you@example.com
    ```
 
-Equivalently with the CLI: `firebase auth:import` with a `customClaims` field,
-or any Admin SDK snippet calling
-`setCustomUserClaims(uid, { admin: true })`.
+   The script looks the user up by email and sets `{ admin: true }`. It prints
+   the uid it changed. It never touches a PIN.
 
-Sign out and back in afterwards so the client picks up the new claim.
+4. **Sign out and back in.** Custom claims are baked into the ID token at
+   issue time, so an existing session will not see the new claim.
+
+You can do the same thing without the script from any Admin SDK context:
+`admin.auth().setCustomUserClaims(uid, { admin: true })`.
+
+### 6. Work down the chain
+
+Sign in as the developer. From there the app creates everyone else, and each
+level can only create the level below it:
+
+1. **Developer → Invite Owner.** The only screen a developer sees. Creates an
+   owner with a username and a PIN you choose and tell them.
+2. **Owner → Stations.** Add the station or stations.
+3. **Owner → Staff.** Create managers and attendants, each bound to one
+   station.
+4. **Owner → Setup.** Add pumps, nozzles and tanks, and set opening prices.
+   Shifts cannot be opened until a nozzle has a price.
+
+At no point does anyone sign themselves up, and at no point is a PIN generated
+for you — whoever creates an account chooses the PIN and is responsible for
+passing it on.
+
+### Verifying a deployment
+
+```bash
+npm run check
+```
+
+That runs lint, the unit tests, the smoke suite and a production build. The
+smoke suite exercises the demo backend rather than your Firebase project, so
+it is safe to run against a live checkout.
 
 ## Running locally
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # production bundle into dist/
+npm run dev          # http://localhost:5173
+npm run build        # production bundle into dist/
+npm run preview      # serve the built bundle, needed to test the service worker
 ```
 
-**Demo mode.** With no `.env.local` present the app runs against a local
-backend stored in `localStorage`, seeded with two stations, a few days of
-entries and credit customers, so you can click through every role before a
-Firebase project exists. The sign-in screen lists the demo logins. Add real
-credentials and the same UI talks to Firestore and Cloud Functions instead —
-no code changes.
+The service worker only registers in a production build, so PWA behaviour must
+be checked through `npm run preview`, not `npm run dev`.
 
-Demo PINs are the ones seeded in `src/lib/demoBackend.js`; in a real project
-every PIN is whatever the creator typed.
-
-Verify the ledger maths and access logic without a browser:
+### Checks
 
 ```bash
-node scripts/smoke.mjs
+npm run lint         # ESLint across src/, functions/ and scripts/
+npm run format       # Prettier, same config for the app and the functions
+npm test             # unit tests for the shift and tank maths
+npm run smoke        # end-to-end pass over the demo backend
+npm run check        # all of the above, then a build
 ```
+
+`npm test` covers `src/lib/shiftMath.js` and `src/lib/tankMath.js` — the pure
+money and volume arithmetic, with no Firebase in the way. `npm run smoke`
+drives the demo backend through real sequences: opening and closing shifts,
+approval and rejection, credit repayment limits, and the archive and restore
+guards.
+
+## Query and index audit
+
+Firestore fails a query that has no index, and a **composite** index is only
+required when a query has two or more equality filters, or mixes a filter with
+an `orderBy` on a different field. Single-field equality and a lone `orderBy`
+are served automatically. A missing index does not fail at deploy time; it
+fails the first time that exact query runs, which may be months later.
+
+Every query in `src/lib/api.js` and `functions/index.js` was enumerated. Only
+one needs a composite index:
+
+| Query | Where | Index |
+| --- | --- | --- |
+| `prices.where(fuelType ==).where(effectiveTo == null)` | `setPrice` | **required**, in `firestore.indexes.json` |
+| `stations.where(ownerId ==)` | `listStations` | automatic |
+| `users.where(role ==)`, `users.where(ownerId ==)` | staff lists | automatic |
+| `prices.orderBy(effectiveFrom desc)` | `getPrices` | automatic |
+| `shifts/*/records.orderBy(startTime desc)` | `listShifts` | automatic |
+| `tanks.orderBy(createdAt)` | `listTanks` | automatic |
+| `tankReadings.orderBy(recordedAt desc)` | `listTankReadings` | automatic |
+| `shifts.where(status == "open")` | `openShift` guard | automatic |
+| `customers.where(phone ==).limit(1)` | `closeShift` credit lookup | automatic |
+| `nozzles.where(pumpId ==)` | pump retire cascade | automatic |
+| `customers.where(outstandingBalance > 0)` | station archive guard | automatic |
+
+A single range filter on one field is also automatic, which covers the
+outstanding-balance guard.
 
 ## Data model
 
@@ -381,11 +514,46 @@ does not zoom the viewport on focus.
 
 ## Motion
 
-Movement explains a change; it never decorates one. Panels rise and fade in
-sequence as a page settles, buttons take a 1px press, tank levels ease over
-760ms so a dip reads as fuel finding its level, and loading is a hairline
-sweeping in amber rather than a spinner. Everything collapses to near-zero
-duration under `prefers-reduced-motion`.
+Movement explains a change; it never decorates one. The vocabulary is an
+instrument panel rather than a marketing site: short, linear, nothing
+overshoots or bounces.
+
+Every duration and curve is a custom property in `styles.css`, so the whole
+app is retuned in one place:
+
+| Token | Value | Used for |
+| --- | --- | --- |
+| `--duration-instant` | 90ms | button press |
+| `--duration-fast` | 140ms | hover and colour changes |
+| `--duration-base` | 180ms | list rows entering and leaving |
+| `--duration-slow` | 220ms | status changes, input rejection |
+| `--duration-page` | 260ms | route transitions, counting figures |
+| `--duration-fill` | 760ms | a tank level finding its new height |
+| `--ease-out` | entering and responding | |
+| `--ease-in` | leaving | |
+
+What actually animates, and why:
+
+- **Figures count** rather than snap, on dashboard totals, tank stock,
+  outstanding balances and the handover panel, and tick green or rust for one
+  beat in the direction they moved. A figure that jumps gives no clue whether
+  it went up or down.
+- **Shift status** flips with a brief mark on the badge as a shift moves
+  between pending review, approved and sent back.
+- **Inputs knock sideways** once when a PIN or amount is rejected, and settle
+  green when a PIN pair matches. A static red line is easy to miss.
+- **Rows slide in and collapse out** for expenses, credit customers and tanks,
+  so the rows below travel rather than jump.
+- **Routes cross-fade** in 260ms.
+- **Loading is a skeleton** in paper tones — the shape of the panel that is
+  coming — not a grey shimmer or the word "Loading".
+- **Install and offline bars** ease in, and the "back online" note eases itself
+  out after a couple of seconds instead of vanishing.
+
+Under `prefers-reduced-motion: reduce` every duration collapses and all
+translation is removed outright, in JS as well as CSS: counting is driven by a
+timer, and a media query cannot stop a timer. Nothing is conveyed by movement
+alone — every state that animates also has colour and text.
 
 ## Security posture
 

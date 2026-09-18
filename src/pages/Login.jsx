@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../state/AuthContext";
 import { backendInfo, readableError } from "../lib/api";
 import { Notice } from "../components/ui";
+import { useOneShot } from "../components/motion.jsx";
 
 export default function Login() {
   const { login } = useAuth();
@@ -9,6 +10,10 @@ export default function Login() {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Counts rejections so a second wrong PIN knocks the field again rather
+  // than sitting there with an unchanged error message.
+  const [rejections, setRejections] = useState(0);
+  const shake = useOneShot(rejections, { className: "shake" });
 
   const demoLogins = backendInfo.isDemo ? backendInfo.demoLogins() : [];
 
@@ -17,6 +22,7 @@ export default function Login() {
     setError("");
     if (!/^\d{4}$/.test(pin)) {
       setError("Enter the 4-digit PIN.");
+      setRejections((n) => n + 1);
       return;
     }
     setBusy(true);
@@ -25,6 +31,7 @@ export default function Login() {
     } catch (err) {
       setError(readableError(err));
       setPin("");
+      setRejections((n) => n + 1);
     } finally {
       setBusy(false);
     }
@@ -55,13 +62,14 @@ export default function Login() {
             <label className="field">
               <span>4-digit PIN</span>
               <input
-                className="pin-input"
+                className={`pin-input ${shake}`.trim()}
                 inputMode="numeric"
                 type="password"
                 maxLength={4}
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
                 placeholder="••••"
+                aria-invalid={error ? true : undefined}
               />
             </label>
             {error && <Notice kind="error">{error}</Notice>}

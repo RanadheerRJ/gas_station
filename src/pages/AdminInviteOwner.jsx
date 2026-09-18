@@ -4,6 +4,7 @@ import { CredentialPanel, Empty, Field, Notice, Panel } from "../components/ui";
 import PinField, { pinReady } from "../components/PinField";
 import ResetPinPanel from "../components/ResetPinPanel";
 import { createOwner, listOwners, readableError } from "../lib/api";
+import { LoadingPanels } from "../components/motion.jsx";
 
 const BLANK = {
   ownerName: "",
@@ -149,7 +150,7 @@ export default function AdminInviteOwner() {
 
         <Panel title="Owner accounts" flush>
           {loadingOwners ? (
-            <Empty>Loading…</Empty>
+            <LoadingPanels count={2} lines={2} label="Loading owners" />
           ) : owners.length === 0 ? (
             <Empty>No owners yet.</Empty>
           ) : (

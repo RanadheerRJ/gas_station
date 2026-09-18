@@ -10,6 +10,7 @@ import Shifts from "./pages/Shifts";
 import StationSetup from "./pages/StationSetup";
 import GroundStock from "./pages/GroundStock";
 import { useAuth } from "./state/AuthContext";
+import { SkeletonLine } from "./components/motion.jsx";
 
 /** Where each role lands after sign-in. */
 const HOME = {
@@ -34,7 +35,16 @@ export default function App() {
   if (loading) {
     return (
       <div className="login-wrap">
-        <div className="muted">Loading…</div>
+        {/* Signing in checks a session against the backend; show the shape of
+            the panel that is coming rather than a bare word. */}
+        <div style={{ width: 320 }}>
+          <div className="loading-bar" />
+          <div className="skeleton-panel" style={{ marginTop: 12 }}>
+            <SkeletonLine width="short" />
+            <SkeletonLine width="wide" />
+            <SkeletonLine width="half" />
+          </div>
+        </div>
       </div>
     );
   }

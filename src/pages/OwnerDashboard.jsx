@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
 import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
+import { LoadingPanels } from "../components/motion.jsx";
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
@@ -127,23 +128,31 @@ export default function OwnerDashboard() {
       <div className="content stack">
         <Panel title="Combined position today">
           <div className="row" style={{ gap: 40 }}>
-            <Stat label="Litres sold" value={money(totals.litres)} />
-            <Stat label="Fuel sales" value={`₹ ${money(totals.sales)}`} />
-            <Stat label="Testing" value={`₹ ${money(totals.testing)}`} />
-            <Stat label="Cash declared" value={`₹ ${money(totals.cash)}`} />
+            {/* These figures move as shifts are approved through the day, so
+                they count to the new value instead of snapping. */}
+            <Stat label="Litres sold" amount={totals.litres} format={money} />
+            <Stat label="Fuel sales" amount={totals.sales} format={money} prefix="₹ " />
+            <Stat label="Testing" amount={totals.testing} format={money} prefix="₹ " />
+            <Stat label="Cash declared" amount={totals.cash} format={money} prefix="₹ " />
             <Stat
               label="Cash to receive"
-              value={`₹ ${money(totals.handover)}`}
+              amount={totals.handover}
+              format={money}
+              prefix="₹ "
               tone="pos"
             />
             <Stat
               label="Cash variance"
-              value={`₹ ${money(totals.variance)}`}
+              amount={totals.variance}
+              format={money}
+              prefix="₹ "
               tone={varianceTone(totals.variance)}
             />
             <Stat
               label="Outstanding credit"
-              value={`₹ ${money(totals.outstanding)}`}
+              amount={totals.outstanding}
+              format={money}
+              prefix="₹ "
               tone={totals.outstanding > 0 ? "neg" : "pos"}
             />
           </div>
@@ -202,7 +211,7 @@ export default function OwnerDashboard() {
           )}
 
           {loading ? (
-            <Empty>Loading stations…</Empty>
+            <LoadingPanels count={2} lines={3} label="Loading stations" />
           ) : stations.length === 0 ? (
             <Empty>No stations yet.</Empty>
           ) : (

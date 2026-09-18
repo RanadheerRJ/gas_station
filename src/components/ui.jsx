@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NumberRoll } from "./motion.jsx";
 
 export function Panel({ title, actions, children, flush = false, note }) {
   return (
@@ -33,11 +34,29 @@ export function Field({ label, hint, children }) {
   );
 }
 
-export function Stat({ label, value, tone }) {
+/**
+ * A labelled figure.
+ *
+ * Pass `value` for static content, or `amount` (a number) to have the figure
+ * count to its new value whenever it changes. `format` turns the interpolated
+ * number back into the displayed string, so currency and litres keep their
+ * existing formatting.
+ */
+export function Stat({ label, value, tone, amount, format, prefix = "" }) {
+  const animated = typeof amount === "number" && Number.isFinite(amount);
   return (
     <div className="stat">
       <span className="k">{label}</span>
-      <span className={`v${tone ? ` ${tone}` : ""}`}>{value}</span>
+      <span className={`v${tone ? ` ${tone}` : ""}`}>
+        {animated ? (
+          <NumberRoll
+            value={amount}
+            format={(n) => `${prefix}${format ? format(n) : Math.round(n)}`}
+          />
+        ) : (
+          value
+        )}
+      </span>
     </div>
   );
 }
