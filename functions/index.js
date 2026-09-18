@@ -579,10 +579,13 @@ exports.closeShift = onCall(async (request) => {
       return { ...n, closingReading: closing };
     });
 
-    const expenses = (payload.expenses || []).map((e) => ({
-      label: String(e.label || "").trim(),
-      amount: Number(e.amount) || 0,
-    }));
+    // Expenses were logged live during the shift; closing keeps them as-is.
+    const expenses = Array.isArray(payload.expenses)
+      ? payload.expenses.map((e) => ({
+          label: String(e.label || "").trim(),
+          amount: Number(e.amount) || 0,
+        }))
+      : snap.get("expenses") || [];
     const creditSales = (payload.creditSales || []).map((c) => ({
       customerId: c.customerId || null,
       name: String(c.name || "").trim(),
@@ -682,106 +685,56 @@ exports.closeShift = onCall(async (request) => {
 
 
 /* ------------------------------------------------------------------ */
-/* mid-shift nozzle changes                                            */
+/* shift expenses                                                      */
 /* ------------------------------------------------------------------ */
 
-exports.addNozzleToShift = onCall(async (request) => {
+/**
+ * Log an expense while the shift is still running. Paying for something out
+ * of the drawer is recorded when it happens, not reconstructed at handover.
+ */
+exports.addShiftExpense = onCall(async (request) => {
   const stationId = requireString(request.data?.stationId, "stationId");
   const shiftId = requireString(request.data?.shiftId, "shiftId");
-  const nozzleId = requireString(request.data?.nozzleId, "nozzleId");
+  const label = requireString(request.data?.label, "label", { max: 80 });
+  const amount = Number(request.data?.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new HttpsError("invalid-argument", "Enter an amount greater than zero.");
+  }
   await assertStationAccess(request, stationId);
 
   const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
-  const stationRef = db.collection("stations").doc(stationId);
-
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(shiftRef);
     if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
     if (snap.get("status") !== "open") {
-      throw new HttpsError("failed-precondition", "Only an open shift can take more nozzles.");
+      throw new HttpsError("failed-precondition", "This shift is already closed.");
     }
-    const nozzles = snap.get("nozzles") || [];
-    if (nozzles.some((n) => n.nozzleId === nozzleId)) {
-      throw new HttpsError("failed-precondition", "That nozzle is already on this shift.");
-    }
-
-    const openSnap = await tx.get(
-      db.collection("shifts").doc(stationId).collection("records").where("status", "==", "open")
-    );
-    let heldBy = null;
-    openSnap.forEach((d) => {
-      if (d.id === shiftId) return;
-      if ((d.get("nozzles") || []).some((n) => n.nozzleId === nozzleId)) {
-        heldBy = d.get("employeeName") || "another operator";
-      }
-    });
-    if (heldBy) {
-      throw new HttpsError("failed-precondition", `That nozzle is in an active shift by ${heldBy}.`);
-    }
-
-    const [nzDoc, pumpSnap, priceSnap] = await Promise.all([
-      tx.get(stationRef.collection("nozzles").doc(nozzleId)),
-      tx.get(stationRef.collection("pumps")),
-      tx.get(stationRef.collection("prices").where("effectiveTo", "==", null)),
-    ]);
-    if (!nzDoc.exists) throw new HttpsError("not-found", "Nozzle not found.");
-
-    const pumpNames = {};
-    pumpSnap.forEach((p) => {
-      pumpNames[p.id] = p.get("name");
-    });
-    let price = null;
-    priceSnap.forEach((p) => {
-      if (p.get("fuelType") === nzDoc.get("fuelType")) {
-        price = { id: p.id, price: p.get("price") };
-      }
-    });
-    if (!price) {
-      throw new HttpsError(
-        "failed-precondition",
-        `Set a price for ${nzDoc.get("fuelType")} first.`
-      );
-    }
-
     tx.update(shiftRef, {
-      nozzles: [
-        ...nozzles,
-        {
-          nozzleId,
-          pumpId: nzDoc.get("pumpId"),
-          label: `${pumpNames[nzDoc.get("pumpId")] || "Pump"} · ${nzDoc.get("name")}`,
-          fuelType: nzDoc.get("fuelType"),
-          openingReading: Number(nzDoc.get("lastReading")) || 0,
-          closingReading: "",
-          price: Number(price.price),
-          priceId: price.id,
-          addedAt: new Date().toISOString(),
-        },
+      expenses: [
+        ...(snap.get("expenses") || []),
+        { label, amount, at: new Date().toISOString() },
       ],
     });
     return { ok: true };
   });
 });
 
-exports.removeNozzleFromShift = onCall(async (request) => {
+exports.removeShiftExpense = onCall(async (request) => {
   const stationId = requireString(request.data?.stationId, "stationId");
   const shiftId = requireString(request.data?.shiftId, "shiftId");
-  const nozzleId = requireString(request.data?.nozzleId, "nozzleId");
+  const index = Number(request.data?.index);
   await assertStationAccess(request, stationId);
 
   const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
-
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(shiftRef);
     if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
     if (snap.get("status") !== "open") {
-      throw new HttpsError("failed-precondition", "Only an open shift can be changed.");
+      throw new HttpsError("failed-precondition", "This shift is already closed.");
     }
-    const nozzles = snap.get("nozzles") || [];
-    if (nozzles.length <= 1) {
-      throw new HttpsError("failed-precondition", "A shift needs at least one nozzle.");
-    }
-    tx.update(shiftRef, { nozzles: nozzles.filter((n) => n.nozzleId !== nozzleId) });
+    tx.update(shiftRef, {
+      expenses: (snap.get("expenses") || []).filter((_, i) => i !== index),
+    });
     return { ok: true };
   });
 });

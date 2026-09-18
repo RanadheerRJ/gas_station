@@ -7,7 +7,7 @@ import { CashIcon, GaugeIcon, NozzleIcon, PumpIcon, ShiftIcon, StatusDot } from 
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
-  addNozzleToShift,
+  addShiftExpense,
   approveShift,
   closeShift,
   listCustomers,
@@ -16,7 +16,7 @@ import {
   openShift,
   readableError,
   rejectShift,
-  removeNozzleFromShift,
+  removeShiftExpense,
   reviseShift,
 } from "../lib/api";
 import { formatDate, formatStamp, money, num } from "../lib/format";
@@ -61,8 +61,6 @@ export default function Shifts() {
   const [picked, setPicked] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [closingFor, setClosingFor] = useState(null);
-  const [addTo, setAddTo] = useState("");
-  const [addNozzleId, setAddNozzleId] = useState("");
 
   useEffect(() => {
     if (stations.length === 0) return;
@@ -143,16 +141,6 @@ export default function Shifts() {
     }
   };
 
-  const attachNozzle = (shiftId) =>
-    run(async () => {
-      await addNozzleToShift(stationId, shiftId, addNozzleId, profile);
-      setAddTo("");
-      setAddNozzleId("");
-    });
-
-  const dropNozzle = (shiftId, nozzleId) =>
-    run(() => removeNozzleFromShift(stationId, shiftId, nozzleId));
-
   const start = async () => {
     setBusy(true);
     setError("");
@@ -180,7 +168,6 @@ export default function Shifts() {
   }
 
   const activeNozzles = nozzles.filter((n) => !nozzleBusy[n.id]);
-  const freeNozzles = activeNozzles;
 
   return (
     <>
@@ -426,7 +413,6 @@ export default function Shifts() {
                     <th>Fuel</th>
                     <th className="num">Opening</th>
                     <th className="num">Price</th>
-                    <th />
                   </tr>
                 </thead>
                 <tbody>
@@ -441,63 +427,18 @@ export default function Shifts() {
                       <td>{n.fuelType}</td>
                       <td className="num mono">{money(n.openingReading)}</td>
                       <td className="num mono">{money(n.price)}</td>
-                      <td className="num" style={{ width: 80 }}>
-                        {s.nozzles.length > 1 && (
-                          <button
-                            type="button"
-                            className="quiet"
-                            disabled={busy}
-                            onClick={() => dropNozzle(s.id, n.nozzleId)}
-                          >
-                            drop
-                          </button>
-                        )}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              {/* Operators often pick up another pump partway through. */}
-              <div
-                className="body row"
-                style={{
-                  borderTop: "1px solid var(--hairline)",
-                  gap: 8,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <span className="small muted">Took another nozzle?</span>
-                <select
-                  value={addTo === s.id ? addNozzleId : ""}
-                  disabled={busy || freeNozzles.length === 0}
-                  onChange={(e) => {
-                    setAddTo(s.id);
-                    setAddNozzleId(e.target.value);
-                  }}
-                >
-                  <option value="">
-                    {freeNozzles.length === 0 ? "No free nozzles" : "Add a nozzle…"}
-                  </option>
-                  {freeNozzles.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {pumps.find((p) => p.id === n.pumpId)?.name || "Pump"} · {n.name} (
-                      {n.fuelType})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={busy || addTo !== s.id || !addNozzleId}
-                  onClick={() => attachNozzle(s.id)}
-                >
-                  Add to shift
-                </button>
-                <span className="small muted">
-                  Its opening reading is taken from the meter now.
-                </span>
-              </div>
+              {/* Expenses are logged as they are paid, so closing is quick. */}
+              <ShiftExpenses
+                shift={s}
+                busy={busy}
+                onAdd={(expense) => run(() => addShiftExpense(stationId, s.id, expense))}
+                onRemove={(i) => run(() => removeShiftExpense(stationId, s.id, i))}
+              />
             </Panel>
           )
         )}
@@ -633,7 +574,6 @@ export default function Shifts() {
 
 function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
   const [closings, setClosings] = useState({});
-  const [expenses, setExpenses] = useState([]);
   const [creditSales, setCreditSales] = useState([]);
   const [payments, setPayments] = useState({
     cash: "",
@@ -651,6 +591,9 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
       shift.nozzles.map((n) => ({ ...n, closingReading: closings[n.nozzleId] ?? "" })),
     [shift.nozzles, closings]
   );
+
+  // Expenses were logged during the shift and are not re-entered here.
+  const expenses = shift.expenses || [];
 
   const preview = useMemo(
     () => shiftTotals({ nozzles: withClosings, expenses, creditSales, payments, testing }),
@@ -675,7 +618,6 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
       closingReadings: Object.fromEntries(
         withClosings.map((n) => [n.nozzleId, n.closingReading])
       ),
-      expenses,
       creditSales,
       payments,
       testing,
@@ -759,13 +701,29 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
           </div>
         </div>
 
-        <LineEditor
-          title="Expenses paid from the drawer"
-          rows={expenses}
-          setRows={setExpenses}
-          labelPlaceholder="Power bill"
-          addLabel="Add expense"
-        />
+        {expenses.length > 0 && (
+          <div>
+            <h3 style={{ marginBottom: 8 }}>Expenses logged this shift</h3>
+            <div className="panel flush">
+              <table>
+                <tbody>
+                  {expenses.map((e, i) => (
+                    <tr key={i}>
+                      <td>{e.label}</td>
+                      <td className="num mono" style={{ width: 150 }}>
+                        {money(e.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="total">
+                    <td>Total</td>
+                    <td className="num mono">{money(preview.expensesTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <TestingEditor testing={testing} setTesting={setTesting} />
 
@@ -833,6 +791,89 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Running expense log for an open shift. Money paid out of the drawer is
+ * recorded the moment it happens, so closing the shift is just readings and
+ * a cash count rather than an exercise in memory.
+ */
+function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
+  const [label, setLabel] = useState("");
+  const [amount, setAmount] = useState("");
+
+  const rows = shift.expenses || [];
+  const total = rows.reduce((n, e) => n + num(e.amount), 0);
+  const ready = label.trim() && num(amount) > 0;
+
+  const submit = async () => {
+    if (!ready) return;
+    const ok = await onAdd({ label: label.trim(), amount: num(amount) });
+    if (ok) {
+      setLabel("");
+      setAmount("");
+    }
+  };
+
+  return (
+    <div className="body" style={{ borderTop: "1px solid var(--hairline)" }}>
+      <div className="between" style={{ marginBottom: 8 }}>
+        <strong style={{ fontSize: 13 }}>Expenses paid from the drawer</strong>
+        <span className="small muted">
+          Total <span className="mono">{money(total)}</span>
+        </span>
+      </div>
+
+      {rows.length > 0 && (
+        <table style={{ marginBottom: 8 }}>
+          <tbody>
+            {rows.map((e, i) => (
+              <tr key={i}>
+                <td>{e.label}</td>
+                <td className="num mono" style={{ width: 130 }}>
+                  {money(e.amount)}
+                </td>
+                <td className="num" style={{ width: 70 }}>
+                  <button
+                    type="button"
+                    className="quiet"
+                    disabled={busy}
+                    onClick={() => onRemove(i)}
+                  >
+                    remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <div className="row" style={{ gap: 8, alignItems: "center" }}>
+        <input
+          style={{ flex: 1, minWidth: 160 }}
+          value={label}
+          placeholder="What was paid for"
+          disabled={busy}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+        />
+        <input
+          className="mono"
+          inputMode="decimal"
+          style={{ textAlign: "right", width: 130 }}
+          value={amount}
+          placeholder="0.00"
+          disabled={busy}
+          onChange={(e) => setAmount(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+        />
+        <button type="button" disabled={busy || !ready} onClick={submit}>
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Daily fuel testing. Every pump is test-dispensed each day and the fuel goes
  * back into the tank, so the money was never collected — it comes off gross
  * before anything is owed to the owner.
@@ -841,40 +882,35 @@ function TestingEditor({ testing, setTesting, disabled = false }) {
   const total = num(testing.MS) + num(testing.HSD);
   return (
     <div>
-      <h3 style={{ marginBottom: 8 }}>Daily fuel testing</h3>
-      <div className="panel">
-        <div className="body">
-          <div className="form-grid">
-            <Field label="MS (petrol) tested" hint="value in rupees">
-              <input
-                className="mono"
-                inputMode="decimal"
-                style={{ textAlign: "right" }}
-                value={testing.MS}
-                disabled={disabled}
-                placeholder="0.00"
-                onChange={(e) => setTesting((t) => ({ ...t, MS: e.target.value }))}
-              />
-            </Field>
-            <Field label="HSD (diesel) tested" hint="value in rupees">
-              <input
-                className="mono"
-                inputMode="decimal"
-                style={{ textAlign: "right" }}
-                value={testing.HSD}
-                disabled={disabled}
-                placeholder="0.00"
-                onChange={(e) => setTesting((t) => ({ ...t, HSD: e.target.value }))}
-              />
-            </Field>
-          </div>
-          <div className="divider" />
-          <div className="small muted">
-            Tested fuel returns to the tank, so{" "}
-            <span className="mono">{money(total)}</span> is deducted from gross sales
-            and is not owed to the owner.
-          </div>
-        </div>
+      <div className="between" style={{ marginBottom: 8 }}>
+        <h3>Fuel tested today</h3>
+        <span className="small muted">
+          Goes back in the tank · <span className="mono">{money(total)}</span> off gross
+        </span>
+      </div>
+      <div className="form-grid">
+        <Field label="MS (petrol)" hint="₹">
+          <input
+            className="mono"
+            inputMode="decimal"
+            style={{ textAlign: "right" }}
+            value={testing.MS}
+            disabled={disabled}
+            placeholder="0.00"
+            onChange={(e) => setTesting((t) => ({ ...t, MS: e.target.value }))}
+          />
+        </Field>
+        <Field label="HSD (diesel)" hint="₹">
+          <input
+            className="mono"
+            inputMode="decimal"
+            style={{ textAlign: "right" }}
+            value={testing.HSD}
+            disabled={disabled}
+            placeholder="0.00"
+            onChange={(e) => setTesting((t) => ({ ...t, HSD: e.target.value }))}
+          />
+        </Field>
       </div>
     </div>
   );
@@ -889,28 +925,57 @@ function HandoverSummary({ totals }) {
   const over = num(totals.variance) > VARIANCE_TOLERANCE;
   return (
     <div className="panel">
-      <div className="body row" style={{ gap: 36, flexWrap: "wrap" }}>
-        <Stat label="Gross sales" value={money(totals.gross)} />
-        <Stat label="Less testing" value={money(totals.testingTotal)} />
-        <Stat label="Less expenses" value={money(totals.expensesTotal)} />
-        <Stat label="Net due" value={money(totals.net)} />
-        <Stat label="Card / UPI / credit" value={money(totals.nonCash)} />
-        <Stat label="Cash to hand over" value={money(totals.handover)} tone="pos" />
-        <Stat
-          label={`Variance · ${varianceLabel(totals.variance)}`}
-          value={totals.variance == null ? "—" : money(totals.variance)}
-          tone={varianceTone(totals.variance)}
-        />
-      </div>
-      {(short || over) && (
-        <div className="body" style={{ borderTop: "1px solid var(--hairline)" }}>
-          <span className="small" style={{ color: short ? "var(--rust)" : "var(--green)" }}>
+      <div className="body">
+        <table>
+          <tbody>
+            <tr>
+              <td>Fuel sold</td>
+              <td className="num mono">{money(totals.gross)}</td>
+            </tr>
+            <tr>
+              <td className="muted">Less fuel tested</td>
+              <td className="num mono">−{money(totals.testingTotal)}</td>
+            </tr>
+            <tr>
+              <td className="muted">Less expenses</td>
+              <td className="num mono">−{money(totals.expensesTotal)}</td>
+            </tr>
+            <tr className="total">
+              <td>Net due</td>
+              <td className="num mono">{money(totals.net)}</td>
+            </tr>
+            <tr>
+              <td className="muted">Less card, UPI &amp; credit</td>
+              <td className="num mono">−{money(totals.nonCash)}</td>
+            </tr>
+            <tr className="total">
+              <td>Cash to hand over</td>
+              <td className="num mono" style={{ color: "var(--green)" }}>
+                {money(totals.handover)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="divider" />
+        <div className="between">
+          <span className="small muted">
+            Counted {money(totals.declared)} against {money(totals.net)} due
+          </span>
+          <span
+            className="small mono"
+            style={{
+              color: short ? "var(--rust)" : over ? "var(--green)" : "var(--muted)",
+            }}
+          >
             {short
-              ? `Collections are short of net by ₹ ${money(Math.abs(totals.variance))}. Check the payment split before submitting.`
-              : `Collections exceed net by ₹ ${money(totals.variance)}. Confirm nothing was counted twice.`}
+              ? `Short by ${money(Math.abs(totals.variance))}`
+              : over
+                ? `Over by ${money(totals.variance)}`
+                : "Balanced"}
           </span>
         </div>
-      )}
+      </div>
     </div>
   );
 }

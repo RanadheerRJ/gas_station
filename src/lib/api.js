@@ -260,15 +260,15 @@ export async function closeShift(stationId, shiftId, payload, profile) {
   return res.data;
 }
 
-export async function addNozzleToShift(stationId, shiftId, nozzleId, profile) {
-  if (isDemo) return demoBackend.addNozzleToShift(stationId, shiftId, nozzleId, profile);
-  const res = await call("addNozzleToShift")({ stationId, shiftId, nozzleId });
+export async function addShiftExpense(stationId, shiftId, expense) {
+  if (isDemo) return demoBackend.addShiftExpense(stationId, shiftId, expense);
+  const res = await call("addShiftExpense")({ stationId, shiftId, ...expense });
   return res.data;
 }
 
-export async function removeNozzleFromShift(stationId, shiftId, nozzleId) {
-  if (isDemo) return demoBackend.removeNozzleFromShift(stationId, shiftId, nozzleId);
-  const res = await call("removeNozzleFromShift")({ stationId, shiftId, nozzleId });
+export async function removeShiftExpense(stationId, shiftId, index) {
+  if (isDemo) return demoBackend.removeShiftExpense(stationId, shiftId, index);
+  const res = await call("removeShiftExpense")({ stationId, shiftId, index });
   return res.data;
 }
 

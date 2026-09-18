@@ -61,6 +61,7 @@ to a nozzle's meter.
    work different pumps at the same time; the forecourt board shows each pump
    as free or busy, and who is fuelling.
 4. At handover the operator enters **only the closing reading** per nozzle.
+   The set of nozzles cannot change once the shift is running.
    Litres are `closing − opening`, and the amount is `litres × snapshotted
    price`. A meter that wraps past its digit limit is handled rather than
    reported as a negative sale.
@@ -116,13 +117,17 @@ locks the record: `reviseShift` refuses to touch an approved shift, and the
 status field is not client-writable at all, so sign-off can only happen through
 the `reviewShift` function, which stamps who approved it and when.
 
-### Nozzles can change mid-shift
+### Nozzles are fixed, expenses are live
 
-An operator often picks up a second pump partway through, or hands one off.
-The open-shift panel can add a nozzle — snapshotting its meter reading and
-current price at that moment, not at shift start — or drop one, down to a
-minimum of one nozzle. A nozzle already held by another open shift cannot be
-taken, the same invariant that governs starting a shift.
+The nozzles an operator takes are settled when the shift starts and cannot
+change afterwards — every litre on those meters belongs to that shift, with no
+argument about who was holding what when.
+
+Expenses work the other way round. Money paid out of the drawer is logged from
+the open shift panel the moment it is spent, one line at a time, so nothing has
+to be reconstructed from memory at handover. By the time the shift closes the
+expenses are already in, which is what keeps closing short: meter readings, the
+day's testing figures, and the cash count.
 
 ### Credit sales do not need an existing customer
 
@@ -156,8 +161,8 @@ src/
   pages/      login, developer admin, owner dashboard, shifts, pump/rate
               setup, daily ledger, credit, staff
 functions/    createOwner, createStaff, addStation, deleteStation, resetPin,
-              pinLogin, setPrice, openShift, closeShift, reviseShift,
-              reviewShift, addNozzleToShift, removeNozzleFromShift
+              pinLogin, setPrice, openShift, closeShift, addShiftExpense,
+              removeShiftExpense, reviseShift, reviewShift
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -258,8 +263,8 @@ shifts/{stationId}/records/{shiftId}
   rejectedBy, rejectedByName, rejectedAt, rejectionReason,
   revisedBy, revisedByName, revisedAt,
   nozzles: [ { nozzleId, pumpId, label, fuelType,
-               openingReading, closingReading, price, priceId, addedAt } ],
-  expenses:    [ { label, amount } ],
+               openingReading, closingReading, price, priceId } ],
+  expenses:    [ { label, amount, at } ],   logged live during the shift
   creditSales: [ { customerId, name, phone, amount } ],
   payments:    { cash, card, upi, credit, other },
   testing:     { MS, HSD },          rupee value test-dispensed today
@@ -285,7 +290,7 @@ figure can never drift out of agreement with the meter it came from.
   `ownerId` against the caller's `ownerId` claim (owners span many stations)
   or the caller's `stationId` claim (single-station staff).
 - Shift documents accept **no client writes whatsoever**. Every mutation —
-  open, close, revise, add or drop a nozzle, approve, reject — goes through a
+  open, close, log an expense, revise, approve, reject — goes through a
   Cloud Function. That is what makes approval meaningful: a client cannot flip
   `status` to `approved`, so the sign-off stamp always names a real reviewer.
 - `reviewShift` re-checks the caller's role server-side; only an owner or

@@ -709,10 +709,13 @@ export const demoBackend = {
       return { ...n, closingReading: Number(c) };
     });
 
-    shift.expenses = (payload.expenses || []).map((e) => ({
-      label: String(e.label || "").trim(),
-      amount: Number(e.amount) || 0,
-    }));
+    // Expenses were logged live during the shift; closing does not resend them.
+    if (payload.expenses) {
+      shift.expenses = payload.expenses.map((e) => ({
+        label: String(e.label || "").trim(),
+        amount: Number(e.amount) || 0,
+      }));
+    }
     shift.creditSales = (payload.creditSales || []).map((c) => ({
       customerId: c.customerId || null,
       name: String(c.name || "").trim(),
@@ -780,60 +783,33 @@ export const demoBackend = {
     return clone(shift);
   },
 
+
   /**
-   * Attach another nozzle to a shift already running — an operator often
-   * picks up a second pump mid-shift.
+   * Expenses are logged as they happen during the shift, not remembered
+   * until handover. Only the operator's own open shift can be added to.
    */
-  async addNozzleToShift(stationId, shiftId, nozzleId, caller) {
-    await delay(160);
-    const d = db();
-    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
-    if (!shift) throw new Error("Shift not found.");
-    if (shift.status !== "open") throw new Error("Only an open shift can take more nozzles.");
-    if ((shift.nozzles || []).some((n) => n.nozzleId === nozzleId)) {
-      throw new Error("That nozzle is already on this shift.");
-    }
-
-    const busy = d.shifts[stationId].some(
-      (sh) =>
-        sh.status === "open" &&
-        sh.id !== shiftId &&
-        (sh.nozzles || []).some((n) => n.nozzleId === nozzleId)
-    );
-    if (busy) throw new Error("That nozzle is already in another active shift.");
-
-    const nz = (d.nozzles[stationId] || []).find((n) => n.id === nozzleId);
-    if (!nz) throw new Error("Nozzle not found.");
-    const active = (d.prices[stationId] || [])
-      .filter((pr) => pr.fuelType === nz.fuelType && !pr.effectiveTo)
-      .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))[0];
-    if (!active) throw new Error(`Set a price for ${nz.fuelType} first.`);
-
-    shift.nozzles.push({
-      nozzleId: nz.id,
-      pumpId: nz.pumpId,
-      label: `${(d.pumps[stationId] || []).find((p) => p.id === nz.pumpId)?.name || "Pump"} · ${nz.name}`,
-      fuelType: nz.fuelType,
-      openingReading: nz.lastReading,
-      closingReading: "",
-      price: active.price,
-      priceId: active.id,
-      addedAt: nowISO(),
-    });
-    commit();
-    return clone(shift);
-  },
-
-  async removeNozzleFromShift(stationId, shiftId, nozzleId) {
+  async addShiftExpense(stationId, shiftId, expense) {
     await delay(140);
     const d = db();
     const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
     if (!shift) throw new Error("Shift not found.");
-    if (shift.status !== "open") throw new Error("Only an open shift can be changed.");
-    if ((shift.nozzles || []).length <= 1) {
-      throw new Error("A shift needs at least one nozzle.");
-    }
-    shift.nozzles = shift.nozzles.filter((n) => n.nozzleId !== nozzleId);
+    if (shift.status !== "open") throw new Error("This shift is already closed.");
+    const label = String(expense.label || "").trim();
+    const amount = Number(expense.amount) || 0;
+    if (!label) throw new Error("Give the expense a description.");
+    if (amount <= 0) throw new Error("Enter an amount greater than zero.");
+    shift.expenses = [...(shift.expenses || []), { label, amount, at: nowISO() }];
+    commit();
+    return clone(shift);
+  },
+
+  async removeShiftExpense(stationId, shiftId, index) {
+    await delay(120);
+    const d = db();
+    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
+    if (!shift) throw new Error("Shift not found.");
+    if (shift.status !== "open") throw new Error("This shift is already closed.");
+    shift.expenses = (shift.expenses || []).filter((_, i) => i !== index);
     commit();
     return clone(shift);
   },

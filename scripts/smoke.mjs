@@ -275,7 +275,7 @@ console.log("\ntesting deduction & handover maths");
   ok("classifyFuel maps diesel to HSD", sm.classifyFuel("Diesel") === "HSD");
 }
 
-console.log("\nmid-shift nozzle changes");
+console.log("\nnozzles are fixed once a shift starts");
 {
   const st = ownerStations[0].id;
   await drainOpenShifts(st);
@@ -283,33 +283,61 @@ console.log("\nmid-shift nozzle changes");
   const spare = eq.nozzles;
 
   const sh = await be.openShift(st, { nozzleIds: [spare[0].id] }, owner);
-  ok("shift starts with one nozzle", sh.nozzles.length === 1);
-
-  let tooFew = false;
-  try { await be.removeNozzleFromShift(st, sh.id, spare[0].id); } catch { tooFew = true; }
-  ok("cannot drop the last nozzle", tooFew);
-
-  const grown = await be.addNozzleToShift(st, sh.id, spare[1].id, owner);
-  ok("nozzle added mid-shift", grown.nozzles.length === 2);
-  ok("added nozzle takes the live meter reading",
-     grown.nozzles[1].openingReading === spare[1].lastReading);
-  ok("added nozzle snapshots a price", grown.nozzles[1].price > 0);
-
-  let dup = false;
-  try { await be.addNozzleToShift(st, sh.id, spare[1].id, owner); } catch { dup = true; }
-  ok("same nozzle cannot be added twice", dup);
-
-  const shrunk = await be.removeNozzleFromShift(st, sh.id, spare[1].id);
-  ok("nozzle removed mid-shift", shrunk.nozzles.length === 1);
+  ok("shift starts with the chosen nozzles", sh.nozzles.length === 1);
+  ok("no way to drop a nozzle mid-shift", be.removeNozzleFromShift === undefined);
+  ok("no way to add a nozzle mid-shift", be.addNozzleToShift === undefined);
 
   await be.closeShift(st, sh.id, {
     closingReadings: { [spare[0].id]: spare[0].lastReading + 5 },
-    expenses: [], creditSales: [],
+    creditSales: [],
     payments: { cash: 0, card: 0, upi: 0, credit: 0, other: 0 },
   }, owner);
-  let closedAdd = false;
-  try { await be.addNozzleToShift(st, sh.id, spare[1].id, owner); } catch { closedAdd = true; }
-  ok("a closed shift takes no more nozzles", closedAdd);
+}
+
+console.log("\nexpenses logged during the shift");
+{
+  const st = ownerStations[0].id;
+  await drainOpenShifts(st);
+  const eq = await be.listPumps(st);
+  const nz = eq.nozzles[0];
+
+  const sh = await be.openShift(st, { nozzleIds: [nz.id] }, owner);
+  ok("a new shift starts with no expenses", (sh.expenses || []).length === 0);
+
+  const one = await be.addShiftExpense(st, sh.id, { label: "Tea", amount: 120 });
+  ok("expense logged while the shift runs", one.expenses.length === 1);
+  ok("expense keeps its description", one.expenses[0].label === "Tea");
+  ok("expense is timestamped", !!one.expenses[0].at);
+
+  const two = await be.addShiftExpense(st, sh.id, { label: "Air filter", amount: 340 });
+  ok("expenses accumulate", two.expenses.length === 2);
+
+  let blank = false;
+  try { await be.addShiftExpense(st, sh.id, { label: "  ", amount: 50 }); } catch { blank = true; }
+  ok("an expense needs a description", blank);
+  let zero = false;
+  try { await be.addShiftExpense(st, sh.id, { label: "Nothing", amount: 0 }); } catch { zero = true; }
+  ok("an expense needs a positive amount", zero);
+
+  const pruned = await be.removeShiftExpense(st, sh.id, 0);
+  ok("a mistaken expense can be removed", pruned.expenses.length === 1);
+  ok("the right expense was removed", pruned.expenses[0].label === "Air filter");
+
+  // Closing carries the logged expenses through without resending them.
+  const closed = await be.closeShift(st, sh.id, {
+    closingReadings: { [nz.id]: nz.lastReading + 100 },
+    creditSales: [],
+    testing: { MS: 0, HSD: 0 },
+    payments: { cash: 0, card: 0, upi: 0, credit: 0, other: 0 },
+  }, owner);
+  ok("closing keeps the expenses logged during the shift", closed.expenses.length === 1);
+  ok("closing deducts them from net",
+     sm.shiftTotals(closed).expensesTotal === 340,
+     String(sm.shiftTotals(closed).expensesTotal));
+
+  let late = false;
+  try { await be.addShiftExpense(st, sh.id, { label: "Too late", amount: 10 }); } catch { late = true; }
+  ok("a closed shift takes no more expenses", late);
 }
 
 console.log("\nreview workflow");
@@ -320,9 +348,9 @@ console.log("\nreview workflow");
   const spare = eq.nozzles;
 
   const sh = await be.openShift(st, { nozzleIds: [spare[0].id] }, owner);
+  await be.addShiftExpense(st, sh.id, { label: "Air pump repair", amount: 400 });
   const closed = await be.closeShift(st, sh.id, {
     closingReadings: { [spare[0].id]: spare[0].lastReading + 100 },
-    expenses: [{ label: "Air pump repair", amount: 400 }],
     creditSales: [],
     testing: { MS: 250, HSD: 150 },
     payments: { cash: 1000, card: 0, upi: 0, credit: 0, other: 0 },
