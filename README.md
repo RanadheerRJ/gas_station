@@ -283,15 +283,15 @@ If you deploy functions somewhere other than `us-central1`, set
 ### 3. Deploy rules, indexes and functions
 
 ```bash
-npm i -g firebase-tools
-firebase login
-firebase use --add          # select the project, give it the alias "default"
+npx firebase login
+npm install --prefix functions
 
-cd functions && npm install && cd ..
-
-firebase deploy --only firestore:rules,firestore:indexes
-firebase deploy --only functions
+npx firebase deploy --only firestore:rules,firestore:indexes
+npx firebase deploy --only functions
 ```
+
+`firebase-tools` is a dev dependency, so `npx firebase` works without a global
+install, and `.firebaserc` already pins the project — no `firebase use --add`.
 
 Deploy the rules **before** anyone signs in. A database left in production-mode
 defaults denies everything, and one left in test-mode defaults allows the
@@ -315,7 +315,6 @@ nobody yet to create it. It is made by hand, once.
 3. Grant the claim:
 
    ```bash
-   cd functions && npm install && cd ..   # the script uses firebase-admin
    node scripts/setAdminClaim.cjs you@example.com
    ```
 
