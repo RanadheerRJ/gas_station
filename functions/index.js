@@ -541,6 +541,7 @@ exports.openShift = onCall(async (request) => {
       expenses: [],
       creditSales: [],
       payments: { cash: "", card: "", upi: "", credit: "", other: "" },
+      testing: { MS: "", HSD: "" },
       note: "",
     });
     return { shiftId: ref.id };
@@ -562,7 +563,7 @@ exports.closeShift = onCall(async (request) => {
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(shiftRef);
     if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
-    if (snap.get("status") === "closed") {
+    if (snap.get("status") !== "open") {
       throw new HttpsError("failed-precondition", "That shift is already closed.");
     }
 
@@ -585,8 +586,46 @@ exports.closeShift = onCall(async (request) => {
     const creditSales = (payload.creditSales || []).map((c) => ({
       customerId: c.customerId || null,
       name: String(c.name || "").trim(),
+      phone: String(c.phone || "").trim(),
       amount: Number(c.amount) || 0,
     }));
+
+    // Firestore transactions require all reads before any write, so resolve
+    // walk-in credit customers up front.
+    const customersCol = db
+      .collection("creditCustomers")
+      .doc(stationId)
+      .collection("customers");
+    const newCustomers = [];
+
+    for (const c of creditSales) {
+      if (c.customerId) continue;
+      if (c.phone) {
+        // eslint-disable-next-line no-await-in-loop
+        const match = await tx.get(customersCol.where("phone", "==", c.phone).limit(1));
+        if (!match.empty) {
+          c.customerId = match.docs[0].id;
+          continue;
+        }
+      }
+      const fresh = customersCol.doc();
+      c.customerId = fresh.id;
+      newCustomers.push({ ref: fresh, sale: c });
+    }
+
+    // ---- writes from here on ----
+
+    // Every rupee of walk-in debt gets a named, auditable account.
+    newCustomers.forEach(({ ref, sale }) => {
+      tx.set(ref, {
+        name: sale.name || "Walk-in",
+        phone: sale.phone || "",
+        outstandingBalance: 0,
+        transactions: [],
+        createdFromShift: shiftId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
 
     // Advance only the nozzles this shift actually held.
     nozzles.forEach((n) => {
@@ -598,11 +637,7 @@ exports.closeShift = onCall(async (request) => {
 
     creditSales.forEach((c) => {
       if (!c.customerId) return;
-      const custRef = db
-        .collection("creditCustomers")
-        .doc(stationId)
-        .collection("customers")
-        .doc(c.customerId);
+      const custRef = customersCol.doc(c.customerId);
       tx.set(
         custRef,
         {
@@ -630,12 +665,283 @@ exports.closeShift = onCall(async (request) => {
         credit: Number(p.credit) || 0,
         other: Number(p.other) || 0,
       },
+      testing: {
+        MS: Number(payload.testing?.MS) || 0,
+        HSD: Number(payload.testing?.HSD) || 0,
+      },
       note: String(payload.note || "").trim(),
-      status: "closed",
+      // Closing submits for review rather than finalising.
+      status: "pending_review",
       endTime: FieldValue.serverTimestamp(),
       closedByName: request.auth.token.name || "",
     });
 
     return { ok: true, shiftId };
   });
+});
+
+
+/* ------------------------------------------------------------------ */
+/* mid-shift nozzle changes                                            */
+/* ------------------------------------------------------------------ */
+
+exports.addNozzleToShift = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const shiftId = requireString(request.data?.shiftId, "shiftId");
+  const nozzleId = requireString(request.data?.nozzleId, "nozzleId");
+  await assertStationAccess(request, stationId);
+
+  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const stationRef = db.collection("stations").doc(stationId);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(shiftRef);
+    if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
+    if (snap.get("status") !== "open") {
+      throw new HttpsError("failed-precondition", "Only an open shift can take more nozzles.");
+    }
+    const nozzles = snap.get("nozzles") || [];
+    if (nozzles.some((n) => n.nozzleId === nozzleId)) {
+      throw new HttpsError("failed-precondition", "That nozzle is already on this shift.");
+    }
+
+    const openSnap = await tx.get(
+      db.collection("shifts").doc(stationId).collection("records").where("status", "==", "open")
+    );
+    let heldBy = null;
+    openSnap.forEach((d) => {
+      if (d.id === shiftId) return;
+      if ((d.get("nozzles") || []).some((n) => n.nozzleId === nozzleId)) {
+        heldBy = d.get("employeeName") || "another operator";
+      }
+    });
+    if (heldBy) {
+      throw new HttpsError("failed-precondition", `That nozzle is in an active shift by ${heldBy}.`);
+    }
+
+    const [nzDoc, pumpSnap, priceSnap] = await Promise.all([
+      tx.get(stationRef.collection("nozzles").doc(nozzleId)),
+      tx.get(stationRef.collection("pumps")),
+      tx.get(stationRef.collection("prices").where("effectiveTo", "==", null)),
+    ]);
+    if (!nzDoc.exists) throw new HttpsError("not-found", "Nozzle not found.");
+
+    const pumpNames = {};
+    pumpSnap.forEach((p) => {
+      pumpNames[p.id] = p.get("name");
+    });
+    let price = null;
+    priceSnap.forEach((p) => {
+      if (p.get("fuelType") === nzDoc.get("fuelType")) {
+        price = { id: p.id, price: p.get("price") };
+      }
+    });
+    if (!price) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Set a price for ${nzDoc.get("fuelType")} first.`
+      );
+    }
+
+    tx.update(shiftRef, {
+      nozzles: [
+        ...nozzles,
+        {
+          nozzleId,
+          pumpId: nzDoc.get("pumpId"),
+          label: `${pumpNames[nzDoc.get("pumpId")] || "Pump"} · ${nzDoc.get("name")}`,
+          fuelType: nzDoc.get("fuelType"),
+          openingReading: Number(nzDoc.get("lastReading")) || 0,
+          closingReading: "",
+          price: Number(price.price),
+          priceId: price.id,
+          addedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    return { ok: true };
+  });
+});
+
+exports.removeNozzleFromShift = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const shiftId = requireString(request.data?.shiftId, "shiftId");
+  const nozzleId = requireString(request.data?.nozzleId, "nozzleId");
+  await assertStationAccess(request, stationId);
+
+  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(shiftRef);
+    if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
+    if (snap.get("status") !== "open") {
+      throw new HttpsError("failed-precondition", "Only an open shift can be changed.");
+    }
+    const nozzles = snap.get("nozzles") || [];
+    if (nozzles.length <= 1) {
+      throw new HttpsError("failed-precondition", "A shift needs at least one nozzle.");
+    }
+    tx.update(shiftRef, { nozzles: nozzles.filter((n) => n.nozzleId !== nozzleId) });
+    return { ok: true };
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* shift review                                                        */
+/* ------------------------------------------------------------------ */
+
+exports.reviewShift = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const shiftId = requireString(request.data?.shiftId, "shiftId");
+  const action = requireString(request.data?.action, "action");
+  await assertStationAccess(request, stationId);
+
+  const role = request.auth?.token?.role;
+  if (role !== "owner" && role !== "manager") {
+    throw new HttpsError("permission-denied", "Only an owner or manager can review shifts.");
+  }
+
+  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const snap = await shiftRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
+  const status = snap.get("status");
+
+  if (action === "approve") {
+    if (status !== "pending_review" && status !== "rejected") {
+      throw new HttpsError("failed-precondition", "Only a submitted shift can be approved.");
+    }
+    await shiftRef.update({
+      status: "approved",
+      approvedBy: request.auth.uid,
+      approvedByName: request.auth.token.name || "",
+      approvedAt: FieldValue.serverTimestamp(),
+      rejectionReason: null,
+    });
+    return { ok: true, status: "approved" };
+  }
+
+  if (action === "reject") {
+    if (status !== "pending_review") {
+      throw new HttpsError("failed-precondition", "Only a submitted shift can be sent back.");
+    }
+    await shiftRef.update({
+      status: "rejected",
+      rejectedBy: request.auth.uid,
+      rejectedByName: request.auth.token.name || "",
+      rejectedAt: FieldValue.serverTimestamp(),
+      rejectionReason: String(request.data?.reason || "").trim() || "Correction requested",
+    });
+    return { ok: true, status: "rejected" };
+  }
+
+  throw new HttpsError("invalid-argument", "Unknown review action.");
+});
+
+/**
+ * Revise a shift that is still under review. Expenses, testing figures and
+ * payments stay editable right up until an owner approves it.
+ */
+exports.reviseShift = onCall(async (request) => {
+  const stationId = requireString(request.data?.stationId, "stationId");
+  const shiftId = requireString(request.data?.shiftId, "shiftId");
+  await assertStationAccess(request, stationId);
+
+  const shiftRef = db.collection("shifts").doc(stationId).collection("records").doc(shiftId);
+  const snap = await shiftRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Shift not found.");
+  if (snap.get("status") === "approved") {
+    throw new HttpsError("failed-precondition", "An approved shift is locked.");
+  }
+  if (snap.get("status") === "open") {
+    throw new HttpsError("failed-precondition", "Close the shift before revising it.");
+  }
+
+  const patch = {
+    revisedBy: request.auth.uid,
+    revisedByName: request.auth.token.name || "",
+    revisedAt: FieldValue.serverTimestamp(),
+  };
+  if (Array.isArray(request.data?.expenses)) {
+    patch.expenses = request.data.expenses.map((e) => ({
+      label: String(e.label || "").trim(),
+      amount: Number(e.amount) || 0,
+    }));
+  }
+  if (request.data?.testing) {
+    patch.testing = {
+      MS: Number(request.data.testing.MS) || 0,
+      HSD: Number(request.data.testing.HSD) || 0,
+    };
+  }
+  if (request.data?.payments) {
+    const p = request.data.payments;
+    patch.payments = {
+      cash: Number(p.cash) || 0,
+      card: Number(p.card) || 0,
+      upi: Number(p.upi) || 0,
+      credit: Number(p.credit) || 0,
+      other: Number(p.other) || 0,
+    };
+  }
+  if (request.data?.note != null) patch.note = String(request.data.note).trim();
+  // A rejected shift returns to the queue once the operator fixes it.
+  if (snap.get("status") === "rejected") patch.status = "pending_review";
+
+  await shiftRef.update(patch);
+  return { ok: true };
+});
+
+/* ------------------------------------------------------------------ */
+/* deleteStation — owner only, permanent                               */
+/* ------------------------------------------------------------------ */
+
+exports.deleteStation = onCall(async (request) => {
+  const ownerUid = assertOwner(request);
+  const stationId = requireString(request.data?.stationId, "stationId");
+
+  const stationRef = db.collection("stations").doc(stationId);
+  const snap = await stationRef.get();
+  if (!snap.exists || snap.get("ownerId") !== ownerUid) {
+    throw new HttpsError("permission-denied", "That station is not yours.");
+  }
+
+  const openSnap = await db
+    .collection("shifts")
+    .doc(stationId)
+    .collection("records")
+    .where("status", "==", "open")
+    .limit(1)
+    .get();
+  if (!openSnap.empty) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Close the open shift before deleting this station."
+    );
+  }
+
+  // Recursively clear the station's subcollections, then the station itself.
+  const subcollections = ["pumps", "nozzles", "prices"];
+  for (const name of subcollections) {
+    // eslint-disable-next-line no-await-in-loop
+    const docs = await stationRef.collection(name).get();
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(docs.docs.map((d) => d.ref.delete()));
+  }
+  for (const path of [
+    db.collection("shifts").doc(stationId).collection("records"),
+    db.collection("creditCustomers").doc(stationId).collection("customers"),
+  ]) {
+    // eslint-disable-next-line no-await-in-loop
+    const docs = await path.get();
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(docs.docs.map((d) => d.ref.delete()));
+  }
+
+  await stationRef.delete();
+  await db
+    .collection("users")
+    .doc(ownerUid)
+    .update({ stationIds: FieldValue.arrayRemove(stationId) });
+
+  return { ok: true };
 });

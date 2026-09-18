@@ -71,19 +71,68 @@ to a nozzle's meter.
 
 ### Cash reconciliation
 
-Closing a shift asks what was actually collected, and compares:
+Closing a shift asks what was actually collected, and works down to the one
+figure the operator hands across the counter:
 
 ```
-net due  = meter sales − expenses
+gross     = Σ (litres × price) per nozzle
+net due   = gross − testing − expenses
 collected = cash + card + UPI + credit + other
 variance  = collected − net due
+handover  = net due − (card + UPI + credit + other)
 ```
 
 Collections are split by mode (cash, card, UPI, credit, other) rather than a
-single figure, which is how a forecourt actually settles. A negative variance
-is a short drawer, shown in rust; within ₹1 it reads as balanced. The variance
-rolls up per day, per station, and across all stations on the owner's
-dashboard.
+single figure, which is how a forecourt actually settles. `handover` strips the
+money that never reached the drawer — card, UPI and credit settle elsewhere —
+leaving the physical cash owed to the owner. A negative variance is a short
+drawer, shown in rust; within ₹1 it reads as balanced. The variance rolls up
+per day, per station, and across all stations on the owner's dashboard.
+
+### Daily fuel testing
+
+Every pump is test-dispensed each day and the fuel goes straight back into the
+tank. The meter counted it, but no money was ever collected, so it cannot be
+owed to the owner. Closing a shift takes two figures — the rupee value tested
+on **MS** (petrol) and on **HSD** (diesel) — and both come off gross before net
+is calculated. They are stored separately rather than as a single number so the
+owner can see at review which product the deduction belongs to.
+
+### Shifts are reviewed before they are final
+
+Closing a shift does not finalise it. A shift moves:
+
+```
+open ──close──▶ pending_review ──approve──▶ approved   (locked)
+                      ▲                │
+                      └──── revise ────┴──reject──▶ rejected
+```
+
+Until an owner or manager approves it, **expenses and testing figures stay
+editable** — the review panel has an Edit button, and the settlement table
+recalculates live as figures change. Sending a shift back records a reason the
+operator sees; correcting a rejected shift returns it to the queue. Approving
+locks the record: `reviseShift` refuses to touch an approved shift, and the
+status field is not client-writable at all, so sign-off can only happen through
+the `reviewShift` function, which stamps who approved it and when.
+
+### Nozzles can change mid-shift
+
+An operator often picks up a second pump partway through, or hands one off.
+The open-shift panel can add a nozzle — snapshotting its meter reading and
+current price at that moment, not at shift start — or drop one, down to a
+minimum of one nozzle. A nozzle already held by another open shift cannot be
+taken, the same invariant that governs starting a shift.
+
+### Credit sales do not need an existing customer
+
+Most credit at a forecourt is a known hauler, but plenty of it is a walk-in.
+A credit line takes a name and phone number directly; picking from the customer
+list is optional. On submission the phone number is matched against existing
+accounts — a repeat customer posts to the account they already have, and an
+unrecognised number opens a new one automatically. Either way the debt lands in
+the credit ledger attached to a named account, so nothing is anonymous and
+every balance can be chased.
 
 ### Prices are effective-dated
 
@@ -106,8 +155,9 @@ src/
   components/ layout, ledger entry form, shared UI primitives
   pages/      login, developer admin, owner dashboard, shifts, pump/rate
               setup, daily ledger, credit, staff
-functions/    createOwner, createStaff, addStation, resetPin, pinLogin,
-              setPrice, openShift, closeShift
+functions/    createOwner, createStaff, addStation, deleteStation, resetPin,
+              pinLogin, setPrice, openShift, closeShift, reviseShift,
+              reviewShift, addNozzleToShift, removeNozzleFromShift
 scripts/      setAdminClaim.js (one-off), smoke.mjs (logic tests)
 firestore.rules
 ```
@@ -201,17 +251,22 @@ stations/{stationId}/prices/{priceId}      fuelType, price, effectiveFrom,
                                            effectiveTo, setBy, setByName
 
 shifts/{stationId}/records/{shiftId}
-  employeeName, userId, status: 'open'|'closed', date,
+  employeeName, userId, date,
+  status: 'open'|'pending_review'|'approved'|'rejected',
   startTime, endTime, openedByName, closedByName,
+  approvedBy, approvedByName, approvedAt,
+  rejectedBy, rejectedByName, rejectedAt, rejectionReason,
+  revisedBy, revisedByName, revisedAt,
   nozzles: [ { nozzleId, pumpId, label, fuelType,
-               openingReading, closingReading, price, priceId } ],
+               openingReading, closingReading, price, priceId, addedAt } ],
   expenses:    [ { label, amount } ],
-  creditSales: [ { customerId, name, amount } ],
+  creditSales: [ { customerId, name, phone, amount } ],
   payments:    { cash, card, upi, credit, other },
+  testing:     { MS, HSD },          rupee value test-dispensed today
   note
 
 creditCustomers/{stationId}/customers/{customerId}
-  name, phone, outstandingBalance, createdAt,
+  name, phone, outstandingBalance, createdAt, createdFromShift,
   transactions: [ { date, type: 'credit'|'payment', amount, note } ]
 ```
 
@@ -229,9 +284,16 @@ figure can never drift out of agreement with the meter it came from.
 - Station access is resolved by a rules helper matching the station's
   `ownerId` against the caller's `ownerId` claim (owners span many stations)
   or the caller's `stationId` claim (single-station staff).
-- Shifts cannot be created or deleted from a client at all — only
-  `openShift`/`closeShift` write them. Owner/manager may amend a closed
-  shift; attendants cannot.
+- Shift documents accept **no client writes whatsoever**. Every mutation —
+  open, close, revise, add or drop a nozzle, approve, reject — goes through a
+  Cloud Function. That is what makes approval meaningful: a client cannot flip
+  `status` to `approved`, so the sign-off stamp always names a real reviewer.
+- `reviewShift` re-checks the caller's role server-side; only an owner or
+  manager can approve or reject, and `reviseShift` refuses an approved shift.
+- `deleteStation` is owner-only, verifies ownership of the specific station,
+  refuses while a shift is open, and cascades through pumps, nozzles, prices,
+  shift records and the credit ledger. The UI additionally requires the owner
+  to type the station's exact name, because it is unrecoverable.
 - Pumps and nozzles are readable by station staff but writable only by the
   owner, so an attendant cannot edit a meter. Prices are written solely by the
   `setPrice` function, which enforces owner-only and keeps the interval chain

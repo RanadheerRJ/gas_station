@@ -6,12 +6,13 @@ import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import {
   addStation,
+  deleteStation,
   listCustomers,
   listShifts,
   readableError,
 } from "../lib/api";
 import { money, todayISO } from "../lib/format";
-import { shiftTotals, varianceTone } from "../lib/shiftMath";
+import { SHIFT_STATUS, shiftTotals, varianceTone } from "../lib/shiftMath";
 import { PumpIcon, ShiftIcon, StationIcon } from "../components/icons";
 
 export default function OwnerDashboard() {
@@ -22,6 +23,8 @@ export default function OwnerDashboard() {
   const [form, setForm] = useState({ name: "", address: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(null);
+  const [confirmText, setConfirmText] = useState("");
 
   // Per-station roll-up: today's sales, today's cash, total outstanding credit.
   useEffect(() => {
@@ -36,12 +39,21 @@ export default function OwnerDashboard() {
               listShifts(s.id),
               listCustomers(s.id),
             ]);
-            const todays = shifts.filter((sh) => sh.date === today && sh.status === "closed");
+            const todays = shifts.filter(
+              (sh) => sh.date === today && sh.status !== SHIFT_STATUS.OPEN
+            );
             const totals = todays.map(shiftTotals);
             out[s.id] = {
               sales: totals.reduce((n, t) => n + t.gross, 0),
               litres: totals.reduce((n, t) => n + t.totalLitres, 0),
               cash: totals.reduce((n, t) => n + (t.declared ?? 0), 0),
+              testing: totals.reduce((n, t) => n + t.testingTotal, 0),
+              handover: totals.reduce((n, t) => n + t.handover, 0),
+              pending: shifts.filter(
+                (sh) =>
+                  sh.status === SHIFT_STATUS.PENDING_REVIEW ||
+                  sh.status === SHIFT_STATUS.REJECTED
+              ).length,
               variance: totals.reduce((n, t) => n + (t.variance ?? 0), 0),
               outstanding: customers.reduce(
                 (n, c) => n + Number(c.outstandingBalance || 0),
@@ -49,6 +61,7 @@ export default function OwnerDashboard() {
               ),
               openShifts: shifts.filter((sh) => sh.status === "open"),
               closedToday: todays.length,
+              approvedToday: todays.filter((sh) => sh.status === SHIFT_STATUS.APPROVED).length,
             };
           } catch {
             out[s.id] = null;
@@ -68,6 +81,9 @@ export default function OwnerDashboard() {
       sales: vals.reduce((n, v) => n + v.sales, 0),
       litres: vals.reduce((n, v) => n + v.litres, 0),
       cash: vals.reduce((n, v) => n + v.cash, 0),
+      testing: vals.reduce((n, v) => n + v.testing, 0),
+      handover: vals.reduce((n, v) => n + v.handover, 0),
+      pending: vals.reduce((n, v) => n + v.pending, 0),
       variance: vals.reduce((n, v) => n + v.variance, 0),
       outstanding: vals.reduce((n, v) => n + v.outstanding, 0),
     };
@@ -92,6 +108,22 @@ export default function OwnerDashboard() {
     }
   };
 
+  const removeStation = async () => {
+    if (!deleting || confirmText.trim() !== deleting.name) return;
+    setError("");
+    setBusy(true);
+    try {
+      await deleteStation(deleting.id, profile);
+      setDeleting(null);
+      setConfirmText("");
+      await reload();
+    } catch (err) {
+      setError(readableError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -103,7 +135,9 @@ export default function OwnerDashboard() {
           <div className="row" style={{ gap: 40 }}>
             <Stat label="Litres sold" value={money(totals.litres)} />
             <Stat label="Fuel sales" value={`₹ ${money(totals.sales)}`} />
+            <Stat label="Testing" value={`₹ ${money(totals.testing)}`} />
             <Stat label="Cash declared" value={`₹ ${money(totals.cash)}`} />
+            <Stat label="Cash to receive" value={`₹ ${money(totals.handover)}`} tone="pos" />
             <Stat
               label="Cash variance"
               value={`₹ ${money(totals.variance)}`}
@@ -116,6 +150,14 @@ export default function OwnerDashboard() {
             />
           </div>
         </Panel>
+
+        {totals.pending > 0 && (
+          <Notice>
+            {totals.pending} shift{totals.pending === 1 ? "" : "s"} awaiting your
+            sign-off. Open a station's shift register to review the figures, adjust
+            expenses or testing, and approve.
+          </Notice>
+        )}
 
         <Panel
           title="Stations"
@@ -175,7 +217,7 @@ export default function OwnerDashboard() {
                   <th className="num">Variance</th>
                   <th className="num">Outstanding credit</th>
                   <th>Shift</th>
-                  <th />
+                  <th className="num" style={{ width: 150 }} />
                 </tr>
               </thead>
               <tbody>
@@ -217,11 +259,29 @@ export default function OwnerDashboard() {
                         ) : (
                           <span className="tag rust">none today</span>
                         )}
+                        {sum?.pending > 0 && (
+                          <span className="tag" style={{ marginLeft: 6 }}>
+                            {sum.pending} to review
+                          </span>
+                        )}
                       </td>
                       <td className="num">
-                        <Link className="small" to={`/owner/shifts?station=${s.id}`}>
-                          Shifts
-                        </Link>
+                        <span className="row" style={{ gap: 10, justifyContent: "flex-end" }}>
+                          <Link className="small" to={`/owner/shifts?station=${s.id}`}>
+                            Shifts
+                          </Link>
+                          <button
+                            type="button"
+                            className="quiet"
+                            onClick={() => {
+                              setConfirmText("");
+                              setError("");
+                              setDeleting(deleting?.id === s.id ? null : s);
+                            }}
+                          >
+                            delete
+                          </button>
+                        </span>
                       </td>
                     </tr>
                   );
@@ -240,6 +300,44 @@ export default function OwnerDashboard() {
             </table>
           )}
         </Panel>
+        {deleting && (
+          <Panel
+            title={`Delete ${deleting.name}`}
+            note="This cannot be undone."
+          >
+            <div className="stack" style={{ gap: 10 }}>
+              <Notice kind="error">
+                Deleting this station permanently removes its pumps, nozzles, prices,
+                shift history and credit ledger. Staff assigned to it will lose access.
+                Export anything you need first.
+              </Notice>
+              <Field
+                label="Type the station name to confirm"
+                hint={deleting.name}
+              >
+                <input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={deleting.name}
+                />
+              </Field>
+              {error && <Notice kind="error">{error}</Notice>}
+              <div className="row">
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={busy || confirmText.trim() !== deleting.name}
+                  onClick={removeStation}
+                >
+                  {busy ? "Deleting…" : "Delete this station permanently"}
+                </button>
+                <button type="button" onClick={() => setDeleting(null)} disabled={busy}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Panel>
+        )}
       </div>
     </>
   );

@@ -27,6 +27,40 @@ export const VARIANCE_TOLERANCE = 1;
 
 export const PAYMENT_MODES = ["cash", "card", "upi", "credit", "other"];
 
+/**
+ * Shift review states. A closed shift is not final until the owner or a
+ * manager signs it off, and can be sent back for correction.
+ */
+export const SHIFT_STATUS = {
+  OPEN: "open",
+  PENDING_REVIEW: "pending_review",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+};
+
+/** Fuel groups used for the daily testing deduction. */
+export const TESTING_GROUPS = { MS: "MS", HSD: "HSD" };
+
+/** Petrol family is MS, diesel family is HSD. */
+export function classifyFuel(fuelType) {
+  const f = String(fuelType || "").toLowerCase();
+  if (f.includes("petrol") || f === "ms") return "MS";
+  if (f.includes("diesel") || f.includes("hsd")) return "HSD";
+  return "OTHER";
+}
+
+/** Litres sold per MS / HSD / OTHER group, for reporting. */
+export function litresByGroup(lines = []) {
+  const out = { MS: 0, HSD: 0, OTHER: 0 };
+  lines.forEach((l) => {
+    out[classifyFuel(l.fuelType)] += num(l.litresSold);
+  });
+  Object.keys(out).forEach((k) => {
+    out[k] = round2(out[k]);
+  });
+  return out;
+}
+
 export const PAYMENT_LABELS = {
   cash: "Cash",
   card: "Card",
@@ -89,10 +123,12 @@ export function paymentsTotal(payments = {}) {
 /**
  * Full financial position of a shift.
  *
- *   gross    = sum of every nozzle line
- *   net      = gross − expenses      (what should reach the owner)
- *   declared = cash + card + upi + credit + other
- *   variance = declared − net        (negative = short)
+ *   gross     = sum of every nozzle line
+ *   testing   = fuel run through the meter for calibration, not sold
+ *   net       = gross − testing − expenses   (what should reach the owner)
+ *   collected = cash + card + upi + credit + other
+ *   variance  = collected − net              (negative = short)
+ *   handover  = net − (card + upi + credit)  (physical cash owed to owner)
  */
 export function shiftTotals(shift) {
   const lines = nozzleLines(shift?.nozzles);
@@ -102,7 +138,15 @@ export function shiftTotals(shift) {
   const expensesTotal = round2(
     (shift?.expenses || []).reduce((n, e) => n + num(e.amount), 0)
   );
-  const net = round2(gross - expensesTotal);
+
+  // Testing fuel physically left the nozzle but was never sold, so it comes
+  // off the gross before anyone is asked to account for cash.
+  const testing = shift?.testing || {};
+  const testingMS = num(testing.MS);
+  const testingHSD = num(testing.HSD);
+  const testingTotal = round2(testingMS + testingHSD);
+
+  const net = round2(gross - testingTotal - expensesTotal);
 
   const payments = shift?.payments || {};
   const anyDeclared = PAYMENT_MODES.some(
@@ -111,16 +155,29 @@ export function shiftTotals(shift) {
   const declared = anyDeclared ? paymentsTotal(payments) : null;
   const variance = declared == null ? null : round2(declared - net);
 
+  // Non-cash modes are already settled elsewhere; only the remainder is
+  // physically handed over.
+  const nonCash = round2(
+    num(payments.card) + num(payments.upi) + num(payments.credit) + num(payments.other)
+  );
+  const handover = round2(net - nonCash);
+
   return {
     lines,
     fuels: fuelTotals(lines),
+    litresByGroup: litresByGroup(lines),
     totalLitres,
     gross,
+    testingMS,
+    testingHSD,
+    testingTotal,
     expensesTotal,
     net,
     payments,
     declared,
     variance,
+    nonCash,
+    handover,
   };
 }
 

@@ -229,5 +229,196 @@ const afterPay = await be.addCustomerTransaction(sid, cust.id, { date: "2020-01-
 ok("balance = credit - payments", afterPay.outstandingBalance === 3000, String(afterPay.outstandingBalance));
 ok("transactions appended", afterPay.transactions.length === 2);
 
+
+/** Close any shift still open on a station so the next block starts clean. */
+async function drainOpenShifts(stationId) {
+  const open = (await be.listShifts(stationId)).filter((x) => x.status === "open");
+  for (const sh of open) {
+    await be.closeShift(stationId, sh.id, {
+      closingReadings: Object.fromEntries(
+        sh.nozzles.map((n) => [n.nozzleId, n.openingReading])
+      ),
+      expenses: [], creditSales: [],
+      payments: { cash: 0, card: 0, upi: 0, credit: 0, other: 0 },
+    }, owner);
+  }
+}
+
+console.log("\ntesting deduction & handover maths");
+{
+  const t = sm.shiftTotals({
+    nozzles: [{ nozzleId: "n", fuelType: "Petrol", openingReading: 0, closingReading: 100, price: 100 }],
+    testing: { MS: 500, HSD: 200 },
+    expenses: [{ label: "Tea", amount: 300 }],
+    payments: { cash: 6000, card: 1000, upi: 1500, credit: 500, other: 0 },
+  });
+  ok("gross from meters", t.gross === 10000, String(t.gross));
+  ok("testing split kept per product", t.testingMS === 500 && t.testingHSD === 200);
+  ok("testing total summed", t.testingTotal === 700);
+  ok("net = gross - testing - expenses", t.net === 9000, String(t.net));
+  ok("non-cash excludes cash", t.nonCash === 3000, String(t.nonCash));
+  ok("handover = net - non-cash", t.handover === 6000, String(t.handover));
+  ok("variance = collected - net", t.variance === 0, String(t.variance));
+
+  const short = sm.shiftTotals({
+    nozzles: [{ nozzleId: "n", fuelType: "Diesel", openingReading: 0, closingReading: 10, price: 100 }],
+    testing: { MS: 0, HSD: 100 },
+    payments: { cash: 800, card: 0, upi: 0, credit: 0, other: 0 },
+  });
+  ok("short collection reads negative", short.variance === -100, String(short.variance));
+  ok("missing testing defaults to zero", sm.shiftTotals({ nozzles: [] }).testingTotal === 0);
+  ok("litres grouped MS/HSD", sm.litresByGroup([
+    { fuelType: "Petrol", litresSold: 10 },
+    { fuelType: "Premium Petrol", litresSold: 5 },
+    { fuelType: "Diesel", litresSold: 20 },
+  ]).MS === 15);
+  ok("classifyFuel maps diesel to HSD", sm.classifyFuel("Diesel") === "HSD");
+}
+
+console.log("\nmid-shift nozzle changes");
+{
+  const st = ownerStations[0].id;
+  await drainOpenShifts(st);
+  const eq = await be.listPumps(st);
+  const spare = eq.nozzles;
+
+  const sh = await be.openShift(st, { nozzleIds: [spare[0].id] }, owner);
+  ok("shift starts with one nozzle", sh.nozzles.length === 1);
+
+  let tooFew = false;
+  try { await be.removeNozzleFromShift(st, sh.id, spare[0].id); } catch { tooFew = true; }
+  ok("cannot drop the last nozzle", tooFew);
+
+  const grown = await be.addNozzleToShift(st, sh.id, spare[1].id, owner);
+  ok("nozzle added mid-shift", grown.nozzles.length === 2);
+  ok("added nozzle takes the live meter reading",
+     grown.nozzles[1].openingReading === spare[1].lastReading);
+  ok("added nozzle snapshots a price", grown.nozzles[1].price > 0);
+
+  let dup = false;
+  try { await be.addNozzleToShift(st, sh.id, spare[1].id, owner); } catch { dup = true; }
+  ok("same nozzle cannot be added twice", dup);
+
+  const shrunk = await be.removeNozzleFromShift(st, sh.id, spare[1].id);
+  ok("nozzle removed mid-shift", shrunk.nozzles.length === 1);
+
+  await be.closeShift(st, sh.id, {
+    closingReadings: { [spare[0].id]: spare[0].lastReading + 5 },
+    expenses: [], creditSales: [],
+    payments: { cash: 0, card: 0, upi: 0, credit: 0, other: 0 },
+  }, owner);
+  let closedAdd = false;
+  try { await be.addNozzleToShift(st, sh.id, spare[1].id, owner); } catch { closedAdd = true; }
+  ok("a closed shift takes no more nozzles", closedAdd);
+}
+
+console.log("\nreview workflow");
+{
+  const st = ownerStations[1].id;
+  await drainOpenShifts(st);
+  const eq = await be.listPumps(st);
+  const spare = eq.nozzles;
+
+  const sh = await be.openShift(st, { nozzleIds: [spare[0].id] }, owner);
+  const closed = await be.closeShift(st, sh.id, {
+    closingReadings: { [spare[0].id]: spare[0].lastReading + 100 },
+    expenses: [{ label: "Air pump repair", amount: 400 }],
+    creditSales: [],
+    testing: { MS: 250, HSD: 150 },
+    payments: { cash: 1000, card: 0, upi: 0, credit: 0, other: 0 },
+  }, owner);
+  ok("closing submits for review", closed.status === "pending_review", closed.status);
+  ok("testing amounts stored", closed.testing.MS === 250 && closed.testing.HSD === 150);
+
+  const revised = await be.reviseShift(st, sh.id, {
+    expenses: [{ label: "Air pump repair", amount: 400 }, { label: "Rags", amount: 60 }],
+    testing: { MS: 300, HSD: 150 },
+  }, owner);
+  ok("expenses editable before approval", revised.expenses.length === 2);
+  ok("testing editable before approval", revised.testing.MS === 300);
+
+  const sentBack = await be.rejectShift(st, sh.id, "Cash count is short", owner);
+  ok("owner can send a shift back", sentBack.status === "rejected");
+  ok("rejection reason recorded", sentBack.rejectionReason === "Cash count is short");
+
+  const fixed = await be.reviseShift(st, sh.id, { payments: { cash: 1400, card: 0, upi: 0, credit: 0, other: 0 } }, owner);
+  ok("a corrected shift returns to the queue", fixed.status === "pending_review");
+
+  const approved = await be.approveShift(st, sh.id, owner);
+  ok("owner approves the shift", approved.status === "approved");
+  ok("approver recorded", !!approved.approvedByName && !!approved.approvedAt);
+
+  let locked = false;
+  try { await be.reviseShift(st, sh.id, { expenses: [] }, owner); } catch { locked = true; }
+  ok("an approved shift is locked", locked);
+}
+
+console.log("\nwalk-in credit customers");
+{
+  const st = ownerStations[1].id;
+  await drainOpenShifts(st);
+  const eq = await be.listPumps(st);
+  const spare = eq.nozzles;
+  const before = (await be.listCustomers(st)).length;
+
+  const sh = await be.openShift(st, { nozzleIds: [spare[0].id] }, owner);
+  await be.closeShift(st, sh.id, {
+    closingReadings: { [spare[0].id]: spare[0].lastReading + 50 },
+    expenses: [],
+    creditSales: [{ name: "Anil Transport", phone: "9876500011", amount: 2500 }],
+    payments: { cash: 0, card: 0, upi: 0, credit: 2500, other: 0 },
+  }, owner);
+
+  const after = await be.listCustomers(st);
+  ok("unknown payer is registered as a customer", after.length === before + 1);
+  const created = after.find((c) => c.phone === "9876500011");
+  ok("walk-in keeps their name", created?.name === "Anil Transport");
+  ok("walk-in debt posts to the new account", created?.outstandingBalance === 2500,
+     String(created?.outstandingBalance));
+
+  // Same phone next time should reuse the account rather than duplicate it.
+  const sh2 = await be.openShift(st, { nozzleIds: [spare[0].id] }, owner);
+  const nz2 = sh2.nozzles[0];
+  await be.closeShift(st, sh2.id, {
+    closingReadings: { [nz2.nozzleId]: nz2.openingReading + 50 },
+    expenses: [],
+    creditSales: [{ name: "Anil Transport", phone: "9876500011", amount: 1500 }],
+    payments: { cash: 0, card: 0, upi: 0, credit: 1500, other: 0 },
+  }, owner);
+  const after2 = await be.listCustomers(st);
+  ok("repeat walk-in does not duplicate the account", after2.length === before + 1);
+  const grown = after2.find((c) => c.phone === "9876500011");
+  ok("repeat credit adds to the same balance", grown.outstandingBalance === 4000,
+     String(grown.outstandingBalance));
+}
+
+console.log("\nstation delete");
+{
+  const fresh = await be.createOwner({ ownerName: "Delete Me", stationName: "Doomed Pump", phone: "9", address: "x", pin: "7429" });
+  const prof = await be.pinLogin({ username: fresh.username, pin: "7429" });
+  const mine = await be.listStations(prof);
+  ok("new owner has one station", mine.length === 1);
+
+  const eq = await be.listPumps(mine[0].id);
+  if (eq.nozzles.length) {
+    const sh = await be.openShift(mine[0].id, { nozzleIds: [eq.nozzles[0].id] }, prof);
+    let blocked = false;
+    try { await be.deleteStation(mine[0].id, prof); } catch { blocked = true; }
+    ok("cannot delete a station with an open shift", blocked);
+    await be.closeShift(mine[0].id, sh.id, {
+      closingReadings: { [eq.nozzles[0].id]: eq.nozzles[0].lastReading },
+      expenses: [], creditSales: [],
+      payments: { cash: 0, card: 0, upi: 0, credit: 0, other: 0 },
+    }, prof);
+  }
+
+  let notMine = false;
+  try { await be.deleteStation(mine[0].id, owner); } catch { notMine = true; }
+  ok("another owner cannot delete the station", notMine);
+
+  await be.deleteStation(mine[0].id, prof);
+  ok("station is gone after delete", (await be.listStations(prof)).length === 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

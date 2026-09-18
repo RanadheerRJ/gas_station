@@ -75,6 +75,9 @@ service cloud.firestore {
         (isOwner() && resource.data.ownerId == claims().ownerId) ||
         claims().stationId == stationId
       );
+      // Creation and deletion both run through Cloud Functions: deleting a
+      // station has to cascade through its pumps, nozzles, prices, shifts
+      // and credit ledger, which a client rule cannot enforce.
       allow write: if false;
     }
 
@@ -103,14 +106,21 @@ service cloud.firestore {
     }
 
     /* ---------------- shifts ----------------
-       Opening and closing run through Cloud Functions so meter
-       advancement and credit posting stay atomic. Clients may read, and
-       owner/manager may amend a closed shift's notes; attendants cannot.  */
+       Opening, closing, revising and reviewing all run through Cloud
+       Functions so meter advancement, credit posting and the approval
+       stage stay atomic and auditable.
+
+       A shift's life: open -> pending_review -> approved (terminal), with
+       rejected as a loop back to pending_review. Approval is what releases
+       the cash handover figure to the owner's books, so it is never a
+       client write: the reviewShift function checks the role and stamps
+       who signed off. Likewise the status field itself is never editable
+       from a client, which is why update is closed here rather than being
+       left open to owner/manager with a field filter.                     */
 
     match /shifts/{stationId}/records/{shiftId} {
       allow read: if hasStationAccess(stationId);
-      allow create, delete: if false;
-      allow update: if hasStationAccess(stationId) && canAmend();
+      allow write: if false;
     }
 
     /* ---------------- ledger ---------------- */
@@ -125,6 +135,8 @@ service cloud.firestore {
 
     /* ---------------- credit customers ---------------- */
 
+    /* Walk-in credit accounts are also opened server-side by closeShift
+       when a payer has no existing record, so no debt is ever anonymous. */
     match /creditCustomers/{stationId}/customers/{customerId} {
       allow read, create, update: if hasStationAccess(stationId);
       allow delete: if hasStationAccess(stationId) && canAmend();

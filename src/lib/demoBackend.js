@@ -41,7 +41,7 @@ function seed() {
     );
     const expenses = offset % 2 === 0 ? [{ label: "Power bill", amount: 1850 }] : [];
     const expTotal = expenses.reduce((n, e) => n + e.amount, 0);
-    const net = gross - expTotal;
+    const net = gross - expTotal - 980; // 520 MS + 460 HSD testing
     const credit = offset < 2 && employeeName === "Mahesh N" ? 18400 : 0;
     const upi = Math.round(net * 0.18);
     const card = Math.round(net * 0.07);
@@ -51,7 +51,10 @@ function seed() {
       stationId,
       employeeName,
       userId,
-      status: "closed",
+      status: "approved",
+      approvedByName: "Ravi Kumar",
+      approvedAt: at.toISOString(),
+      testing: { MS: 520, HSD: 460 },
       date: day(offset),
       startTime: new Date(at.getTime() - 28800000).toISOString(),
       endTime: at.toISOString(),
@@ -461,6 +464,29 @@ export const demoBackend = {
     return { stationId, name, address };
   },
 
+  async deleteStation(stationId, caller) {
+    await delay(220);
+    const d = db();
+    const station = d.stations[stationId];
+    if (!station) throw new Error("Station not found.");
+    if (station.ownerId !== caller.uid) throw new Error("That station is not yours.");
+    const openShift = (d.shifts[stationId] || []).some((sh) => sh.status === "open");
+    if (openShift) throw new Error("Close the open shift before deleting this station.");
+
+    delete d.stations[stationId];
+    delete d.shifts[stationId];
+    delete d.pumps[stationId];
+    delete d.nozzles[stationId];
+    delete d.prices[stationId];
+    delete d.credit[stationId];
+    delete d.ledger[stationId];
+    Object.values(d.users).forEach((u) => {
+      if (u.stationIds) u.stationIds = u.stationIds.filter((id) => id !== stationId);
+    });
+    commit();
+    return { ok: true };
+  },
+
   async listStations(profile) {
     await delay(80);
     const d = db();
@@ -659,6 +685,7 @@ export const demoBackend = {
       expenses: [],
       creditSales: [],
       payments: { cash: "", card: "", upi: "", credit: "", other: "" },
+      testing: { MS: "", HSD: "" },
       note: "",
     };
     d.shifts[stationId].unshift(shift);
@@ -671,7 +698,7 @@ export const demoBackend = {
     const d = db();
     const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
     if (!shift) throw new Error("Shift not found.");
-    if (shift.status === "closed") throw new Error("That shift is already closed.");
+    if (shift.status !== "open") throw new Error("That shift is already closed.");
 
     const closings = payload.closingReadings || {};
     shift.nozzles = shift.nozzles.map((n) => {
@@ -689,6 +716,7 @@ export const demoBackend = {
     shift.creditSales = (payload.creditSales || []).map((c) => ({
       customerId: c.customerId || null,
       name: String(c.name || "").trim(),
+      phone: String(c.phone || "").trim(),
       amount: Number(c.amount) || 0,
     }));
     shift.payments = {
@@ -698,8 +726,13 @@ export const demoBackend = {
       credit: Number(payload.payments?.credit) || 0,
       other: Number(payload.payments?.other) || 0,
     };
+    shift.testing = {
+      MS: Number(payload.testing?.MS) || 0,
+      HSD: Number(payload.testing?.HSD) || 0,
+    };
     shift.note = String(payload.note || "").trim();
-    shift.status = "closed";
+    // Closing submits for review; the owner/manager has the last word.
+    shift.status = "pending_review";
     shift.endTime = nowISO();
     shift.closedByName = caller.name;
 
@@ -707,6 +740,29 @@ export const demoBackend = {
     (d.nozzles[stationId] || []).forEach((nz) => {
       const line = shift.nozzles.find((n) => n.nozzleId === nz.id);
       if (line) nz.lastReading = Number(line.closingReading);
+    });
+
+    d.credit[stationId] ||= [];
+    shift.creditSales = shift.creditSales.map((c) => {
+      if (c.customerId) return c;
+      // Walk-in credit: match an existing customer on phone, else register a
+      // new one so the debt is always attached to a named account.
+      const phone = String(c.phone || "").trim();
+      const existing = phone
+        ? d.credit[stationId].find((x) => String(x.phone || "").trim() === phone)
+        : null;
+      if (existing) return { ...c, customerId: existing.id };
+      const created = {
+        id: uid("c"),
+        name: c.name || "Walk-in",
+        phone,
+        outstandingBalance: 0,
+        createdAt: nowISO(),
+        createdFromShift: shift.id,
+        transactions: [],
+      };
+      d.credit[stationId].push(created);
+      return { ...c, customerId: created.id };
     });
 
     shift.creditSales.forEach((c) => {
@@ -724,16 +780,139 @@ export const demoBackend = {
     return clone(shift);
   },
 
-  async amendShift(stationId, shiftId, patch) {
+  /**
+   * Attach another nozzle to a shift already running — an operator often
+   * picks up a second pump mid-shift.
+   */
+  async addNozzleToShift(stationId, shiftId, nozzleId, caller) {
+    await delay(160);
+    const d = db();
+    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
+    if (!shift) throw new Error("Shift not found.");
+    if (shift.status !== "open") throw new Error("Only an open shift can take more nozzles.");
+    if ((shift.nozzles || []).some((n) => n.nozzleId === nozzleId)) {
+      throw new Error("That nozzle is already on this shift.");
+    }
+
+    const busy = d.shifts[stationId].some(
+      (sh) =>
+        sh.status === "open" &&
+        sh.id !== shiftId &&
+        (sh.nozzles || []).some((n) => n.nozzleId === nozzleId)
+    );
+    if (busy) throw new Error("That nozzle is already in another active shift.");
+
+    const nz = (d.nozzles[stationId] || []).find((n) => n.id === nozzleId);
+    if (!nz) throw new Error("Nozzle not found.");
+    const active = (d.prices[stationId] || [])
+      .filter((pr) => pr.fuelType === nz.fuelType && !pr.effectiveTo)
+      .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))[0];
+    if (!active) throw new Error(`Set a price for ${nz.fuelType} first.`);
+
+    shift.nozzles.push({
+      nozzleId: nz.id,
+      pumpId: nz.pumpId,
+      label: `${(d.pumps[stationId] || []).find((p) => p.id === nz.pumpId)?.name || "Pump"} · ${nz.name}`,
+      fuelType: nz.fuelType,
+      openingReading: nz.lastReading,
+      closingReading: "",
+      price: active.price,
+      priceId: active.id,
+      addedAt: nowISO(),
+    });
+    commit();
+    return clone(shift);
+  },
+
+  async removeNozzleFromShift(stationId, shiftId, nozzleId) {
+    await delay(140);
+    const d = db();
+    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
+    if (!shift) throw new Error("Shift not found.");
+    if (shift.status !== "open") throw new Error("Only an open shift can be changed.");
+    if ((shift.nozzles || []).length <= 1) {
+      throw new Error("A shift needs at least one nozzle.");
+    }
+    shift.nozzles = shift.nozzles.filter((n) => n.nozzleId !== nozzleId);
+    commit();
+    return clone(shift);
+  },
+
+  /** Owner/manager signs off a submitted shift. */
+  async approveShift(stationId, shiftId, caller) {
     await delay(180);
     const d = db();
-    const list = d.shifts[stationId] || [];
-    const i = list.findIndex((sh) => sh.id === shiftId);
-    if (i === -1) throw new Error("Shift not found.");
-    list[i] = { ...list[i], ...clone(patch), amendedAt: nowISO() };
+    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
+    if (!shift) throw new Error("Shift not found.");
+    if (shift.status !== "pending_review" && shift.status !== "rejected") {
+      throw new Error("Only a submitted shift can be approved.");
+    }
+    shift.status = "approved";
+    shift.approvedByName = caller.name;
+    shift.approvedAt = nowISO();
+    shift.rejectionReason = null;
     commit();
-    return clone(list[i]);
+    return clone(shift);
   },
+
+  /** Send a shift back to the operator with a reason. */
+  async rejectShift(stationId, shiftId, reason, caller) {
+    await delay(180);
+    const d = db();
+    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
+    if (!shift) throw new Error("Shift not found.");
+    if (shift.status !== "pending_review") {
+      throw new Error("Only a submitted shift can be sent back.");
+    }
+    shift.status = "rejected";
+    shift.rejectedByName = caller.name;
+    shift.rejectedAt = nowISO();
+    shift.rejectionReason = String(reason || "").trim() || "Correction requested";
+    commit();
+    return clone(shift);
+  },
+
+  /**
+   * Amend a shift that is still under review. Expenses, testing and
+   * payments stay editable until an owner approves it.
+   */
+  async reviseShift(stationId, shiftId, patch, caller) {
+    await delay(180);
+    const d = db();
+    const shift = (d.shifts[stationId] || []).find((sh) => sh.id === shiftId);
+    if (!shift) throw new Error("Shift not found.");
+    if (shift.status === "approved") {
+      throw new Error("An approved shift is locked. Ask the owner to reopen it.");
+    }
+    if (patch.expenses) {
+      shift.expenses = patch.expenses.map((e) => ({
+        label: String(e.label || "").trim(),
+        amount: Number(e.amount) || 0,
+      }));
+    }
+    if (patch.testing) {
+      shift.testing = {
+        MS: Number(patch.testing.MS) || 0,
+        HSD: Number(patch.testing.HSD) || 0,
+      };
+    }
+    if (patch.payments) {
+      shift.payments = {
+        cash: Number(patch.payments.cash) || 0,
+        card: Number(patch.payments.card) || 0,
+        upi: Number(patch.payments.upi) || 0,
+        credit: Number(patch.payments.credit) || 0,
+        other: Number(patch.payments.other) || 0,
+      };
+    }
+    if (patch.note != null) shift.note = String(patch.note).trim();
+    if (shift.status === "rejected") shift.status = "pending_review";
+    shift.revisedByName = caller?.name || null;
+    shift.revisedAt = nowISO();
+    commit();
+    return clone(shift);
+  },
+
 
 
 

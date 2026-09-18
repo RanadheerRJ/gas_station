@@ -7,7 +7,7 @@ import { LedgerIcon, StatusDot } from "../components/icons";
 import { useStations } from "../state/useStations";
 import { listShifts, readableError } from "../lib/api";
 import { formatDate, formatStamp, money, num } from "../lib/format";
-import { shiftTotals, varianceLabel, varianceTone } from "../lib/shiftMath";
+import { SHIFT_STATUS, shiftTotals, varianceLabel, varianceTone } from "../lib/shiftMath";
 
 /**
  * The daily ledger is now entirely DERIVED from closed shifts — there is no
@@ -34,7 +34,8 @@ export default function DailyLedger() {
     if (!stationId) return;
     setLoading(true);
     try {
-      setShifts((await listShifts(stationId)).filter((s) => s.status === "closed"));
+      // Everything handed in, whatever its review state.
+      setShifts((await listShifts(stationId)).filter((s) => s.status !== SHIFT_STATUS.OPEN));
       setError("");
     } catch (err) {
       setError(readableError(err));

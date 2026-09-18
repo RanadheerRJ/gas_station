@@ -22,7 +22,6 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -261,13 +260,40 @@ export async function closeShift(stationId, shiftId, payload, profile) {
   return res.data;
 }
 
-export async function amendShift(stationId, shiftId, patch) {
-  if (isDemo) return demoBackend.amendShift(stationId, shiftId, patch);
-  await updateDoc(doc(db, "shifts", stationId, "records", shiftId), {
-    ...patch,
-    amendedAt: serverTimestamp(),
-  });
-  return { id: shiftId, ...patch };
+export async function addNozzleToShift(stationId, shiftId, nozzleId, profile) {
+  if (isDemo) return demoBackend.addNozzleToShift(stationId, shiftId, nozzleId, profile);
+  const res = await call("addNozzleToShift")({ stationId, shiftId, nozzleId });
+  return res.data;
+}
+
+export async function removeNozzleFromShift(stationId, shiftId, nozzleId) {
+  if (isDemo) return demoBackend.removeNozzleFromShift(stationId, shiftId, nozzleId);
+  const res = await call("removeNozzleFromShift")({ stationId, shiftId, nozzleId });
+  return res.data;
+}
+
+export async function approveShift(stationId, shiftId, profile) {
+  if (isDemo) return demoBackend.approveShift(stationId, shiftId, profile);
+  const res = await call("reviewShift")({ stationId, shiftId, action: "approve" });
+  return res.data;
+}
+
+export async function rejectShift(stationId, shiftId, reason, profile) {
+  if (isDemo) return demoBackend.rejectShift(stationId, shiftId, reason, profile);
+  const res = await call("reviewShift")({ stationId, shiftId, action: "reject", reason });
+  return res.data;
+}
+
+export async function reviseShift(stationId, shiftId, patch, profile) {
+  if (isDemo) return demoBackend.reviseShift(stationId, shiftId, patch, profile);
+  const res = await call("reviseShift")({ stationId, shiftId, ...patch });
+  return res.data;
+}
+
+export async function deleteStation(stationId, profile) {
+  if (isDemo) return demoBackend.deleteStation(stationId, profile);
+  const res = await call("deleteStation")({ stationId });
+  return res.data;
 }
 
 /* ------------------------------------------------------------------ */
