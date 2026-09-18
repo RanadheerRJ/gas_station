@@ -1,0 +1,103 @@
+# Builds the app and publishes it to GitHub Pages.
+#
+# The Firebase config lives in .env.production, committed in the repository,
+# and Vite picks it up automatically. That is deliberate: Firebase web config
+# ships inside the bundle and is readable by anyone who loads the site, so
+# putting it in repository secrets would hide it from you and nobody else,
+# while adding a manual step that silently breaks the deploy when skipped.
+#
+# What actually protects the data is firestore.rules, every write going through
+# an authenticated Cloud Function, and no account being creatable without an
+# existing privileged account. Review firestore.rules before pointing this at
+# a project holding real money.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Lets you publish on demand from the Actions tab without pushing.
+  workflow_dispatch:
+
+# GITHUB_TOKEN needs these to publish; nothing here writes to the repository.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. In-progress runs are allowed to finish so a
+# half-uploaded artifact is never published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      # Static checks and the pure-logic unit tests. Fast, and they need no
+      # emulator or credentials.
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+
+      # End-to-end tests against the emulator suite: real Cloud Functions and
+      # real security rules, no connection to the live project. Java is needed
+      # by the Firestore emulator and is preinstalled on ubuntu-latest.
+      - name: Install function dependencies
+        run: npm ci --prefix functions
+
+      - name: End-to-end tests against the emulators
+        run: npm run test:emulator
+
+      - name: Build
+        env:
+          # BASE_PATH must match how Pages serves the site. For a project site
+          # that is /<repo>/; for a user or org site it would be "/".
+          # Firebase config comes from .env.production, which Vite loads for
+          # production builds without any further wiring.
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      # A site that deploys cleanly but cannot sign anyone in is worse than a
+      # failed build, because nothing looks wrong until someone tries to use
+      # it. Checking for the project id specifically: generic Firebase
+      # hostnames are baked into the SDK whether or not config was supplied.
+      - name: Fail if the build has no Firebase configuration
+        run: |
+          PROJECT_ID=$(grep -oP '(?<=^VITE_FIREBASE_PROJECT_ID=).*' .env.production || true)
+          if [ -z "$PROJECT_ID" ]; then
+            echo "::error::VITE_FIREBASE_PROJECT_ID is missing from .env.production."
+            exit 1
+          fi
+          if ! grep -rqF "$PROJECT_ID" dist/assets/*.js; then
+            echo "::error::Built bundle does not contain project id $PROJECT_ID."
+            echo "Vite did not load .env.production; check the Build step."
+            exit 1
+          fi
+          echo "Firebase project $PROJECT_ID is present in the bundle."
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

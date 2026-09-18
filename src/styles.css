@@ -1,0 +1,1382 @@
+:root {
+  --graphite: #1f2a33;
+  --petrol: #2e4756;
+  --paper: #f7f5f0;
+  --ink: #1b1b18;
+  --amber: #e8a33d;
+  --green: #3f7d58;
+  --rust: #b5473b;
+  --hairline: #d8d3c7;
+  --muted: #6b6a63;
+  --panel: #fffefb;
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Motion tokens. Every duration and curve in this file comes from here, so
+     the whole instrument panel can be retimed in one place. The curves are
+     deliberately unbouncy: nothing overshoots, because a gauge that wobbles
+     past its value reads as imprecise. */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-instant: 90ms;
+  --duration-fast: 140ms;
+  --duration-base: 180ms;
+  --duration-slow: 220ms;
+  --duration-page: 260ms;
+  /* Long-running, non-informational loops: slow on purpose so they read as
+     ambient status rather than as something demanding attention. */
+  --duration-loop: 1100ms;
+  --duration-skeleton: 1400ms;
+  /* A tank filling is a physical quantity moving, so it is allowed to take
+     longer than a UI transition. */
+  --duration-fill: 760ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 21px;
+}
+h2 {
+  font-size: 16px;
+}
+h3 {
+  font-size: 14px;
+}
+
+a {
+  color: var(--petrol);
+}
+
+.mono,
+input[type="number"],
+td.num,
+th.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- layout ---------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+  min-height: 100%;
+}
+
+.sidebar {
+  background: var(--graphite);
+  color: #e8e6e0;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar .brand {
+  padding: 0 18px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar .brand .mark {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.sidebar .brand .who {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9fa9b0;
+}
+
+.sidebar nav {
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  color: #cfd5d9;
+  text-decoration: none;
+  font-size: 13.5px;
+  border-left: 2px solid transparent;
+}
+
+.sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.sidebar nav a.active {
+  background: rgba(255, 255, 255, 0.09);
+  border-left-color: var(--amber);
+  color: #fff;
+}
+
+.sidebar nav .group-label {
+  padding: 14px 10px 4px;
+  font-size: 11.5px;
+  color: #7f8b93;
+}
+
+.sidebar .foot {
+  padding: 12px 18px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: var(--graphite);
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar .sub {
+  font-size: 12.5px;
+  color: #9fa9b0;
+  font-family: var(--mono);
+}
+
+.content {
+  padding: 22px 24px 60px;
+  max-width: 1180px;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---------------- panels ---------------- */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+}
+
+.panel > header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fbfaf6;
+}
+
+.panel > .body {
+  padding: 14px;
+}
+
+.panel.flush > .body {
+  padding: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12.5px;
+}
+
+/* ---------------- forms ---------------- */
+
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  color: #3a3a34;
+}
+
+input,
+select,
+textarea {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  padding: 7px 9px;
+  width: 100%;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid rgba(46, 71, 86, 0.35);
+  outline-offset: -1px;
+  border-color: var(--petrol);
+}
+
+input.mono,
+input[inputmode="numeric"] {
+  font-family: var(--mono);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+button {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  border-radius: 2px;
+  border: 1px solid var(--hairline);
+  background: #fff;
+  color: var(--ink);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #f2efe8;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--amber);
+  border-color: #cf8d2c;
+  color: #2a1e08;
+  font-weight: 500;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #dc9833;
+}
+
+button.quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--petrol);
+  padding: 4px 6px;
+  text-decoration: underline;
+}
+
+button.danger {
+  color: var(--rust);
+  border-color: #e0c3bf;
+}
+
+button.small {
+  padding: 4px 9px;
+  font-size: 12.5px;
+}
+
+/* ---------------- tables ---------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #4a4a43;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+  background: #fbfaf6;
+  white-space: nowrap;
+}
+
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9e5db;
+  vertical-align: top;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+td.num,
+th.num {
+  text-align: right;
+}
+
+tfoot td {
+  border-top: 1px solid var(--hairline);
+  border-bottom: none;
+  font-weight: 600;
+  background: #fbfaf6;
+}
+
+tr.total td {
+  font-weight: 600;
+  background: #fbfaf6;
+}
+
+/* ---------------- bits ---------------- */
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 128px;
+}
+
+.stat .k {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.stat .v {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.v.pos {
+  color: var(--green);
+}
+.v.neg {
+  color: var(--rust);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11.5px;
+  padding: 1px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  background: #f4f1ea;
+  color: #4a4a43;
+}
+
+.tag.green {
+  color: var(--green);
+  border-color: #bcd4c5;
+  background: #eef5f0;
+}
+
+.tag.rust {
+  color: var(--rust);
+  border-color: #e3c5c1;
+  background: #faeeec;
+}
+
+.notice {
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--petrol);
+  background: #f2f4f5;
+  padding: 10px 12px;
+  border-radius: 2px;
+  font-size: 13px;
+}
+
+.notice.error {
+  border-left-color: var(--rust);
+  background: #faeeec;
+  color: #7e2f27;
+}
+
+.notice.good {
+  border-left-color: var(--green);
+  background: #eef5f0;
+  color: #2c5a3f;
+}
+
+.credential {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  background: #fffdf7;
+}
+
+.credential .k {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.credential .v {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.divider {
+  height: 1px;
+  background: var(--hairline);
+  margin: 14px 0;
+}
+
+/* ---------------- login ---------------- */
+
+.login-wrap {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.login-card {
+  width: 360px;
+  max-width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+}
+
+.login-card .head {
+  background: var(--graphite);
+  color: #fff;
+  padding: 16px 18px;
+}
+
+.login-card .head .mark {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.login-card .head p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #9fa9b0;
+}
+
+.login-card form {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.pin-input {
+  font-family: var(--mono) !important;
+  font-size: 22px;
+  letter-spacing: 0.5em;
+  text-align: center;
+  padding: 9px;
+}
+
+.spin {
+  display: inline-block;
+  width: 10px;
+}
+
+/* ---------------- motion ----------------
+   Movement is used to explain a change, never to decorate one. Everything
+   is short, eased, and disabled outright for anyone who asks for less. */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Page content settles in rather than snapping. */
+.content > * {
+  animation: rise var(--duration-page) var(--ease-out) both;
+}
+.content > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.content > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.content > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.content > *:nth-child(n + 5) {
+  animation-delay: 110ms;
+}
+
+button,
+.panel,
+.tank-card,
+.pump-tile,
+.sidebar nav a,
+input,
+select {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-instant) var(--ease-out);
+}
+
+/* A pressed control should feel like it took the press. */
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--petrol);
+  outline-offset: 1px;
+}
+
+/* Loading: a hairline that sweeps, in keeping with the flat rules. */
+.loading-bar {
+  position: relative;
+  height: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+.loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  background: var(--amber);
+  animation: sweep var(--duration-loop) ease-in-out infinite;
+}
+
+.live-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ---------------- route transitions ----------------
+   One short fade-and-lift per navigation. Keyed on the pathname so it
+   replays on every route change, not just first mount. */
+
+.route-fade {
+  animation: route-in var(--duration-page) var(--ease-out) both;
+}
+
+@keyframes route-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- numeric readouts ----------------
+   Counting figures are rendered with tabular digits so the width does not
+   jitter while the value animates. A gauge whose columns dance is unreadable. */
+
+.num-roll {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A settled figure ticks its colour once, like a needle coming to rest. */
+.num-roll[data-settling="up"] {
+  animation: tick-up var(--duration-slow) var(--ease-out);
+}
+.num-roll[data-settling="down"] {
+  animation: tick-down var(--duration-slow) var(--ease-out);
+}
+
+@keyframes tick-up {
+  from {
+    color: var(--green);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+@keyframes tick-down {
+  from {
+    color: var(--rust);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+/* ---------------- status changes ----------------
+   A shift moving between states gets one brief sweep across the badge so the
+   change is noticed even if the reviewer was looking elsewhere. */
+
+.badge,
+.tag {
+  transition:
+    background-color var(--duration-slow) var(--ease-out),
+    border-color var(--duration-slow) var(--ease-out),
+    color var(--duration-slow) var(--ease-out);
+}
+
+.badge[data-changed="true"],
+.tag[data-changed="true"] {
+  animation: badge-flip var(--duration-slow) var(--ease-out);
+}
+
+@keyframes badge-flip {
+  from {
+    opacity: 0.4;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- input feedback ----------------
+   Rejection is a short lateral knock: three small moves, no easing overshoot,
+   over before it registers as an effect. Acceptance is a colour settle only. */
+
+.shake {
+  animation: knock var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes knock {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+.field-accepted {
+  animation: accept-settle var(--duration-slow) var(--ease-out);
+}
+
+@keyframes accept-settle {
+  from {
+    border-color: var(--green);
+  }
+  to {
+    border-color: var(--hairline);
+  }
+}
+
+/* ---------------- list enter and exit ----------------
+   Rows arrive by sliding up a few pixels; removed rows collapse their own
+   height so the rows below travel rather than jumping. */
+
+.row-enter {
+  animation: row-in var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row-exit {
+  animation: row-out var(--duration-base) var(--ease-in) both;
+  overflow: hidden;
+}
+
+@keyframes row-out {
+  from {
+    opacity: 1;
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}
+
+/* ---------------- skeletons ----------------
+   Loading placeholders are paper-coloured blocks that breathe, not grey
+   shimmer bars. They mirror the shape of the content that will replace them. */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--hairline) 0%,
+    #e7e2d6 50%,
+    var(--hairline) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-breathe var(--duration-skeleton) var(--ease-standard) infinite;
+  border-radius: 1px;
+}
+
+@keyframes skeleton-breathe {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-line {
+  height: 10px;
+  margin: 8px 0;
+}
+.skeleton-line.wide {
+  width: 100%;
+}
+.skeleton-line.half {
+  width: 52%;
+}
+.skeleton-line.short {
+  width: 28%;
+}
+.skeleton-num {
+  height: 22px;
+  width: 96px;
+}
+
+.skeleton-panel {
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  padding: 14px 16px;
+}
+
+/* Anyone who has asked their system for less movement gets none of it. All
+   information carried by motion is also carried by colour and text, so
+   collapsing every duration loses nothing but the movement itself. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Translation is removed outright rather than merely shortened, so nothing
+     lands off-position if a frame is dropped. */
+  .route-fade,
+  .row-enter,
+  .shake,
+  .badge[data-changed="true"],
+  .tag[data-changed="true"] {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .skeleton {
+    animation: none !important;
+    background: var(--hairline) !important;
+  }
+}
+
+/* ---------------- offline banner ---------------- */
+
+.conn-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 24px;
+  font-size: 12.5px;
+  background: var(--rust);
+  color: #fff;
+  animation: rise var(--duration-base) var(--ease-out) both;
+}
+
+/* The reconnect acknowledgement uses the same slot, in green, and eases out
+   of the way on its own rather than vanishing. */
+.conn-banner.restored {
+  background: var(--green);
+  animation:
+    rise var(--duration-base) var(--ease-out) both,
+    bar-collapse var(--duration-slow) var(--ease-in) 2.4s both;
+}
+
+@keyframes bar-collapse {
+  from {
+    opacity: 1;
+    max-height: 60px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* ---------------- install prompt ---------------- */
+
+.install-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: var(--graphite);
+  color: #e7ebee;
+  font-size: 13px;
+  animation: rise var(--duration-slow) var(--ease-out) both;
+}
+
+.install-bar button {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #1b1b18;
+  font-weight: 500;
+  padding: 5px 12px;
+}
+
+.install-bar button.ghost {
+  background: transparent;
+  border-color: #47555f;
+  color: #aab6bd;
+}
+
+/* ---------------- mobile: a real app shell ----------------
+   Below 860px the sidebar becomes a fixed bottom tab bar, the way a
+   forecourt phone is actually held, with the safe-area inset respected
+   for the home indicator. */
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    height: auto;
+    z-index: 40;
+    border-right: none;
+    border-top: 1px solid #33424d;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .sidebar .brand,
+  .sidebar .foot {
+    display: none;
+  }
+
+  .sidebar nav {
+    flex-direction: row;
+    padding: 0;
+    gap: 0;
+    justify-content: space-around;
+  }
+
+  .sidebar nav a {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 2px 7px;
+    font-size: 10.5px;
+    text-align: center;
+    border-left: none;
+    border-top: 2px solid transparent;
+    min-height: 52px;
+  }
+
+  .sidebar nav a.active {
+    border-left: none;
+    border-top: 2px solid var(--amber);
+  }
+
+  .sidebar nav a span {
+    line-height: 1.1;
+  }
+
+  /* Clear the tab bar so the last row is never trapped under it. */
+  .main {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0));
+  }
+
+  .content {
+    padding: 14px 14px 20px;
+  }
+
+  .topbar {
+    padding: 14px;
+  }
+
+  /* Tables reflow badly on a phone; let them scroll rather than squash. */
+  .panel table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tank-farm {
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  }
+
+  /* Touch targets: 44px is the smallest a thumb reliably hits. */
+  button {
+    min-height: 40px;
+  }
+
+  input,
+  select {
+    min-height: 40px;
+    font-size: 16px; /* stops iOS zooming the viewport on focus */
+  }
+}
+
+/* Standalone (installed) mode: reclaim the browser chrome's space. */
+@media (display-mode: standalone) {
+  .main {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+}
+
+/* ---------------- pump status board ---------------- */
+
+.pump-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.pump-tile {
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--green);
+  background: var(--panel);
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  text-align: left;
+  width: 100%;
+  border-radius: 2px;
+}
+
+.pump-tile.busy {
+  border-left-color: var(--rust);
+  background: #fdf8f7;
+}
+
+.pump-tile__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pump-tile__name {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pump-tile__meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.pump-tile__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.fuel-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+
+.fuel-dot--petrol {
+  background: #3f7d58;
+}
+.fuel-dot--diesel {
+  background: #2e4756;
+}
+.fuel-dot--premium {
+  background: #e8a33d;
+}
+.fuel-dot--cng {
+  background: #7a6ba8;
+}
+
+.fuel-key {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+  align-items: center;
+}
+
+.fuel-key span.k {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* nozzle pick list */
+
+.nozzle-pick {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #e9e5db;
+}
+
+.nozzle-pick:last-child {
+  border-bottom: none;
+}
+
+.nozzle-pick.disabled {
+  background: #f6f4ef;
+  color: var(--muted);
+}
+
+.nozzle-pick input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--petrol);
+}
+
+.nozzle-pick__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.nozzle-pick__title {
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.nozzle-pick__sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.price-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.price-card {
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  padding: 12px 13px;
+}
+
+.price-card__fuel {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-card__value {
+  font-family: var(--mono);
+  font-size: 23px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+}
+
+.price-card__since {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* ---------------- ground stock: tank farm ---------------- */
+
+.tank-farm {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.tank-card {
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+}
+
+.tank-card.selected {
+  border-color: var(--petrol);
+  background: #fdfcf8;
+}
+
+.tank-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tank-card__name {
+  font-weight: 600;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tank-card__fuel {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.tank-card__figure {
+  font-family: var(--mono);
+  font-size: 17px;
+  margin-top: 8px;
+  line-height: 1.2;
+}
+
+.tank-card__figure span {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.tank-card__meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+/* A horizontal cylinder drawn side-on, the way the vessel actually sits
+   in the ground: straight barrel, elliptical dished end, fuel lying flat. */
+.tank-vessel {
+  position: relative;
+  width: 62px;
+  height: 104px;
+  flex: none;
+  border: 1.5px solid var(--graphite);
+  border-radius: 26px / 16px;
+  background: #f1eee6;
+  overflow: hidden;
+}
+
+.tank-vessel__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Long and heavily eased: fuel finding its level, not a progress bar. */
+  transition: height var(--duration-fill) var(--ease-out);
+}
+
+/* A brighter line where the fuel meets air, so the level reads at a glance. */
+.tank-vessel__surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* Fill-level ticks at quarter marks, like a sight glass. */
+.tank-vessel__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tank-vessel__ticks i {
+  position: absolute;
+  right: 0;
+  width: 7px;
+  height: 1px;
+  background: rgba(31, 42, 51, 0.25);
+}
+
+.tank-vessel__pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+.tank-fill--petrol {
+  background: rgba(63, 125, 88, 0.55);
+}
+.tank-fill--diesel {
+  background: rgba(46, 71, 86, 0.5);
+}
+.tank-fill--premium {
+  background: rgba(232, 163, 61, 0.55);
+}
+.tank-fill--cng {
+  background: rgba(122, 107, 168, 0.5);
+}
+
+.tank-vessel.low {
+  border-color: var(--amber);
+}
+.tank-vessel.critical {
+  border-color: var(--rust);
+  background: #faeeec;
+}
+
+.tank-vessel.retired {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+/* Tapping a tank should feel like picking it up. */
+.tank-card:active {
+  transform: scale(0.985);
+}
+
+/* Temperature chip: reads as an instrument, not a badge. */
+.temp-chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border: 1px solid var(--hairline);
+  background: #f4f1ea;
+  color: #4a4a43;
+  white-space: nowrap;
+}
+
+.temp-chip.warm {
+  border-color: #e3c5c1;
+  background: #faeeec;
+  color: var(--rust);
+}
