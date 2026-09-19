@@ -23,14 +23,17 @@
 process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "127.0.0.1:9099";
 
+import { initializeApp, deleteApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+
 const PROJECT_ID = process.env.GCLOUD_PROJECT || "demo-station-ledger";
 const REGION = process.env.FUNCTIONS_REGION || "us-central1";
 const FUNCTIONS_ORIGIN = process.env.FUNCTIONS_ORIGIN || "http://127.0.0.1:5001";
 
-const admin = await import("firebase-admin");
-const app = admin.default.initializeApp({ projectId: PROJECT_ID });
-const db = admin.default.firestore();
-const auth = admin.default.auth();
+const app = initializeApp({ projectId: PROJECT_ID });
+const db = getFirestore(app);
+const auth = getAuth(app);
 
 let pass = 0;
 let fail = 0;
@@ -522,5 +525,5 @@ if (failures.length) {
   console.log("failed:");
   failures.forEach((f) => console.log(`  - ${f}`));
 }
-await app.delete();
+await deleteApp(app);
 process.exit(fail ? 1 : 0);
