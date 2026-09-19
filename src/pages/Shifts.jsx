@@ -43,6 +43,34 @@ import {
   useOneShot,
   useStatusChange,
 } from "../components/motion.jsx";
+import ReportTools from "../components/ReportTools.jsx";
+import {
+  defaultRange,
+  filterByRange,
+  scopeShiftsToViewer,
+  shiftsReport,
+} from "../lib/export.js";
+import { useLanguage } from "../state/LanguageContext.jsx";
+
+/**
+ * Payment modes and variance verdicts come out of the pure shiftMath module as
+ * English words, because that module has no business knowing about the UI
+ * language. Map them to dictionary keys here, at the edge that draws them.
+ */
+const PAYMENT_KEY = {
+  cash: "shifts.cash",
+  card: "shifts.card",
+  upi: "shifts.upi",
+  credit: "shifts.creditMode",
+  other: "shifts.otherMode",
+};
+
+const VARIANCE_KEY = {
+  balanced: "shifts.balanced",
+  short: "shifts.short",
+  excess: "shifts.excess",
+  "not declared": "shifts.notDeclared",
+};
 
 export const fuelClass = (fuelType = "") => {
   const f = fuelType.toLowerCase();
@@ -54,6 +82,7 @@ export const fuelClass = (fuelType = "") => {
 };
 
 export default function Shifts() {
+  const { t, tn } = useLanguage();
   const { profile } = useAuth();
   const { stations, loading: stationsLoading } = useStations();
   const [params, setParams] = useSearchParams();
@@ -71,6 +100,7 @@ export default function Shifts() {
   const [picked, setPicked] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [closingFor, setClosingFor] = useState(null);
+  const [range, setRange] = useState(() => defaultRange());
 
   useEffect(() => {
     if (stations.length === 0) return;
@@ -116,6 +146,13 @@ export default function Shifts() {
   // Everything that has been handed in: awaiting review, sent back, or signed off.
   const settled = shifts.filter((s) => s.status !== SHIFT_STATUS.OPEN);
   const awaiting = settled.filter((s) => s.status !== SHIFT_STATUS.APPROVED);
+  // The register below and its exports share one filtered list. The viewer
+  // scope is belt and braces — RLS has already refused an attendant any shift
+  // but their own — so a widened query can never widen a download.
+  const reportable = useMemo(
+    () => filterByRange(scopeShiftsToViewer(settled, profile), range),
+    [settled, profile, range]
+  );
   const station = stations.find((s) => s.id === stationId);
   const canReview = profile.role === "owner" || profile.role === "manager";
 
@@ -201,7 +238,7 @@ export default function Shifts() {
   if (stationsLoading) {
     return (
       <>
-        <PageHeader title="Shifts" />
+        <PageHeader title={t("shifts.title")} />
         <div className="content">
           <LoadingPanels count={1} lines={2} />
         </div>
@@ -214,10 +251,10 @@ export default function Shifts() {
   return (
     <>
       <PageHeader
-        title="Shifts"
+        title={t("shifts.title")}
         sub={
           station
-            ? `${station.name} · ${freeCount} pump${freeCount === 1 ? "" : "s"} free · ${busyCount} busy`
+            ? `${station.name} · ${t("shifts.pumpsFree", { free: freeCount, busy: busyCount })}`
             : ""
         }
         actions={
@@ -225,14 +262,14 @@ export default function Shifts() {
           !starting &&
           activeNozzles.length > 0 && (
             <button className="primary" type="button" onClick={() => setStarting(true)}>
-              Start shift
+              {t("shifts.startShift")}
             </button>
           )
         }
       />
       <div className="content stack">
         {stations.length > 1 && (
-          <Panel title="Station">
+          <Panel title={t("common.station")}>
             <StationPicker
               stations={stations}
               value={stationId}
@@ -247,15 +284,13 @@ export default function Shifts() {
         <Panel
           title={
             <span className="row" style={{ gap: 7, alignItems: "center" }}>
-              <PumpIcon /> Forecourt right now
+              <PumpIcon /> {t("shifts.forecourt")}
             </span>
           }
-          note="A pump is busy while any of its nozzles is in an open shift."
+          note={t("shifts.forecourtNote")}
         >
           {pumps.length === 0 ? (
-            <Empty>
-              No pumps configured. An owner needs to add pumps and nozzles first.
-            </Empty>
+            <Empty>{t("shifts.noPumps")}</Empty>
           ) : (
             <>
               <div className="pump-board">
@@ -272,16 +307,16 @@ export default function Shifts() {
                             {p.name}
                           </div>
                           <div className="pump-tile__meta">
-                            {mine.length} nozzle{mine.length === 1 ? "" : "s"}
+                            {tn(mine.length, "shifts.nozzle", "shifts.nozzles")}
                             {fuels.length ? ` · ${fuels.join(" · ")}` : ""}
                           </div>
                         </div>
                         <span className="pump-tile__state">
                           <StatusDot
                             tone={occ.busy ? "rust" : "green"}
-                            title={occ.busy ? "busy" : "available"}
+                            title={occ.busy ? t("shifts.busy") : t("shifts.free")}
                           />
-                          {occ.busy ? "Busy" : "Free"}
+                          {occ.busy ? t("shifts.busy") : t("shifts.free")}
                         </span>
                       </div>
 
@@ -297,8 +332,8 @@ export default function Shifts() {
                         ))}
                         <span className="small muted">
                           {occ.busy
-                            ? `${occ.operators.join(", ")} fuelling`
-                            : "Available to take"}
+                            ? `${occ.operators.join(", ")} ${t("shifts.fuelling")}`
+                            : t("shifts.available")}
                         </span>
                       </div>
                     </div>
@@ -330,10 +365,10 @@ export default function Shifts() {
           <Panel
             title={
               <span className="row" style={{ gap: 7, alignItems: "center" }}>
-                <ShiftIcon /> Start your shift
+                <ShiftIcon /> {t("shifts.startYours")}
               </span>
             }
-            note="Tick the nozzles you are taking. Opening readings come from each meter — you never type them."
+            note={t("shifts.startNote")}
             flush
           >
             <div>
@@ -369,10 +404,12 @@ export default function Shifts() {
                       </div>
                       <div className="nozzle-pick__sub">
                         {held ? (
-                          <>In an active shift by {held.operator}</>
+                          <>
+                            {t("shifts.heldBy")} {held.operator}
+                          </>
                         ) : (
                           <>
-                            Opening reading{" "}
+                            {t("shifts.openingReading")}{" "}
                             <span className="mono">{money(n.lastReading)}</span>
                           </>
                         )}
@@ -390,8 +427,8 @@ export default function Shifts() {
                 onClick={start}
               >
                 {busy
-                  ? "Starting…"
-                  : `Start shift on ${picked.length} nozzle${picked.length === 1 ? "" : "s"}`}
+                  ? t("shifts.starting")
+                  : tn(picked.length, "shifts.startOnOne", "shifts.startOn")}
               </button>
               <button
                 type="button"
@@ -400,7 +437,7 @@ export default function Shifts() {
                   setPicked([]);
                 }}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </Panel>
@@ -435,13 +472,15 @@ export default function Shifts() {
               key={s.id}
               title={
                 <span className="row" style={{ gap: 7, alignItems: "center" }}>
-                  <StatusDot tone="amber" title="open" />
-                  {s.employeeName} — shift open
+                  <StatusDot tone="amber" title={t("common.open")} />
+                  {s.employeeName} — {t("shifts.shiftOpen")}
                 </span>
               }
-              note={`Started ${formatStamp(s.startTime)} · ${s.nozzles.length} nozzle${
-                s.nozzles.length === 1 ? "" : "s"
-              }`}
+              note={`${t("shifts.started")} ${formatStamp(s.startTime)} · ${tn(
+                s.nozzles.length,
+                "shifts.nozzle",
+                "shifts.nozzles"
+              )}`}
               actions={
                 (s.userId === profile.uid || profile.role !== "attendant") && (
                   <button
@@ -449,7 +488,7 @@ export default function Shifts() {
                     type="button"
                     onClick={() => setClosingFor(s.id)}
                   >
-                    Close shift
+                    {t("shifts.closeShift")}
                   </button>
                 )
               }
@@ -458,10 +497,10 @@ export default function Shifts() {
               <table>
                 <thead>
                   <tr>
-                    <th>Nozzle</th>
-                    <th>Fuel</th>
-                    <th className="num">Opening</th>
-                    <th className="num">Price</th>
+                    <th>{t("shifts.nozzleCol")}</th>
+                    <th>{t("shifts.fuel")}</th>
+                    <th className="num">{t("shifts.opening")}</th>
+                    <th className="num">{t("shifts.price")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -495,13 +534,19 @@ export default function Shifts() {
         )}
 
         {today.length > 0 && (
-          <Panel title="Today, so far">
+          <Panel title={t("shifts.todaySoFar")}>
             <div className="row" style={{ gap: 40 }}>
-              <Stat label="Litres sold" value={money(todaySummary.litres)} />
-              <Stat label="Fuel sales" value={`₹ ${money(todaySummary.gross)}`} />
-              <Stat label="Collected" value={`₹ ${money(todaySummary.declared)}`} />
+              <Stat label={t("ledger.litresSold")} value={money(todaySummary.litres)} />
               <Stat
-                label="Variance"
+                label={t("ledger.fuelSales")}
+                value={`₹ ${money(todaySummary.gross)}`}
+              />
+              <Stat
+                label={t("shifts.collected")}
+                value={`₹ ${money(todaySummary.declared)}`}
+              />
+              <Stat
+                label={t("shifts.variance")}
                 value={`₹ ${money(todaySummary.variance)}`}
                 tone={varianceTone(todaySummary.variance)}
               />
@@ -509,38 +554,55 @@ export default function Shifts() {
           </Panel>
         )}
 
+        <Panel title={t("report.title")} note={t("report.note")}>
+          <ReportTools
+            report="shifts"
+            title="Shifts"
+            stationName={station?.name || ""}
+            range={range}
+            onRangeChange={setRange}
+            rowCount={reportable.length}
+            note={isAttendant ? t("report.scopedToYou") : undefined}
+            buildReport={() =>
+              shiftsReport({ shifts: reportable, stationName: station?.name || "" })
+            }
+          />
+        </Panel>
+
         {/* -------- closed shifts -------- */}
         <Panel
-          title="Closed shifts"
+          title={t("shifts.closedShifts")}
           note={
             awaiting.length
-              ? `${awaiting.length} awaiting the owner’s sign-off`
-              : "All shifts signed off."
+              ? t("shifts.awaiting", { count: awaiting.length })
+              : t("shifts.allSignedOff")
           }
           flush
         >
           {loading ? (
-            <LoadingPanels count={2} lines={4} label="Loading shifts" />
-          ) : settled.length === 0 ? (
-            <Empty>No shifts closed yet.</Empty>
+            <LoadingPanels count={2} lines={4} label={t("common.loading")} />
+          ) : reportable.length === 0 ? (
+            <Empty>
+              {settled.length === 0 ? t("shifts.noneClosed") : t("shifts.noneInRange")}
+            </Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Operator</th>
-                  <th>Status</th>
-                  <th className="num">Litres</th>
-                  <th className="num">Gross</th>
-                  <th className="num">Testing</th>
-                  <th className="num">Net</th>
-                  <th className="num">Handover</th>
-                  <th className="num">Variance</th>
+                  <th>{t("common.date")}</th>
+                  <th>{t("shifts.operator")}</th>
+                  <th>{t("common.status")}</th>
+                  <th className="num">{t("shifts.litres")}</th>
+                  <th className="num">{t("shifts.gross")}</th>
+                  <th className="num">{t("shifts.testing")}</th>
+                  <th className="num">{t("shifts.net")}</th>
+                  <th className="num">{t("shifts.handover")}</th>
+                  <th className="num">{t("shifts.variance")}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {settled.map((s) => {
+                {reportable.map((s) => {
                   const t = shiftTotals(s);
                   const open = expanded === s.id;
                   return (
@@ -581,7 +643,7 @@ export default function Shifts() {
                             className="quiet"
                             onClick={() => setExpanded(open ? null : s.id)}
                           >
-                            {open ? "hide" : "detail"}
+                            {open ? t("common.hide") : t("common.detail")}
                           </button>
                         </td>
                       </tr>
@@ -632,6 +694,7 @@ function CloseShiftPanel({
   busy,
   canEnterCredit = true,
 }) {
+  const { t } = useLanguage();
   const [closings, setClosings] = useState({});
   const [creditSales, setCreditSales] = useState([]);
   const [payments, setPayments] = useState({
@@ -700,24 +763,24 @@ function CloseShiftPanel({
     <Panel
       title={
         <span className="row" style={{ gap: 7, alignItems: "center" }}>
-          <GaugeIcon /> Close {shift.employeeName}’s shift
+          <GaugeIcon /> {t("shifts.closeTitle", { name: shift.employeeName })}
         </span>
       }
-      note={`Started ${formatStamp(shift.startTime)} · goes to the owner for review once submitted`}
+      note={`${t("shifts.started")} ${formatStamp(shift.startTime)} · ${t("shifts.closeNote")}`}
     >
       <div className="stack">
         <div>
-          <h3 style={{ marginBottom: 8 }}>Closing readings</h3>
+          <h3 style={{ marginBottom: 8 }}>{t("shifts.closingReadings")}</h3>
           <div className="panel flush">
             <table>
               <thead>
                 <tr>
-                  <th>Nozzle</th>
-                  <th className="num">Opening</th>
-                  <th className="num">Closing</th>
-                  <th className="num">Litres</th>
-                  <th className="num">Price</th>
-                  <th className="num">Amount</th>
+                  <th>{t("shifts.nozzleCol")}</th>
+                  <th className="num">{t("shifts.opening")}</th>
+                  <th className="num">{t("shifts.closing")}</th>
+                  <th className="num">{t("shifts.litres")}</th>
+                  <th className="num">{t("shifts.price")}</th>
+                  <th className="num">{t("common.amount")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -764,7 +827,7 @@ function CloseShiftPanel({
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={3}>Total</td>
+                  <td colSpan={3}>{t("common.total")}</td>
                   <td className="num mono">{money(preview.totalLitres)}</td>
                   <td />
                   <td className="num mono">{money(preview.gross)}</td>
@@ -776,7 +839,7 @@ function CloseShiftPanel({
 
         {expenses.length > 0 && (
           <div>
-            <h3 style={{ marginBottom: 8 }}>Expenses logged this shift</h3>
+            <h3 style={{ marginBottom: 8 }}>{t("shifts.expensesLogged")}</h3>
             <div className="panel flush">
               <table>
                 <tbody>
@@ -789,7 +852,7 @@ function CloseShiftPanel({
                     </tr>
                   ))}
                   <tr className="total">
-                    <td>Total</td>
+                    <td>{t("common.total")}</td>
                     <td className="num mono">{money(preview.expensesTotal)}</td>
                   </tr>
                 </tbody>
@@ -807,22 +870,19 @@ function CloseShiftPanel({
             customers={customers}
           />
         ) : (
-          <Notice kind="info">
-            💳 Credit sales are added by your manager. Hand the docket over at the end of
-            your shift and record the rest of the money below.
-          </Notice>
+          <Notice kind="info">💳 {t("shifts.creditByManager")}</Notice>
         )}
 
         <div>
           <h3 className="row" style={{ gap: 7, alignItems: "center", marginBottom: 8 }}>
-            <CashIcon size={16} /> What you collected
+            <CashIcon size={16} /> {t("shifts.whatCollected")}
           </h3>
           <div className="form-grid">
             {visibleModes.map((mode) => (
               <Field
                 key={mode}
-                label={PAYMENT_LABELS[mode]}
-                hint={mode === "credit" ? "from the list above" : undefined}
+                label={t(PAYMENT_KEY[mode] || PAYMENT_LABELS[mode])}
+                hint={mode === "credit" ? t("shifts.fromListAbove") : undefined}
               >
                 <input
                   className="mono"
@@ -835,7 +895,7 @@ function CloseShiftPanel({
                 />
               </Field>
             ))}
-            <Field label="Note" hint="optional">
+            <Field label={t("common.note")} hint={t("common.optional")}>
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -859,10 +919,10 @@ function CloseShiftPanel({
 
         <div className="row">
           <button className="primary" type="button" disabled={busy} onClick={submit}>
-            {busy ? "Submitting…" : "Close shift & send for review"}
+            {busy ? t("shifts.submitting") : t("shifts.closeAndSend")}
           </button>
           <button type="button" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>
@@ -878,6 +938,7 @@ function CloseShiftPanel({
  * a cash count rather than an exercise in memory.
  */
 function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
+  const { t } = useLanguage();
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
   // Counts rejected submissions so the amount box knocks each time, not just
@@ -923,9 +984,9 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
   return (
     <div className="body" style={{ borderTop: "1px solid var(--hairline)" }}>
       <div className="between" style={{ marginBottom: 8 }}>
-        <strong style={{ fontSize: 13 }}>Expenses paid from the drawer</strong>
+        <strong style={{ fontSize: 13 }}>{t("shifts.drawerExpenses")}</strong>
         <span className="small muted">
-          Total <span className="mono">{money(total)}</span>
+          {t("common.total")} <span className="mono">{money(total)}</span>
         </span>
       </div>
 
@@ -945,7 +1006,7 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
                     disabled={busy || removing !== null}
                     onClick={() => remove(i)}
                   >
-                    remove
+                    {t("common.remove")}
                   </button>
                 </td>
               </tr>
@@ -958,7 +1019,7 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
         <input
           style={{ flex: 1, minWidth: 160 }}
           value={label}
-          placeholder="What was paid for"
+          placeholder={t("shifts.whatPaidFor")}
           disabled={busy}
           onChange={(e) => setLabel(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
@@ -974,7 +1035,7 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
           onKeyDown={(e) => e.key === "Enter" && submit()}
         />
         <button type="button" disabled={busy || !ready} onClick={submit}>
-          Add
+          {t("common.add")}
         </button>
       </div>
     </div>
@@ -987,17 +1048,19 @@ function ShiftExpenses({ shift, busy, onAdd, onRemove }) {
  * before anything is owed to the owner.
  */
 function TestingEditor({ testing, setTesting, disabled = false }) {
+  const { t } = useLanguage();
   const total = num(testing.MS) + num(testing.HSD);
   return (
     <div>
       <div className="between" style={{ marginBottom: 8 }}>
-        <h3>Fuel tested today</h3>
+        <h3>{t("shifts.fuelTested")}</h3>
         <span className="small muted">
-          Goes back in the tank · <span className="mono">{money(total)}</span> off gross
+          {t("shifts.backInTank")} · <span className="mono">{money(total)}</span>{" "}
+          {t("shifts.offGross")}
         </span>
       </div>
       <div className="form-grid">
-        <Field label="MS (petrol)" hint="₹">
+        <Field label={t("shifts.msPetrol")} hint="₹">
           <input
             className="mono"
             inputMode="decimal"
@@ -1008,7 +1071,7 @@ function TestingEditor({ testing, setTesting, disabled = false }) {
             onChange={(e) => setTesting((t) => ({ ...t, MS: e.target.value }))}
           />
         </Field>
-        <Field label="HSD (diesel)" hint="₹">
+        <Field label={t("shifts.hsdDiesel")} hint="₹">
           <input
             className="mono"
             inputMode="decimal"
@@ -1029,6 +1092,7 @@ function TestingEditor({ testing, setTesting, disabled = false }) {
  * the physical cash to hand over.
  */
 function HandoverSummary({ totals }) {
+  const { t } = useLanguage();
   const short = num(totals.variance) < -VARIANCE_TOLERANCE;
   const over = num(totals.variance) > VARIANCE_TOLERANCE;
   return (
@@ -1037,19 +1101,19 @@ function HandoverSummary({ totals }) {
         <table>
           <tbody>
             <tr>
-              <td>Fuel sold</td>
+              <td>{t("shifts.fuelSold")}</td>
               <td className="num mono">{money(totals.gross)}</td>
             </tr>
             <tr>
-              <td className="muted">Less fuel tested</td>
+              <td className="muted">{t("shifts.lessTesting")}</td>
               <td className="num mono">−{money(totals.testingTotal)}</td>
             </tr>
             <tr>
-              <td className="muted">Less expenses</td>
+              <td className="muted">{t("shifts.lessExpenses")}</td>
               <td className="num mono">−{money(totals.expensesTotal)}</td>
             </tr>
             <tr className="total">
-              <td>Net due</td>
+              <td>{t("shifts.netDue")}</td>
               <td className="num mono">
                 {/* Recomputes as expenses and testing are entered, so it
                     counts to the new figure rather than jumping. */}
@@ -1057,11 +1121,11 @@ function HandoverSummary({ totals }) {
               </td>
             </tr>
             <tr>
-              <td className="muted">Less card, UPI &amp; credit</td>
+              <td className="muted">{t("shifts.lessNonCash")}</td>
               <td className="num mono">−{money(totals.nonCash)}</td>
             </tr>
             <tr className="total">
-              <td>Cash to hand over</td>
+              <td>{t("shifts.cashToHandOver")}</td>
               <td className="num mono" style={{ color: "var(--green)" }}>
                 <NumberRoll value={totals.handover} format={money} />
               </td>
@@ -1072,7 +1136,10 @@ function HandoverSummary({ totals }) {
         <div className="divider" />
         <div className="between">
           <span className="small muted">
-            Counted {money(totals.declared)} against {money(totals.net)} due
+            {t("shifts.countedAgainst", {
+              counted: money(totals.declared),
+              due: money(totals.net),
+            })}
           </span>
           <span
             className="small mono"
@@ -1081,10 +1148,10 @@ function HandoverSummary({ totals }) {
             }}
           >
             {short
-              ? `Short by ${money(Math.abs(totals.variance))}`
+              ? t("shifts.shortBy", { amount: money(Math.abs(totals.variance)) })
               : over
-                ? `Over by ${money(totals.variance)}`
-                : "Balanced"}
+                ? t("shifts.overBy", { amount: money(totals.variance) })
+                : t("shifts.balanced")}
           </span>
         </div>
       </div>
@@ -1093,6 +1160,7 @@ function HandoverSummary({ totals }) {
 }
 
 function LineEditor({ title, rows, setRows, labelPlaceholder, addLabel }) {
+  const { t } = useLanguage();
   return (
     <div>
       <div className="between" style={{ marginBottom: 8 }}>
@@ -1110,7 +1178,7 @@ function LineEditor({ title, rows, setRows, labelPlaceholder, addLabel }) {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td className="muted small">None recorded.</td>
+                <td className="muted small">{t("common.none")}</td>
               </tr>
             )}
             {rows.map((row, i) => (
@@ -1150,7 +1218,7 @@ function LineEditor({ title, rows, setRows, labelPlaceholder, addLabel }) {
                     className="quiet"
                     onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
                   >
-                    remove
+                    {t("common.remove")}
                   </button>
                 </td>
               </tr>
@@ -1168,6 +1236,7 @@ function LineEditor({ title, rows, setRows, labelPlaceholder, addLabel }) {
  * as customers when the shift is submitted, so no debt is ever anonymous.
  */
 function CreditEditor({ rows, setRows, customers, disabled = false }) {
+  const { t } = useLanguage();
   const patch = (i, fields) =>
     setRows((r) => {
       const next = [...r];
@@ -1178,7 +1247,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
   return (
     <div>
       <div className="between" style={{ marginBottom: 8 }}>
-        <h3>Credit sales this shift</h3>
+        <h3>{t("shifts.creditSales")}</h3>
         {!disabled && (
           <button
             type="button"
@@ -1187,7 +1256,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
               setRows((r) => [...r, { customerId: "", name: "", phone: "", amount: "" }])
             }
           >
-            Add credit sale
+            {t("shifts.addCreditSale")}
           </button>
         )}
       </div>
@@ -1195,10 +1264,10 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
         <table>
           <thead>
             <tr>
-              <th>Customer</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th className="num">Amount</th>
+              <th>{t("shifts.customer")}</th>
+              <th>{t("common.name")}</th>
+              <th>{t("common.phone")}</th>
+              <th className="num">{t("common.amount")}</th>
               <th />
             </tr>
           </thead>
@@ -1206,7 +1275,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="muted small">
-                  None recorded.
+                  {t("common.none")}
                 </td>
               </tr>
             )}
@@ -1227,7 +1296,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
                         });
                       }}
                     >
-                      <option value="">New / walk-in</option>
+                      <option value="">{t("shifts.newWalkIn")}</option>
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
@@ -1239,7 +1308,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
                     <input
                       value={row.name || ""}
                       disabled={disabled || !!known}
-                      placeholder="Customer name"
+                      placeholder={t("shifts.customerName")}
                       onChange={(e) => patch(i, { name: e.target.value })}
                     />
                   </td>
@@ -1249,7 +1318,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
                       inputMode="tel"
                       value={row.phone || ""}
                       disabled={disabled || !!known}
-                      placeholder="10-digit mobile"
+                      placeholder={t("shifts.mobile")}
                       onChange={(e) => patch(i, { phone: e.target.value })}
                     />
                   </td>
@@ -1271,7 +1340,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
                         className="quiet"
                         onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
                       >
-                        remove
+                        {t("common.remove")}
                       </button>
                     )}
                   </td>
@@ -1282,8 +1351,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
         </table>
       </div>
       <div className="small muted" style={{ marginTop: 6 }}>
-        A walk-in is matched on phone number; if the number is new, a customer account is
-        opened automatically so the balance can be chased later.
+        {t("shifts.walkInNote")}
       </div>
     </div>
   );
@@ -1297,6 +1365,7 @@ function CreditEditor({ rows, setRows, customers, disabled = false }) {
  * changes rather than silently swapping colour.
  */
 function StatusTag({ status }) {
+  const { t } = useLanguage();
   const changed = useStatusChange(status);
   const tone =
     status === SHIFT_STATUS.APPROVED
@@ -1306,10 +1375,10 @@ function StatusTag({ status }) {
         : "";
   const label =
     status === SHIFT_STATUS.APPROVED
-      ? "Approved"
+      ? t("shifts.approved")
       : status === SHIFT_STATUS.REJECTED
-        ? "Sent back"
-        : "Pending review";
+        ? t("shifts.sentBack")
+        : t("shifts.pendingReview");
   return (
     <span className={`tag${tone}`} data-changed={changed || undefined}>
       {label}
@@ -1332,6 +1401,7 @@ function ClosedShiftDetail({
   onApprove,
   onReject,
 }) {
+  const { t } = useLanguage();
   const locked = shift.status === SHIFT_STATUS.APPROVED;
   const [editing, setEditing] = useState(false);
   const [expenses, setExpenses] = useState(shift.expenses || []);
@@ -1358,29 +1428,34 @@ function ClosedShiftDetail({
     <div className="stack" style={{ gap: 16, padding: "4px 0" }}>
       {shift.status === SHIFT_STATUS.REJECTED && shift.rejectionReason && (
         <Notice kind="error">
-          Sent back by {shift.rejectedByName || "the owner"}: {shift.rejectionReason}
+          {t("shifts.sentBackBy", {
+            who: shift.rejectedByName || t("shifts.theOwner"),
+          })}
+          : {shift.rejectionReason}
         </Notice>
       )}
       {locked && (
         <Notice kind="good">
-          Approved by {shift.approvedByName || "the owner"}
-          {shift.approvedAt ? ` on ${formatStamp(shift.approvedAt)}` : ""}. This shift is
-          now locked.
+          {t("shifts.approvedBy", {
+            who: shift.approvedByName || t("shifts.theOwner"),
+          })}
+          {shift.approvedAt ? ` · ${formatStamp(shift.approvedAt)}` : ""}.{" "}
+          {t("shifts.nowLocked")}
         </Notice>
       )}
 
       <div className="row" style={{ gap: 28, alignItems: "flex-start" }}>
         <div style={{ flex: "1 1 420px", minWidth: 340 }}>
-          <h3 style={{ marginBottom: 6 }}>Meter readings</h3>
+          <h3 style={{ marginBottom: 6 }}>{t("shifts.meterReadings")}</h3>
           <table>
             <thead>
               <tr>
-                <th>Nozzle</th>
-                <th className="num">Opening</th>
-                <th className="num">Closing</th>
-                <th className="num">Litres</th>
-                <th className="num">Price</th>
-                <th className="num">Amount</th>
+                <th>{t("shifts.nozzleCol")}</th>
+                <th className="num">{t("shifts.opening")}</th>
+                <th className="num">{t("shifts.closing")}</th>
+                <th className="num">{t("shifts.litres")}</th>
+                <th className="num">{t("shifts.price")}</th>
+                <th className="num">{t("common.amount")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1402,7 +1477,7 @@ function ClosedShiftDetail({
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3}>Total</td>
+                <td colSpan={3}>{t("common.total")}</td>
                 <td className="num mono">{money(totals.totalLitres)}</td>
                 <td />
                 <td className="num mono">{money(totals.gross)}</td>
@@ -1410,20 +1485,20 @@ function ClosedShiftDetail({
             </tfoot>
           </table>
 
-          <h3 style={{ margin: "14px 0 6px" }}>Litres by product</h3>
+          <h3 style={{ margin: "14px 0 6px" }}>{t("shifts.litresByProduct")}</h3>
           <table>
             <tbody>
               <tr>
-                <td>MS (petrol)</td>
+                <td>{t("shifts.msPetrol")}</td>
                 <td className="num mono">{money(totals.litresByGroup.MS)}</td>
               </tr>
               <tr>
-                <td>HSD (diesel)</td>
+                <td>{t("shifts.hsdDiesel")}</td>
                 <td className="num mono">{money(totals.litresByGroup.HSD)}</td>
               </tr>
               {totals.litresByGroup.OTHER > 0 && (
                 <tr>
-                  <td>Other</td>
+                  <td>{t("shifts.other")}</td>
                   <td className="num mono">{money(totals.litresByGroup.OTHER)}</td>
                 </tr>
               )}
@@ -1432,49 +1507,55 @@ function ClosedShiftDetail({
         </div>
 
         <div style={{ flex: "1 1 300px", minWidth: 280 }}>
-          <h3 style={{ marginBottom: 6 }}>Settlement</h3>
+          <h3 style={{ marginBottom: 6 }}>{t("shifts.settlement")}</h3>
           <table>
             <tbody>
               <tr>
-                <td>Gross sales</td>
+                <td>{t("shifts.grossSales")}</td>
                 <td className="num mono">{money(draft.gross)}</td>
               </tr>
               <tr>
-                <td>Testing · MS</td>
+                <td>{t("shifts.testingMs")}</td>
                 <td className="num mono">−{money(draft.testingMS)}</td>
               </tr>
               <tr>
-                <td>Testing · HSD</td>
+                <td>{t("shifts.testingHsd")}</td>
                 <td className="num mono">−{money(draft.testingHSD)}</td>
               </tr>
               <tr>
-                <td>Expenses</td>
+                <td>{t("ledger.expenses")}</td>
                 <td className="num mono">−{money(draft.expensesTotal)}</td>
               </tr>
               <tr className="total">
-                <td>Net due</td>
+                <td>{t("shifts.netDue")}</td>
                 <td className="num mono">{money(draft.net)}</td>
               </tr>
               {PAYMENT_MODES.map((mode) => (
                 <tr key={mode}>
-                  <td className="muted">{PAYMENT_LABELS[mode]}</td>
+                  <td className="muted">
+                    {t(PAYMENT_KEY[mode] || PAYMENT_LABELS[mode])}
+                  </td>
                   <td className="num mono">{money(draft.payments[mode])}</td>
                 </tr>
               ))}
               <tr className="total">
-                <td>Collected</td>
+                <td>{t("shifts.collected")}</td>
                 <td className="num mono">{money(draft.declared)}</td>
               </tr>
               <tr>
-                <td className="muted">Less card / UPI / credit</td>
+                <td className="muted">{t("shifts.lessCardUpiCredit")}</td>
                 <td className="num mono">−{money(draft.nonCash)}</td>
               </tr>
               <tr className="total">
-                <td>Cash to owner</td>
+                <td>{t("shifts.cashToOwner")}</td>
                 <td className="num mono">{money(draft.handover)}</td>
               </tr>
               <tr className="total">
-                <td>Variance · {varianceLabel(draft.variance)}</td>
+                <td>
+                  {t("shifts.varianceLabelled", {
+                    label: t(VARIANCE_KEY[varianceLabel(draft.variance)]),
+                  })}
+                </td>
                 <td
                   className="num mono"
                   style={{
@@ -1494,15 +1575,19 @@ function ClosedShiftDetail({
             <>
               <div className="divider" />
               <div className="small">
-                <span className="muted">Note: </span>
+                <span className="muted">{t("shifts.noteLabel")} </span>
                 {shift.note}
               </div>
             </>
           )}
           <div className="small muted" style={{ marginTop: 8 }}>
-            Closed by {shift.closedByName || shift.employeeName}
+            {t("shifts.closedByLine", {
+              who: shift.closedByName || shift.employeeName,
+            })}
             {shift.endTime ? ` · ${formatStamp(shift.endTime)}` : ""}
-            {shift.revisedByName ? ` · revised by ${shift.revisedByName}` : ""}
+            {shift.revisedByName
+              ? ` · ${t("shifts.revisedBy", { who: shift.revisedByName })}`
+              : ""}
           </div>
         </div>
       </div>
@@ -1511,11 +1596,11 @@ function ClosedShiftDetail({
       {editing ? (
         <div className="stack" style={{ gap: 14 }}>
           <LineEditor
-            title="Expenses paid from the drawer"
+            title={t("shifts.drawerExpenses")}
             rows={expenses}
             setRows={setExpenses}
             labelPlaceholder="Power bill"
-            addLabel="Add expense"
+            addLabel={t("shifts.addExpense")}
           />
           <TestingEditor testing={testing} setTesting={setTesting} />
           <div className="row">
@@ -1528,7 +1613,7 @@ function ClosedShiftDetail({
                 if (ok) setEditing(false);
               }}
             >
-              {busy ? "Saving…" : "Save changes"}
+              {busy ? t("common.saving") : t("shifts.saveChanges")}
             </button>
             <button
               type="button"
@@ -1542,17 +1627,17 @@ function ClosedShiftDetail({
                 setEditing(false);
               }}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </div>
       ) : (
         <div>
           <div className="between" style={{ marginBottom: 8 }}>
-            <h3>Expenses &amp; testing</h3>
+            <h3>{t("shifts.expensesAndTesting")}</h3>
             {!locked && (
               <button type="button" className="small" onClick={() => setEditing(true)}>
-                Edit
+                {t("common.edit")}
               </button>
             )}
           </div>
@@ -1565,15 +1650,15 @@ function ClosedShiftDetail({
                 </tr>
               ))}
               <tr>
-                <td className="muted">Testing · MS</td>
+                <td className="muted">{t("shifts.testingMs")}</td>
                 <td className="num mono">{money(totals.testingMS)}</td>
               </tr>
               <tr>
-                <td className="muted">Testing · HSD</td>
+                <td className="muted">{t("shifts.testingHsd")}</td>
                 <td className="num mono">{money(totals.testingHSD)}</td>
               </tr>
               <tr className="total">
-                <td>Total deducted</td>
+                <td>{t("shifts.totalDeducted")}</td>
                 <td className="num mono">
                   {money(totals.expensesTotal + totals.testingTotal)}
                 </td>
@@ -1585,14 +1670,14 @@ function ClosedShiftDetail({
 
       {(shift.creditSales || []).length > 0 && (
         <div>
-          <h3 style={{ marginBottom: 6 }}>Credit sales</h3>
+          <h3 style={{ marginBottom: 6 }}>{t("shifts.creditSalesHeading")}</h3>
           <table>
             <tbody>
               {shift.creditSales.map((c, i) => {
                 const known = customers.find((x) => x.id === c.customerId);
                 return (
                   <tr key={i}>
-                    <td>{known?.name || c.name || "Walk-in"}</td>
+                    <td>{known?.name || c.name || t("shifts.walkIn")}</td>
                     <td className="mono small muted">{c.phone || known?.phone || "—"}</td>
                     <td className="num mono">{money(c.amount)}</td>
                   </tr>
@@ -1609,10 +1694,9 @@ function ClosedShiftDetail({
           <div className="body stack" style={{ gap: 10 }}>
             <div className="between">
               <div>
-                <strong>Owner sign-off</strong>
+                <strong>{t("shifts.ownerSignOff")}</strong>
                 <div className="small muted">
-                  Approving locks the shift and records{" "}
-                  <span className="mono">{money(totals.handover)}</span> as cash received.
+                  {t("shifts.approvingLocks", { amount: money(totals.handover) })}
                 </div>
               </div>
               <div className="row" style={{ gap: 8 }}>
@@ -1622,7 +1706,7 @@ function ClosedShiftDetail({
                   disabled={busy}
                   onClick={onApprove}
                 >
-                  Approve
+                  {t("shifts.approve")}
                 </button>
                 {shift.status === SHIFT_STATUS.PENDING_REVIEW && (
                   <button
@@ -1630,7 +1714,7 @@ function ClosedShiftDetail({
                     disabled={busy}
                     onClick={() => setRejecting((r) => !r)}
                   >
-                    Send back
+                    {t("shifts.sendBack")}
                   </button>
                 )}
               </div>
@@ -1640,7 +1724,7 @@ function ClosedShiftDetail({
                 <input
                   style={{ flex: 1 }}
                   value={reason}
-                  placeholder="What needs correcting?"
+                  placeholder={t("shifts.whatNeedsCorrecting")}
                   onChange={(e) => setReason(e.target.value)}
                 />
                 <button
@@ -1654,7 +1738,7 @@ function ClosedShiftDetail({
                     }
                   }}
                 >
-                  Confirm
+                  {t("common.confirm")}
                 </button>
               </div>
             )}

@@ -13,8 +13,10 @@ import {
 } from "../lib/api";
 import { money, todayISO } from "../lib/format";
 import { SHIFT_STATUS, shiftTotals, varianceTone } from "../lib/shiftMath";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 export default function OwnerDashboard() {
+  const { t, tn } = useLanguage();
   const { stations, loading, reload } = useStations();
   const [summaries, setSummaries] = useState({});
   const [showAdd, setShowAdd] = useState(false);
@@ -120,34 +122,52 @@ export default function OwnerDashboard() {
   return (
     <>
       <PageHeader
-        title="All stations"
-        sub={`${stations.length} station${stations.length === 1 ? "" : "s"} · figures for ${todayISO()}`}
+        title={t("owner.allStations")}
+        sub={t(stations.length === 1 ? "owner.stationCountOne" : "owner.stationCount", {
+          count: stations.length,
+          date: todayISO(),
+        })}
       />
       <div className="content stack">
-        <Panel title="Combined position today">
+        <Panel title={t("owner.combinedToday")}>
           <div className="row" style={{ gap: 40 }}>
             {/* These figures move as shifts are approved through the day, so
                 they count to the new value instead of snapping. */}
-            <Stat label="Litres sold" amount={totals.litres} format={money} />
-            <Stat label="Fuel sales" amount={totals.sales} format={money} prefix="₹ " />
-            <Stat label="Testing" amount={totals.testing} format={money} prefix="₹ " />
-            <Stat label="Cash declared" amount={totals.cash} format={money} prefix="₹ " />
+            <Stat label={t("owner.litresSold")} amount={totals.litres} format={money} />
             <Stat
-              label="Cash to receive"
+              label={t("owner.fuelSales")}
+              amount={totals.sales}
+              format={money}
+              prefix="₹ "
+            />
+            <Stat
+              label={t("owner.testing")}
+              amount={totals.testing}
+              format={money}
+              prefix="₹ "
+            />
+            <Stat
+              label={t("owner.cashDeclared")}
+              amount={totals.cash}
+              format={money}
+              prefix="₹ "
+            />
+            <Stat
+              label={t("owner.cashToReceive")}
               amount={totals.handover}
               format={money}
               prefix="₹ "
               tone="pos"
             />
             <Stat
-              label="Cash variance"
+              label={t("owner.cashVariance")}
               amount={totals.variance}
               format={money}
               prefix="₹ "
               tone={varianceTone(totals.variance)}
             />
             <Stat
-              label="Outstanding credit"
+              label={t("owner.outstandingCredit")}
               amount={totals.outstanding}
               format={money}
               prefix="₹ "
@@ -158,18 +178,16 @@ export default function OwnerDashboard() {
 
         {totals.pending > 0 && (
           <Notice>
-            {totals.pending} shift{totals.pending === 1 ? "" : "s"} awaiting your
-            sign-off. Open a station’s shift register to review the figures, adjust
-            expenses or testing, and approve.
+            {tn(totals.pending, "owner.pendingNoticeOne", "owner.pendingNotice")}
           </Notice>
         )}
 
         <Panel
-          title="Stations"
+          title={t("owner.stations")}
           flush
           actions={
             <button type="button" onClick={() => setShowAdd((v) => !v)}>
-              {showAdd ? "Cancel" : "Add station"}
+              {showAdd ? t("common.cancel") : t("owner.addStation")}
             </button>
           }
         >
@@ -180,14 +198,14 @@ export default function OwnerDashboard() {
               style={{ padding: 14, borderBottom: "1px solid var(--hairline)" }}
             >
               <div className="form-grid">
-                <Field label="Station name">
+                <Field label={t("owner.stationName")}>
                   <input
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="City Centre Filling Station"
                   />
                 </Field>
-                <Field label="Address">
+                <Field label={t("owner.address")}>
                   <input
                     value={form.address}
                     onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
@@ -202,26 +220,26 @@ export default function OwnerDashboard() {
                   type="submit"
                   disabled={busy || !form.name.trim() || !form.address.trim()}
                 >
-                  {busy ? "Adding…" : "Add station"}
+                  {busy ? t("owner.adding") : t("owner.addStation")}
                 </button>
               </div>
             </form>
           )}
 
           {loading ? (
-            <LoadingPanels count={2} lines={3} label="Loading stations" />
+            <LoadingPanels count={2} lines={3} label={t("common.loading")} />
           ) : stations.length === 0 ? (
-            <Empty>No stations yet.</Empty>
+            <Empty>{t("owner.noStations")}</Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Station</th>
-                  <th className="num">Litres</th>
-                  <th className="num">Sales today</th>
-                  <th className="num">Variance</th>
-                  <th className="num">Outstanding credit</th>
-                  <th>Shift</th>
+                  <th>{t("common.station")}</th>
+                  <th className="num">{t("shifts.litres")}</th>
+                  <th className="num">{t("owner.salesToday")}</th>
+                  <th className="num">{t("shifts.variance")}</th>
+                  <th className="num">{t("owner.outstandingCredit")}</th>
+                  <th>{t("owner.shiftCol")}</th>
                   <th className="num" style={{ width: 150 }} />
                 </tr>
               </thead>
@@ -235,7 +253,7 @@ export default function OwnerDashboard() {
                           {s.name}
                           {s.state === "archived" && (
                             <span className="tag" style={{ marginLeft: 6 }}>
-                              Archived
+                              {t("owner.archived")}
                             </span>
                           )}
                         </div>
@@ -259,15 +277,19 @@ export default function OwnerDashboard() {
                         {!sum ? (
                           <span className="muted small">—</span>
                         ) : sum.openShifts?.length ? (
-                          <span className="tag">{sum.openShifts.length} open</span>
+                          <span className="tag">
+                            {t("owner.openCount", { count: sum.openShifts.length })}
+                          </span>
                         ) : sum.closedToday > 0 ? (
-                          <span className="tag green">{sum.closedToday} closed</span>
+                          <span className="tag green">
+                            {t("owner.closedCount", { count: sum.closedToday })}
+                          </span>
                         ) : (
-                          <span className="tag rust">none today</span>
+                          <span className="tag rust">{t("owner.noneToday")}</span>
                         )}
                         {sum?.pending > 0 && (
                           <span className="tag" style={{ marginLeft: 6 }}>
-                            {sum.pending} to review
+                            {t("owner.toReview", { count: sum.pending })}
                           </span>
                         )}
                       </td>
@@ -286,7 +308,7 @@ export default function OwnerDashboard() {
                               disabled={busy}
                               onClick={() => changeStationState(s, "active")}
                             >
-                              reopen
+                              {t("owner.reopen")}
                             </button>
                           ) : (
                             <button
@@ -297,7 +319,7 @@ export default function OwnerDashboard() {
                                 setDeleting(deleting?.id === s.id ? null : s);
                               }}
                             >
-                              archive
+                              {t("owner.archive")}
                             </button>
                           )}
                         </span>
@@ -308,7 +330,7 @@ export default function OwnerDashboard() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td>Total</td>
+                  <td>{t("common.total")}</td>
                   <td className="num mono">{money(totals.litres)}</td>
                   <td className="num mono">{money(totals.sales)}</td>
                   <td className="num mono">{money(totals.variance)}</td>
@@ -320,13 +342,9 @@ export default function OwnerDashboard() {
           )}
         </Panel>
         {deleting && (
-          <Panel title={`Archive ${deleting.name}`}>
+          <Panel title={t("owner.archiveTitle", { name: deleting.name })}>
             <div className="stack" style={{ gap: 10 }}>
-              <Notice>
-                Archiving hides this station from the day-to-day screens. Nothing is
-                deleted — its shifts, ledger and credit history stay intact, and you can
-                reopen it from this page at any time.
-              </Notice>
+              <Notice>{t("owner.archiveNotice")}</Notice>
               {error && <Notice kind="error">{error}</Notice>}
               <div className="row">
                 <button
@@ -334,10 +352,12 @@ export default function OwnerDashboard() {
                   disabled={busy}
                   onClick={() => changeStationState(deleting, "archived")}
                 >
-                  {busy ? "Archiving…" : `Archive ${deleting.name}`}
+                  {busy
+                    ? t("owner.archiving")
+                    : t("owner.archiveAction", { name: deleting.name })}
                 </button>
                 <button type="button" onClick={() => setDeleting(null)} disabled={busy}>
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>

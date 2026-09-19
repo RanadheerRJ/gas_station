@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./state/AuthContext";
 import { ThemeProvider } from "./state/ThemeContext";
+import { LanguageProvider } from "./state/LanguageContext.jsx";
 import "./styles.css";
 import { registerServiceWorker } from "./lib/pwa";
 
@@ -14,9 +15,11 @@ createRoot(document.getElementById("root")).render(
         BASE_URL is "/" in development and for a root deployment. */}
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ThemeProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>

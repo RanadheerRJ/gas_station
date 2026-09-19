@@ -36,6 +36,7 @@ the `anon` / `authenticated` / `service_role` roles.
 | Manager | Operational and financial data for their station; can review shifts, move balances, record stock |
 | Attendant | Own shift records only; sees stations/pumps/nozzles and anonymous nozzle occupancy; no co-worker identities, no credit, prices, tanks, or tank readings; cannot write to another operator's shift or to restricted tables |
 | Anonymous | Granted nothing |
+| Exports | Every report read is scoped by the server: an attendant's export request returns only their own shifts and cannot name a co-worker even when the shift id is supplied directly; owner and manager exports keep their existing reach |
 
 ## Negative control
 
@@ -46,5 +47,5 @@ migration. To confirm that:
 npm run test:rbac -- --without-rbac
 ```
 
-Against the initial schema alone this reports **24 failures** — the exact
+Against the initial schema alone this reports **31 failures** — the exact
 exposure that `20260919010000_tighten_role_visibility.sql` closes.

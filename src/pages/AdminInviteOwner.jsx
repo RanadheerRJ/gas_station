@@ -5,6 +5,7 @@ import PinField, { pinReady } from "../components/PinField";
 import ResetPinPanel from "../components/ResetPinPanel";
 import { createOwner, listOwners, readableError } from "../lib/api";
 import { LoadingPanels } from "../components/motion.jsx";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 const BLANK = {
   ownerName: "",
@@ -16,6 +17,7 @@ const BLANK = {
 };
 
 export default function AdminInviteOwner() {
+  const { t } = useLanguage();
   const [form, setForm] = useState(BLANK);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -77,13 +79,10 @@ export default function AdminInviteOwner() {
 
   return (
     <>
-      <PageHeader
-        title="Invite a station owner"
-        sub="Developer console · creates the owner account and their first station"
-      />
+      <PageHeader title={t("admin.title")} sub={t("admin.subtitle")} />
       <div className="content stack" style={{ maxWidth: 780 }}>
         {credentials && (
-          <Panel title="New owner credentials">
+          <Panel title={t("admin.newOwnerCredentials")}>
             <CredentialPanel
               username={credentials.username}
               pin={credentials.pin}
@@ -93,20 +92,17 @@ export default function AdminInviteOwner() {
           </Panel>
         )}
 
-        <Panel
-          title="Owner details"
-          note="The account is created server-side. You choose the PIN; the username is generated from the name."
-        >
+        <Panel title={t("admin.ownerDetails")} note={t("admin.ownerDetailsNote")}>
           <form className="stack" onSubmit={submit}>
             <div className="form-grid">
-              <Field label="Owner name">
+              <Field label={t("admin.ownerName")}>
                 <input
                   value={form.ownerName}
                   onChange={set("ownerName")}
                   placeholder="Ravi Kumar"
                 />
               </Field>
-              <Field label="Phone number">
+              <Field label={t("admin.phoneNumber")}>
                 <input
                   className="mono"
                   inputMode="tel"
@@ -115,14 +111,14 @@ export default function AdminInviteOwner() {
                   placeholder="+91 98480 11223"
                 />
               </Field>
-              <Field label="Station name">
+              <Field label={t("admin.stationName")}>
                 <input
                   value={form.stationName}
                   onChange={set("stationName")}
                   placeholder="Highway 44 Fuel Point"
                 />
               </Field>
-              <Field label="Station address">
+              <Field label={t("admin.stationAddress")}>
                 <input
                   value={form.address}
                   onChange={set("address")}
@@ -134,7 +130,7 @@ export default function AdminInviteOwner() {
                 confirm={form.confirmPin}
                 onPin={(v) => setForm((f) => ({ ...f, pin: v }))}
                 onConfirm={(v) => setForm((f) => ({ ...f, confirmPin: v }))}
-                label="PIN for this owner"
+                label={t("admin.pinForOwner")}
               />
             </div>
 
@@ -142,25 +138,25 @@ export default function AdminInviteOwner() {
 
             <div className="row">
               <button className="primary" type="submit" disabled={busy || !complete}>
-                {busy ? "Creating account…" : "Create owner account"}
+                {busy ? t("admin.creatingAccount") : t("admin.createOwner")}
               </button>
             </div>
           </form>
         </Panel>
 
-        <Panel title="Owner accounts" flush>
+        <Panel title={t("admin.ownerAccounts")} flush>
           {loadingOwners ? (
-            <LoadingPanels count={2} lines={2} label="Loading owners" />
+            <LoadingPanels count={2} lines={2} label={t("common.loading")} />
           ) : owners.length === 0 ? (
-            <Empty>No owners yet.</Empty>
+            <Empty>{t("admin.noOwners")}</Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Owner</th>
-                  <th>Username</th>
-                  <th>Phone</th>
-                  <th className="num">Stations</th>
+                  <th>{t("admin.owner")}</th>
+                  <th>{t("staff.username")}</th>
+                  <th>{t("common.phone")}</th>
+                  <th className="num">{t("admin.stations")}</th>
                   <th />
                 </tr>
               </thead>
@@ -178,7 +174,7 @@ export default function AdminInviteOwner() {
                           className="quiet"
                           onClick={() => setResetting(resetting === o.uid ? null : o.uid)}
                         >
-                          {resetting === o.uid ? "cancel" : "reset PIN"}
+                          {resetting === o.uid ? t("common.cancel") : t("staff.resetPin")}
                         </button>
                       </td>
                     </tr>
@@ -196,7 +192,7 @@ export default function AdminInviteOwner() {
           )}
         </Panel>
 
-        <Panel title="How this works">
+        <Panel title={t("admin.howItWorks")}>
           <ul
             className="small muted"
             style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}

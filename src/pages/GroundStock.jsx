@@ -25,6 +25,9 @@ import {
 } from "../lib/tankMath";
 import { fuelClass } from "./Shifts";
 import { LoadingPanels, NumberRoll, useAnimatedList } from "../components/motion.jsx";
+import ReportTools from "../components/ReportTools.jsx";
+import { defaultRange, filterByRange, stockReport } from "../lib/export.js";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 
@@ -67,6 +70,7 @@ function TankVessel({ tank }) {
 }
 
 export default function GroundStock() {
+  const { t, tn } = useLanguage();
   const { profile } = useAuth();
   const { stations, loading: stationsLoading } = useStations();
   const [params, setParams] = useSearchParams();
@@ -80,6 +84,7 @@ export default function GroundStock() {
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState("dip");
   const [showAdd, setShowAdd] = useState(false);
+  const [range, setRange] = useState(() => defaultRange());
 
   const isOwner = profile.role === "owner";
 
@@ -144,12 +149,19 @@ export default function GroundStock() {
   }, [active]);
 
   // Tanks needing water attention are worth surfacing without hunting.
-  const wet = active.filter((t) => num(t.waterCm) > WATER_LIMIT_CM);
+  const wet = active.filter((tank) => num(tank.waterCm) > WATER_LIMIT_CM);
+
+  // The dip log and its exports read the same filtered list, so a download
+  // never contains a reading the log is not showing.
+  const visibleDips = useMemo(
+    () => filterByRange(dips, range, (d) => d.recordedAt),
+    [dips, range]
+  );
 
   if (stationsLoading) {
     return (
       <>
-        <PageHeader title="Ground stock" />
+        <PageHeader title={t("stock.title")} />
         <div className="content">
           <LoadingPanels count={1} lines={2} />
         </div>
@@ -160,23 +172,23 @@ export default function GroundStock() {
   return (
     <>
       <PageHeader
-        title="Ground stock"
+        title={t("stock.title")}
         sub={
           station
-            ? `${station.name} · ${tanks.length} tank${tanks.length === 1 ? "" : "s"}`
+            ? `${station.name} · ${tn(tanks.length, "stock.tank", "stock.tanks")}`
             : ""
         }
         actions={
           isOwner && (
             <button type="button" onClick={() => setShowAdd((v) => !v)}>
-              {showAdd ? "Cancel" : "Add tank"}
+              {showAdd ? t("common.cancel") : t("stock.addTank")}
             </button>
           )
         }
       />
       <div className="content stack">
         {stations.length > 1 && (
-          <Panel title="Station">
+          <Panel title={t("common.station")}>
             <StationPicker
               stations={stations}
               value={stationId}
@@ -189,15 +201,16 @@ export default function GroundStock() {
 
         {totals.low > 0 && (
           <Notice kind="error">
-            {totals.low} tank{totals.low === 1 ? " is" : "s are"} at or below a quarter
-            full. Place an order before a nozzle runs dry.
+            {tn(totals.low, "stock.lowWarningOne", "stock.lowWarning")}
           </Notice>
         )}
 
         {wet.length > 0 && (
           <Notice kind="error">
-            Water above {WATER_LIMIT_CM} cm in {wet.map((t) => t.name).join(", ")}. Water
-            corrodes the tank and dilutes the next delivery — have it drawn off.
+            {t("stock.waterWarning", {
+              limit: WATER_LIMIT_CM,
+              tanks: wet.map((tank) => tank.name).join(", "),
+            })}
           </Notice>
         )}
 
@@ -213,70 +226,93 @@ export default function GroundStock() {
           />
         )}
 
-        <Panel
-          title="Tanks"
-          note="Each vessel is drawn to its current level. Tap one to dip it or book a delivery."
-        >
+        <Panel title={t("report.title")} note={t("report.note")}>
+          <ReportTools
+            report="stock"
+            title="Ground stock"
+            stationName={station?.name || ""}
+            range={range}
+            onRangeChange={setRange}
+            rowCount={
+              stockReport({ tanks: active, entries: dips, range, stationName: "" }).rows
+                .length
+            }
+            buildReport={() =>
+              stockReport({
+                tanks: active,
+                entries: dips,
+                range,
+                stationName: station?.name || "",
+              })
+            }
+          />
+        </Panel>
+
+        <Panel title={t("stock.tanksTitle")} note={t("stock.tanksNote")}>
           {loading ? (
-            <LoadingPanels count={2} lines={3} label="Loading tanks" />
+            <LoadingPanels count={2} lines={3} label={t("common.loading")} />
           ) : tanks.length === 0 ? (
             <Empty>
-              No tanks set up yet.
-              {isOwner
-                ? " Add one to start recording dips and temperatures."
-                : " An owner needs to add them first."}
+              {t("stock.noTanks")}{" "}
+              {isOwner ? t("stock.noTanksOwner") : t("stock.noTanksStaff")}
             </Empty>
           ) : (
             <>
               <div className="tank-farm">
-                {tankRows.map(({ item: t, exiting }) => {
-                  const st = tankStatus(t);
-                  const warm = num(t.temperatureC) > 35;
+                {tankRows.map(({ item: tank, exiting }) => {
+                  const st = tankStatus(tank);
+                  const warm = num(tank.temperatureC) > 35;
                   return (
                     <div
-                      key={t.id}
-                      className={`tank-card${selected === t.id ? " selected" : ""} ${
+                      key={tank.id}
+                      className={`tank-card${selected === tank.id ? " selected" : ""} ${
                         exiting ? "row-exit" : "row-enter"
                       }`}
                       onClick={() => {
-                        setSelected(selected === t.id ? null : t.id);
+                        setSelected(selected === tank.id ? null : t.id);
                         setMode("dip");
                       }}
                       style={{ cursor: "pointer" }}
                     >
-                      <TankVessel tank={t} />
+                      <TankVessel tank={tank} />
                       <div className="tank-card__body">
                         <div className="tank-card__name">
                           <span
-                            className={`fuel-dot fuel-dot--${fuelClass(t.fuelType)}`}
+                            className={`fuel-dot fuel-dot--${fuelClass(tank.fuelType)}`}
                           />
-                          {t.name}
+                          {tank.name}
                         </div>
-                        <div className="tank-card__fuel">{t.fuelType}</div>
+                        <div className="tank-card__fuel">{tank.fuelType}</div>
 
                         <div className="tank-card__figure">
                           {/* Stock changes when a dip or delivery is recorded;
                               counting makes the direction of the change plain. */}
                           <NumberRoll value={st.stock} format={money} /> <span>L</span>
                           <div className="tank-card__fuel">
-                            of {money(st.capacity)} L · {money(st.ullage)} L space
+                            {t("stock.of")} {money(st.capacity)} L · {money(st.ullage)}{" "}
+                            {t("stock.spaceFor")}
                           </div>
                         </div>
 
                         <div className="tank-card__meta">
-                          {t.temperatureC == null ? (
-                            <span className="muted">No temperature recorded</span>
+                          {tank.temperatureC == null ? (
+                            <span className="muted">{t("stock.noTemperature")}</span>
                           ) : (
                             <span className={`temp-chip${warm ? " warm" : ""}`}>
-                              {num(t.temperatureC).toFixed(1)} °C
+                              {num(tank.temperatureC).toFixed(1)} °C
                             </span>
                           )}
                           {st.volumeAt15 != null && (
                             <div>
-                              {money(st.volumeAt15)} L at {REFERENCE_TEMP_C} °C
+                              {money(st.volumeAt15)} L {t("stock.at")} {REFERENCE_TEMP_C}{" "}
+                              °C
                             </div>
                           )}
-                          {t.lastDipAt && <div>Dipped {formatStamp(t.lastDipAt)}</div>}
+                          {tank.lastDipAt && (
+                            <div>
+                              {t("stock.dipped")} {formatStamp(tank.lastDipAt)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -287,17 +323,17 @@ export default function GroundStock() {
               <div className="divider" />
               <div className="row" style={{ gap: 40, flexWrap: "wrap" }}>
                 <Stat
-                  label="Stock in ground"
+                  label={t("stock.stockInGround")}
                   amount={totals.stock}
                   format={(n) => `${money(n)} L`}
                 />
                 <Stat
-                  label="Space for delivery"
+                  label={t("stock.spaceForDelivery")}
                   amount={totals.ullage}
                   format={(n) => `${money(n)} L`}
                 />
                 <Stat
-                  label="Total capacity"
+                  label={t("stock.totalCapacity")}
                   amount={totals.capacity}
                   format={(n) => `${money(n)} L`}
                 />
@@ -313,7 +349,7 @@ export default function GroundStock() {
                 <GaugeIcon /> {selectedTank.name}
               </span>
             }
-            note={`${selectedTank.fuelType} · ${money(selectedTank.capacity)} L tank`}
+            note={`${selectedTank.fuelType} · ${money(selectedTank.capacity)} L`}
             actions={
               <div className="row" style={{ gap: 8 }}>
                 <button
@@ -321,14 +357,14 @@ export default function GroundStock() {
                   className={mode === "dip" ? "primary" : ""}
                   onClick={() => setMode("dip")}
                 >
-                  Record dip
+                  {t("stock.recordDip")}
                 </button>
                 <button
                   type="button"
                   className={mode === "delivery" ? "primary" : ""}
                   onClick={() => setMode("delivery")}
                 >
-                  Book delivery
+                  {t("stock.bookDelivery")}
                 </button>
               </div>
             }
@@ -357,8 +393,8 @@ export default function GroundStock() {
                 <div className="between">
                   <span className="small muted">
                     {selectedTank.state === "retired"
-                      ? "This tank is out of service. Its dip history is kept."
-                      : "Taking a tank out of service hides it from the daily screens. Nothing is deleted."}
+                      ? t("stock.tankRetired")
+                      : t("stock.tankActiveNote")}
                   </span>
                   <button
                     type="button"
@@ -375,8 +411,8 @@ export default function GroundStock() {
                     }
                   >
                     {selectedTank.state === "retired"
-                      ? "Return to service"
-                      : "Take out of service"}
+                      ? t("stock.returnToService")
+                      : t("stock.takeOutOfService")}
                   </button>
                 </div>
               </>
@@ -384,30 +420,28 @@ export default function GroundStock() {
           </Panel>
         )}
 
-        <Panel
-          title="Dip and delivery log"
-          note="Readings are never edited. A wrong dip is corrected by taking another one."
-          flush
-        >
-          {dips.length === 0 ? (
-            <Empty>No readings recorded yet.</Empty>
+        <Panel title={t("stock.logTitle")} note={t("stock.logNote")} flush>
+          {visibleDips.length === 0 ? (
+            <Empty>
+              {dips.length === 0 ? t("stock.noReadings") : t("stock.noReadingsInRange")}
+            </Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>Tank</th>
-                  <th>Entry</th>
-                  <th className="num">Change</th>
-                  <th className="num">Stock after</th>
-                  <th className="num">Temp</th>
-                  <th className="num">Water</th>
-                  <th>By</th>
+                  <th>{t("stock.when")}</th>
+                  <th>{t("stock.tankCol")}</th>
+                  <th>{t("stock.entry")}</th>
+                  <th className="num">{t("stock.change")}</th>
+                  <th className="num">{t("stock.stockAfter")}</th>
+                  <th className="num">{t("stock.temp")}</th>
+                  <th className="num">{t("stock.water")}</th>
+                  <th>{t("stock.by")}</th>
                 </tr>
               </thead>
               <tbody>
-                {dips.slice(0, 40).map((d) => {
-                  const tank = tanks.find((t) => t.id === d.tankId);
+                {visibleDips.slice(0, 40).map((d) => {
+                  const tank = tanks.find((x) => x.id === d.tankId);
                   const up = num(d.change) > 0;
                   return (
                     <tr key={d.id}>
@@ -415,9 +449,9 @@ export default function GroundStock() {
                       <td>{tank?.name || "—"}</td>
                       <td>
                         {d.kind === "delivery" ? (
-                          <span className="tag green">Delivery</span>
+                          <span className="tag green">{t("stock.delivery")}</span>
                         ) : (
-                          <span className="tag">Dip</span>
+                          <span className="tag">{t("stock.dip")}</span>
                         )}
                         {d.note && <div className="small muted">{d.note}</div>}
                       </td>
@@ -446,15 +480,15 @@ export default function GroundStock() {
         </Panel>
 
         {Object.keys(byProduct).length > 0 && (
-          <Panel title="Stock by product" flush>
+          <Panel title={t("stock.byProduct")} flush>
             <table>
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th className="num">Tanks</th>
-                  <th className="num">In ground</th>
-                  <th className="num">Capacity</th>
-                  <th className="num">Room for delivery</th>
+                  <th>{t("stock.product")}</th>
+                  <th className="num">{t("stock.tanksTitle")}</th>
+                  <th className="num">{t("stock.inGround")}</th>
+                  <th className="num">{t("stock.capacity")}</th>
+                  <th className="num">{t("stock.roomForDelivery")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -484,6 +518,7 @@ export default function GroundStock() {
 /* ------------------------------------------------------------------ */
 
 function AddTankForm({ onSubmit, onCancel, busy, existing }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     name: `Tank ${existing + 1}`,
     fuelType: "Petrol",
@@ -498,17 +533,17 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
     <Panel
       title={
         <span className="row" style={{ gap: 7, alignItems: "center" }}>
-          <TankIcon /> Add a tank
+          <TankIcon /> {t("stock.addTankTitle")}
         </span>
       }
-      note="Capacity comes off the tank chart supplied with the vessel."
+      note={t("stock.capacityNote")}
     >
       <div className="stack">
         <div className="form-grid">
-          <Field label="Tank name">
+          <Field label={t("stock.tankName")}>
             <input value={form.name} onChange={set("name")} placeholder="Tank 1" />
           </Field>
-          <Field label="Product">
+          <Field label={t("stock.product")}>
             <select value={form.fuelType} onChange={set("fuelType")}>
               {FUEL_TYPES.map((f) => (
                 <option key={f} value={f}>
@@ -517,7 +552,7 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
               ))}
             </select>
           </Field>
-          <Field label="Capacity" hint="litres">
+          <Field label={t("stock.capacity")} hint={t("common.litres")}>
             <input
               className="mono"
               inputMode="decimal"
@@ -527,7 +562,7 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
               placeholder="20000"
             />
           </Field>
-          <Field label="Stock now" hint="litres, from the dip stick">
+          <Field label={t("stock.stockNow")} hint={t("stock.stockNowHint")}>
             <input
               className="mono"
               inputMode="decimal"
@@ -552,10 +587,10 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
               })
             }
           >
-            {busy ? "Adding…" : "Add tank"}
+            {busy ? t("stock.adding") : t("stock.addTank")}
           </button>
           <button type="button" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>
@@ -569,6 +604,7 @@ function AddTankForm({ onSubmit, onCancel, busy, existing }) {
  * with the thermometer.
  */
 function DipForm({ tank, onSubmit, busy }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     stockLitres: "",
     temperatureC: "",
@@ -612,7 +648,7 @@ function DipForm({ tank, onSubmit, busy }) {
   return (
     <div className="stack">
       <div className="form-grid">
-        <Field label="Stock on the stick" hint="litres">
+        <Field label={t("stock.stockOnStick")} hint={t("common.litres")}>
           <input
             className="mono"
             inputMode="decimal"
@@ -622,7 +658,10 @@ function DipForm({ tank, onSubmit, busy }) {
             placeholder={money(tank.currentStock)}
           />
         </Field>
-        <Field label="Fuel temperature" hint={`°C, ${TEMP_RANGE.min}–${TEMP_RANGE.max}`}>
+        <Field
+          label={t("stock.fuelTemperature")}
+          hint={`°C, ${TEMP_RANGE.min}–${TEMP_RANGE.max}`}
+        >
           <input
             className="mono"
             inputMode="decimal"
@@ -632,7 +671,7 @@ function DipForm({ tank, onSubmit, busy }) {
             placeholder="30.0"
           />
         </Field>
-        <Field label="Water" hint="cm, optional">
+        <Field label={t("stock.water")} hint={t("stock.waterHint")}>
           <input
             className="mono"
             inputMode="decimal"
@@ -642,20 +681,27 @@ function DipForm({ tank, onSubmit, busy }) {
             placeholder="0.0"
           />
         </Field>
-        <Field label="Note" hint="optional">
-          <input value={form.note} onChange={set("note")} placeholder="Morning dip" />
+        <Field label={t("common.note")} hint={t("common.optional")}>
+          <input
+            value={form.note}
+            onChange={set("note")}
+            placeholder={t("stock.morningDip")}
+          />
         </Field>
       </div>
 
       <div className="row" style={{ gap: 36, flexWrap: "wrap" }}>
         <Stat
-          label="Change on last reading"
+          label={t("stock.changeOnLast")}
           value={change == null ? "—" : `${change > 0 ? "+" : ""}${money(change)} L`}
           tone={change == null ? undefined : change < 0 ? "neg" : "pos"}
         />
-        <Stat label="Fill after dip" value={`${Math.round(preview.fillPercent)}%`} />
         <Stat
-          label={`Volume at ${REFERENCE_TEMP_C} °C`}
+          label={t("stock.fillAfterDip")}
+          value={`${Math.round(preview.fillPercent)}%`}
+        />
+        <Stat
+          label={t("stock.volumeAt", { temp: REFERENCE_TEMP_C })}
           value={preview.volumeAt15 == null ? "—" : `${money(preview.volumeAt15)} L`}
         />
       </div>
@@ -672,7 +718,7 @@ function DipForm({ tank, onSubmit, busy }) {
 
       <div>
         <button className="primary" type="button" disabled={busy} onClick={submit}>
-          {busy ? "Saving…" : "Save dip reading"}
+          {busy ? t("common.saving") : t("stock.saveDip")}
         </button>
       </div>
     </div>
@@ -681,6 +727,7 @@ function DipForm({ tank, onSubmit, busy }) {
 
 /** Book a tanker in. Ullage is checked before anything is written. */
 function DeliveryForm({ tank, onSubmit, busy }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     litres: "",
     temperatureC: "",
@@ -698,7 +745,7 @@ function DeliveryForm({ tank, onSubmit, busy }) {
   return (
     <div className="stack">
       <div className="form-grid">
-        <Field label="Quantity delivered" hint="litres">
+        <Field label={t("stock.quantityDelivered")} hint={t("common.litres")}>
           <input
             className="mono"
             inputMode="decimal"
@@ -711,7 +758,7 @@ function DeliveryForm({ tank, onSubmit, busy }) {
             placeholder={money(st.ullage)}
           />
         </Field>
-        <Field label="Temperature on arrival" hint="°C">
+        <Field label={t("stock.temperatureOnArrival")} hint="°C">
           <input
             className="mono"
             inputMode="decimal"
@@ -721,18 +768,18 @@ function DeliveryForm({ tank, onSubmit, busy }) {
             placeholder="32.0"
           />
         </Field>
-        <Field label="Invoice number" hint="optional">
+        <Field label={t("stock.invoiceNumber")} hint={t("common.optional")}>
           <input value={form.invoice} onChange={set("invoice")} placeholder="TL-44821" />
         </Field>
-        <Field label="Note" hint="optional">
+        <Field label={t("common.note")} hint={t("common.optional")}>
           <input value={form.note} onChange={set("note")} placeholder="IOC tanker" />
         </Field>
       </div>
 
       <div className="row" style={{ gap: 36, flexWrap: "wrap" }}>
-        <Stat label="Space before" value={`${money(st.ullage)} L`} />
+        <Stat label={t("stock.spaceBefore")} value={`${money(st.ullage)} L`} />
         <Stat
-          label="Stock after"
+          label={t("stock.stockAfterDelivery")}
           value={litres > 0 ? `${money(after)} L` : `${money(st.stock)} L`}
           tone={overfills ? "neg" : undefined}
         />
@@ -740,8 +787,10 @@ function DeliveryForm({ tank, onSubmit, busy }) {
 
       {overfills && (
         <Notice kind="error">
-          {money(litres)} L will not fit. The tank has {money(st.ullage)} L of ullage —
-          check the challan before booking it in.
+          {t("stock.overfill", {
+            litres: money(litres),
+            ullage: money(st.ullage),
+          })}
         </Notice>
       )}
 
@@ -760,7 +809,7 @@ function DeliveryForm({ tank, onSubmit, busy }) {
             if (ok) setForm({ litres: "", temperatureC: "", invoice: "", note: "" });
           }}
         >
-          {busy ? "Booking…" : "Book delivery"}
+          {busy ? t("stock.booking") : t("stock.bookDelivery")}
         </button>
       </div>
     </div>

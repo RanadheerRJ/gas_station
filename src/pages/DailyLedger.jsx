@@ -9,6 +9,9 @@ import { listShifts, readableError } from "../lib/api";
 import { formatDate, formatStamp, money, num } from "../lib/format";
 import { SHIFT_STATUS, shiftTotals, varianceLabel, varianceTone } from "../lib/shiftMath";
 import { LoadingPanels } from "../components/motion.jsx";
+import ReportTools from "../components/ReportTools.jsx";
+import { defaultRange, filterByRange, ledgerReport } from "../lib/export.js";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 /**
  * The daily ledger is now entirely DERIVED from closed shifts — there is no
@@ -16,6 +19,7 @@ import { LoadingPanels } from "../components/motion.jsx";
  * shows the individual shifts that made it.
  */
 export default function DailyLedger() {
+  const { t, tn } = useLanguage();
   const { stations, loading: stationsLoading } = useStations();
   const [params, setParams] = useSearchParams();
   const [stationId, setStationId] = useState("");
@@ -23,6 +27,9 @@ export default function DailyLedger() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(null);
+  // The report window. The table below and every export read from this one
+  // piece of state, so a download always matches what is on screen.
+  const [range, setRange] = useState(() => defaultRange());
 
   useEffect(() => {
     if (stations.length === 0) return;
@@ -88,24 +95,27 @@ export default function DailyLedger() {
     return [...byDate.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [shifts]);
 
-  const month = new Date().toISOString().slice(0, 7);
-  const monthTotals = useMemo(() => {
-    const rows = days.filter((d) => d.date.startsWith(month));
-    return {
-      days: rows.length,
-      litres: rows.reduce((n, d) => n + d.litres, 0),
-      sales: rows.reduce((n, d) => n + d.sales, 0),
-      credit: rows.reduce((n, d) => n + d.credit, 0),
-      variance: rows.reduce((n, d) => n + d.variance, 0),
-    };
-  }, [days, month]);
+  // Everything below the range control — table, month strip, and both
+  // exports — works off this filtered list.
+  const visibleDays = useMemo(() => filterByRange(days, range), [days, range]);
+
+  const rangeTotals = useMemo(
+    () => ({
+      days: visibleDays.length,
+      litres: visibleDays.reduce((n, d) => n + d.litres, 0),
+      sales: visibleDays.reduce((n, d) => n + d.sales, 0),
+      credit: visibleDays.reduce((n, d) => n + d.credit, 0),
+      variance: visibleDays.reduce((n, d) => n + d.variance, 0),
+    }),
+    [visibleDays]
+  );
 
   const station = stations.find((s) => s.id === stationId);
 
   if (stationsLoading) {
     return (
       <>
-        <PageHeader title="Daily ledger" />
+        <PageHeader title={t("ledger.title")} />
         <div className="content">
           <LoadingPanels count={1} lines={2} />
         </div>
@@ -116,12 +126,12 @@ export default function DailyLedger() {
   return (
     <>
       <PageHeader
-        title="Daily ledger"
-        sub={station ? `${station.name} · totalled from closed shifts` : ""}
+        title={t("ledger.title")}
+        sub={station ? `${station.name} · ${t("ledger.subtitle")}` : ""}
       />
       <div className="content stack">
         {stations.length > 1 && (
-          <Panel title="Station">
+          <Panel title={t("common.station")}>
             <StationPicker
               stations={stations}
               value={stationId}
@@ -132,17 +142,29 @@ export default function DailyLedger() {
 
         {error && <Notice kind="error">{error}</Notice>}
 
-        <Panel
-          title={`This month · ${monthTotals.days} day${monthTotals.days === 1 ? "" : "s"}`}
-        >
+        <Panel title={t("report.title")} note={t("report.note")} actions={null}>
+          <ReportTools
+            report="ledger"
+            title="Daily ledger"
+            stationName={station?.name || ""}
+            range={range}
+            onRangeChange={setRange}
+            rowCount={visibleDays.length}
+            buildReport={() =>
+              ledgerReport({ days: visibleDays, stationName: station?.name || "" })
+            }
+          />
+        </Panel>
+
+        <Panel title={tn(rangeTotals.days, "ledger.day", "ledger.days")}>
           <div className="row" style={{ gap: 40 }}>
-            <Stat label="Litres sold" value={money(monthTotals.litres)} />
-            <Stat label="Fuel sales" value={`₹ ${money(monthTotals.sales)}`} />
-            <Stat label="On credit" value={`₹ ${money(monthTotals.credit)}`} />
+            <Stat label={t("ledger.litresSold")} value={money(rangeTotals.litres)} />
+            <Stat label={t("ledger.fuelSales")} value={`₹ ${money(rangeTotals.sales)}`} />
+            <Stat label={t("ledger.onCredit")} value={`₹ ${money(rangeTotals.credit)}`} />
             <Stat
-              label="Cash variance"
-              value={`₹ ${money(monthTotals.variance)}`}
-              tone={varianceTone(monthTotals.variance)}
+              label={t("ledger.cashVariance")}
+              value={`₹ ${money(rangeTotals.variance)}`}
+              tone={varianceTone(rangeTotals.variance)}
             />
           </div>
         </Panel>
@@ -150,36 +172,35 @@ export default function DailyLedger() {
         <Panel
           title={
             <span className="row" style={{ gap: 7, alignItems: "center" }}>
-              <LedgerIcon /> Day register
+              <LedgerIcon /> {t("ledger.dayRegister")}
             </span>
           }
-          note="Every figure here comes from meter readings — nothing is typed by hand."
+          note={t("ledger.derivedNote")}
           flush
         >
           {loading ? (
-            <LoadingPanels count={2} lines={4} label="Loading ledger" />
-          ) : days.length === 0 ? (
+            <LoadingPanels count={2} lines={4} label={t("common.loading")} />
+          ) : visibleDays.length === 0 ? (
             <Empty>
-              No closed shifts yet. Sales appear here once a shift is closed with its
-              meter readings.
+              {days.length === 0 ? t("ledger.empty") : t("ledger.emptyRange")}
             </Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th className="num">Shifts</th>
-                  <th className="num">Litres</th>
-                  <th className="num">Sales</th>
-                  <th className="num">Credit</th>
-                  <th className="num">Expenses</th>
-                  <th className="num">Collected</th>
-                  <th className="num">Variance</th>
+                  <th>{t("common.date")}</th>
+                  <th className="num">{t("ledger.shifts")}</th>
+                  <th className="num">{t("shifts.litres")}</th>
+                  <th className="num">{t("ledger.fuelSales")}</th>
+                  <th className="num">{t("ledger.credit")}</th>
+                  <th className="num">{t("ledger.expenses")}</th>
+                  <th className="num">{t("ledger.collected")}</th>
+                  <th className="num">{t("ledger.variance")}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {days.map((d) => {
+                {visibleDays.map((d) => {
                   const open = expanded === d.date;
                   return (
                     <Fragment key={d.date}>
@@ -208,7 +229,7 @@ export default function DailyLedger() {
                             className="quiet"
                             onClick={() => setExpanded(open ? null : d.date)}
                           >
-                            {open ? "hide" : "shifts"}
+                            {open ? t("common.hide") : t("ledger.shifts")}
                           </button>
                         </td>
                       </tr>
@@ -220,15 +241,15 @@ export default function DailyLedger() {
                               style={{ gap: 28, alignItems: "flex-start" }}
                             >
                               <div style={{ flex: "1 1 380px", minWidth: 320 }}>
-                                <h3 style={{ marginBottom: 6 }}>Shifts</h3>
+                                <h3 style={{ marginBottom: 6 }}>{t("ledger.shifts")}</h3>
                                 <table>
                                   <thead>
                                     <tr>
-                                      <th>Shift</th>
-                                      <th className="num">Litres</th>
-                                      <th className="num">Sales</th>
-                                      <th className="num">Variance</th>
-                                      <th>Closed by</th>
+                                      <th>{t("owner.shiftCol")}</th>
+                                      <th className="num">{t("shifts.litres")}</th>
+                                      <th className="num">{t("ledger.fuelSales")}</th>
+                                      <th className="num">{t("ledger.variance")}</th>
+                                      <th>{t("ledger.closedBy")}</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -277,13 +298,13 @@ export default function DailyLedger() {
                               </div>
 
                               <div style={{ flex: "0 1 300px", minWidth: 260 }}>
-                                <h3 style={{ marginBottom: 6 }}>By fuel</h3>
+                                <h3 style={{ marginBottom: 6 }}>{t("ledger.byFuel")}</h3>
                                 <table>
                                   <thead>
                                     <tr>
-                                      <th>Fuel</th>
-                                      <th className="num">Litres</th>
-                                      <th className="num">Amount</th>
+                                      <th>{t("ledger.fuel")}</th>
+                                      <th className="num">{t("shifts.litres")}</th>
+                                      <th className="num">{t("common.amount")}</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -297,7 +318,7 @@ export default function DailyLedger() {
                                   </tbody>
                                   <tfoot>
                                     <tr>
-                                      <td>Total</td>
+                                      <td>{t("common.total")}</td>
                                       <td className="num mono">{money(d.litres)}</td>
                                       <td className="num mono">{money(d.sales)}</td>
                                     </tr>
