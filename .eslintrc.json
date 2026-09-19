@@ -46,23 +46,6 @@
   },
   "overrides": [
     {
-      "files": ["functions/**/*.js"],
-      "env": {
-        "node": true,
-        "browser": false
-      },
-      "parserOptions": {
-        "sourceType": "script"
-      },
-      "extends": ["eslint:recommended", "prettier"],
-      "plugins": [],
-      "rules": {
-        "react-hooks/rules-of-hooks": "off",
-        "react-hooks/exhaustive-deps": "off",
-        "no-console": "off"
-      }
-    },
-    {
       "files": [
         "scripts/**/*.mjs",
         "scripts/**/*.js",
@@ -116,5 +99,5 @@
       }
     }
   ],
-  "ignorePatterns": ["dist/", "node_modules/", "functions/node_modules/", "coverage/"]
+  "ignorePatterns": ["dist/", "node_modules/", "coverage/"]
 }

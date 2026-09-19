@@ -202,14 +202,12 @@ export default function AdminInviteOwner() {
             style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}
           >
             <li>
-              The owner account is created by the{" "}
-              <span className="mono">createOwner</span> Cloud Function using the Admin
-              SDK. Nothing is written from this browser.
+              The owner account is created by the <span className="mono">accounts</span>{" "}
+              Supabase Edge Function. Its service key never reaches this browser.
             </li>
             <li>
-              The PIN is hashed with bcrypt into{" "}
-              <span className="mono">authSecrets/&#123;uid&#125;</span>, a collection no
-              client can read or write.
+              Supabase Auth stores a hash of the derived username + PIN password. The
+              public database never stores a raw PIN or a PIN hash.
             </li>
             <li>
               You choose the owner’s opening PIN and hand it over. Only its hash is kept,

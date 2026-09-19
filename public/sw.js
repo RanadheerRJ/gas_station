@@ -51,14 +51,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-/** Firestore, Cloud Functions and auth must always go to the network. */
+/** Supabase REST, Auth, Realtime and Edge Functions must always use the network. */
 function isData(url) {
-  return (
-    url.hostname.includes("googleapis.com") ||
-    url.hostname.includes("cloudfunctions.net") ||
-    url.hostname.includes("firebaseio.com") ||
-    url.hostname.includes("firebaseapp.com")
-  );
+  return url.hostname.endsWith(".supabase.co") || url.hostname.endsWith(".supabase.in");
 }
 
 self.addEventListener("fetch", (event) => {
