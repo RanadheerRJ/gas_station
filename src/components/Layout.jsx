@@ -1,9 +1,30 @@
-import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { watchConnection } from "../lib/pwa";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
+import { useRouteTransition } from "./motion.jsx";
+import Sheet from "./Sheet.jsx";
+import AccountPanel from "./AccountPanel.jsx";
+import {
+  BackIcon,
+  ChevronIcon,
+  CreditIcon,
+  HistoryIcon,
+  HomeIcon,
+  LedgerIcon,
+  LogOutIcon,
+  MoonIcon,
+  MoreIcon,
+  PeopleIcon,
+  RateIcon,
+  ShiftIcon,
+  StationIcon,
+  SunIcon,
+  TankIcon,
+  UserIcon,
+} from "./icons.jsx";
 
 const ROLE_LABEL = {
   admin: "role.admin",
@@ -12,42 +33,53 @@ const ROLE_LABEL = {
   attendant: "role.attendant",
 };
 
-/** A small badge per role, so who you are signed in as is obvious at a glance. */
-const ROLE_EMOJI = {
-  admin: "🛠️",
-  owner: "🏪",
-  manager: "📋",
-  attendant: "⛽",
-};
-
-/** Nav is strictly role-scoped: a developer only invites owners, an
- *  attendant only sees today’s entry. The emoji is decorative — the label
- *  carries the meaning, and the icon stays for consistent alignment. */
-function navFor(profile) {
-  switch (profile.role) {
-    case "admin":
-      return [{ to: "/admin", label: "nav.inviteOwner", emoji: "✉️", end: true }];
+/**
+ * Each role's destinations, split into bottom-tab entries and overflow.
+ *
+ * Tabs are capped at five: four real destinations plus "More" once a role has
+ * more sections than tabs (the owner). The developer's screen is a single
+ * page, so it gets no tab bar at all — one tab is a label, not a menu.
+ *
+ * The same list drives the desktop sidebar (where everything is shown flat —
+ * there is room) and the mobile tab bar, so the two never drift apart.
+ */
+function destinationsFor(role) {
+  switch (role) {
     case "owner":
-      return [
-        { to: "/owner", label: "nav.allStations", emoji: "🏪", end: true },
-        { to: "/owner/shifts", label: "nav.shifts", emoji: "🧾" },
-        { to: "/owner/setup", label: "nav.pumpsRates", emoji: "⛽" },
-        { to: "/owner/stock", label: "nav.groundStock", emoji: "🛢️" },
-        { to: "/owner/ledger", label: "nav.dailyLedger", emoji: "📊" },
-        { to: "/owner/credit", label: "nav.creditCustomers", emoji: "💳" },
-        { to: "/owner/staff", label: "nav.staffAccess", emoji: "👥" },
-      ];
+      return {
+        tabs: [
+          { to: "/owner", label: "nav.overview", Icon: StationIcon, end: true },
+          { to: "/owner/shifts", label: "nav.shifts", Icon: ShiftIcon },
+          { to: "/owner/stock", label: "nav.groundStock", Icon: TankIcon },
+          { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
+        ],
+        more: [
+          { to: "/owner/setup", label: "nav.pumpsRates", Icon: RateIcon },
+          { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
+          { to: "/owner/staff", label: "nav.staffAccess", Icon: PeopleIcon },
+        ],
+      };
     case "manager":
-      return [
-        { to: "/station", label: "nav.shifts", emoji: "🧾", end: true },
-        { to: "/station/stock", label: "nav.groundStock", emoji: "🛢️" },
-        { to: "/station/ledger", label: "nav.dailyLedger", emoji: "📊" },
-        { to: "/station/credit", label: "nav.creditCustomers", emoji: "💳" },
-      ];
+      return {
+        tabs: [
+          { to: "/station", label: "nav.shifts", Icon: ShiftIcon, end: true },
+          { to: "/station/stock", label: "nav.groundStock", Icon: TankIcon },
+          { to: "/station/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
+          { to: "/station/credit", label: "nav.creditCustomers", Icon: CreditIcon },
+        ],
+        more: [],
+      };
     case "attendant":
-      return [{ to: "/today", label: "nav.shift", emoji: "🧾", end: true }];
+      return {
+        tabs: [
+          { to: "/today", label: "nav.today", Icon: HomeIcon, end: true },
+          { to: "/today/history", label: "nav.history", Icon: HistoryIcon },
+          { to: "/today/account", label: "nav.account", Icon: UserIcon },
+        ],
+        more: [],
+      };
     default:
-      return [];
+      return { tabs: [], more: [] };
   }
 }
 
@@ -60,12 +92,46 @@ export default function Layout() {
   const { online, restored } = useConnection();
   const install = useInstallPrompt();
   const { pathname } = useLocation();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const { tabs, more } = useMemo(
+    () => destinationsFor(profile?.role),
+    [profile?.role]
+  );
+  // Tab switches fade rather than slide — sliding on a lateral move reads as
+  // a new stack being pushed, which a tab bar never is.
+  const tabPaths = useMemo(() => tabs.map((tab) => tab.to), [tabs]);
+  const transitionClass = useRouteTransition(pathname, tabPaths);
+  const moreActive = more.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`)
+  );
 
   if (!profile) return null;
-  const links = navFor(profile);
 
   return (
-    <div className="shell">
+    <div className={`shell${tabs.length > 0 ? " shell--tabs" : ""}`}>
+      {/* Mobile top bar: brand at a glance, account one tap away. */}
+      <header className="appbar">
+        <div className="brand-lockup">
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt=""
+            className="brand-logo"
+          />
+          <div className="mark">PUMPMITHRA</div>
+        </div>
+        <button
+          type="button"
+          className="appbar__account"
+          onClick={() => setAccountOpen(true)}
+          aria-label={t("nav.account")}
+        >
+          <UserIcon size={17} />
+        </button>
+      </header>
+
+      {/* Desktop: the persistent side nav, unchanged in role, changed in icon. */}
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-lockup">
@@ -79,24 +145,18 @@ export default function Layout() {
           <div className="who">
             <span className="who__name">{profile.name}</span>
             <span className={`role-pill role-pill--${profile.role}`}>
-              <span aria-hidden="true">{ROLE_EMOJI[profile.role] || "•"}</span>
               {ROLE_LABEL[profile.role] ? t(ROLE_LABEL[profile.role]) : profile.role}
             </span>
           </div>
         </div>
         <nav>
-          {links.map((l) => {
-            return (
-              <NavLink key={l.to} to={l.to} end={l.end}>
-                {l.emoji && (
-                  <span className="nav-emoji" aria-hidden="true">
-                    {l.emoji}
-                  </span>
-                )}
-                <span>{t(l.label)}</span>
-              </NavLink>
-            );
-          })}
+          {tabs.map((tab) => (
+            <SidebarLink key={tab.to} item={tab} translate={t} />
+          ))}
+          {more.length > 0 && <div className="sidebar__group">{t("nav.more")}</div>}
+          {more.map((item) => (
+            <SidebarLink key={item.to} item={item} translate={t} />
+          ))}
         </nav>
         <div className="foot">
           {profile.username && (
@@ -110,11 +170,11 @@ export default function Layout() {
             className="theme-toggle theme-toggle--sidebar"
             onClick={toggleTheme}
           >
-            {theme === "dark"
-              ? `☀ ${t("chrome.lightMode")}`
-              : `☾ ${t("chrome.darkMode")}`}
+            {theme === "dark" ? <SunIcon size={15} /> : <MoonIcon size={15} />}
+            {theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
           </button>
-          <button type="button" className="small" onClick={logout}>
+          <button type="button" className="small sidebar__signout" onClick={logout}>
+            <LogOutIcon size={15} />
             {t("chrome.signOut")}
           </button>
         </div>
@@ -147,25 +207,114 @@ export default function Layout() {
           </div>
         )}
 
-        {/* Keyed on the path so the fade replays on every navigation rather
-            than only on first mount. */}
-        <div className="route-fade" key={pathname}>
+        {/* Keyed on the path so the transition replays on every navigation.
+            The class says which way the screen is travelling; reduced-motion
+            users always get the plain fade (see motion.jsx). */}
+        <div className={transitionClass} key={pathname}>
           <Outlet />
         </div>
       </div>
+
+      {/* Mobile bottom tabs: four destinations plus "More" when a role has
+          more sections than tabs. */}
+      {tabs.length > 0 && (
+        <nav className="tabbar" aria-label={t("chrome.navigation")}>
+          {tabs.map((tab) => {
+            const Icon = tab.Icon;
+            return (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.end}
+                className={({ isActive }) => `tab${isActive ? " active" : ""}`}
+              >
+                <Icon size={21} />
+                <span>{t(tab.label)}</span>
+              </NavLink>
+            );
+          })}
+          {more.length > 0 && (
+            <button
+              type="button"
+              className={`tab${moreActive ? " active" : ""}`}
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
+            >
+              <MoreIcon size={21} />
+              <span>{t("nav.more")}</span>
+            </button>
+          )}
+        </nav>
+      )}
+
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={t("nav.more")}>
+        <div className="more-list">
+          {more.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end
+              className="more-list__item"
+              onClick={() => setMoreOpen(false)}
+            >
+              <item.Icon size={19} />
+              <span>{t(item.label)}</span>
+              <ChevronIcon size={15} />
+            </NavLink>
+          ))}
+        </div>
+      </Sheet>
+
+      {/* The account sheet is the tab-bar overflow for roles whose tabs are
+          all used up by real destinations. */}
+      <Sheet
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        title={t("nav.account")}
+      >
+        <AccountPanel onDone={() => setAccountOpen(false)} />
+      </Sheet>
     </div>
   );
 }
 
-export function PageHeader({ title, sub, actions }) {
+function SidebarLink({ item, translate }) {
+  const Icon = item.Icon;
   return (
-    <div className="topbar">
-      <div>
-        <h1>{title}</h1>
-        {sub && <div className="sub">{sub}</div>}
+    <NavLink to={item.to} end={item.end}>
+      <Icon size={17} />
+      <span>{translate(item.label)}</span>
+    </NavLink>
+  );
+}
+
+/**
+ * A screen's title block. Screens are single-purpose now, so the header
+ * carries the title, an optional one-line context (`sub`), the back link for
+ * drill-downs, and the screen's filters/actions — nothing else.
+ */
+export function ScreenHeader({ title, sub, actions, filter, back }) {
+  const { t } = useLanguage();
+  return (
+    <header className="screen-head">
+      <div className="screen-head__row">
+        {back && (
+          <Link to={back.to} className="back-link" aria-label={t("common.back")}>
+            <BackIcon size={19} />
+          </Link>
+        )}
+        <div className="screen-head__titles">
+          <h1>{title}</h1>
+          {sub && <div className="sub">{sub}</div>}
+        </div>
+        {(filter || actions) && (
+          <div className="screen-head__actions">
+            {filter}
+            {actions}
+          </div>
+        )}
       </div>
-      {actions}
-    </div>
+    </header>
   );
 }
 

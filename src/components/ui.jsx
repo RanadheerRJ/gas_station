@@ -78,6 +78,58 @@ export function Empty({ children }) {
 }
 
 /**
+ * A bare card: the Panel's body without its header chrome. Most screens in
+ * the app-shell world are one card each, and a titled bar above every one of
+ * them would be noise.
+ */
+export function Card({ children, className = "", flush = false }) {
+  return (
+    <section className={`card${flush ? " card--flush" : ""} ${className}`.trim()}>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The checkout bar. One screen, one primary action, always in the same place
+ * at the bottom — the thumb lands there without looking, the way a delivery
+ * app's "Place order" always is. Renders the fixed bar plus the in-flow
+ * spacer that keeps the last row of content out from under it.
+ */
+export function ActionBar({ children }) {
+  return (
+    <>
+      <div className="action-bar" role="toolbar">
+        <div className="action-bar__inner">{children}</div>
+      </div>
+      {/* Clears the fixed bar (and the tab bar beneath it on phones) so the
+          last row of a long list is never trapped underneath. */}
+      <div className="action-bar__spacer" aria-hidden="true" />
+    </>
+  );
+}
+
+/** A compact either/or switch, e.g. "record a dip" vs "book a delivery". */
+export function Segmented({ value, onChange, options }) {
+  return (
+    <div className="segmented" role="tablist">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="tab"
+          aria-selected={value === option.value}
+          className={value === option.value ? "active" : ""}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Post-creation handover panel. The PIN was chosen by the creator, so this
  * confirms the username and echoes the PIN they just set for handover.
  */

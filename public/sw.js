@@ -7,7 +7,7 @@
  * because someone would act on it.
  */
 
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 

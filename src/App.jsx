@@ -2,13 +2,23 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import AdminInviteOwner from "./pages/AdminInviteOwner";
-import OwnerDashboard from "./pages/OwnerDashboard";
+import OwnerHome from "./pages/OwnerHome";
 import OwnerStaff from "./pages/OwnerStaff";
-import DailyLedger from "./pages/DailyLedger";
-import CreditCustomers from "./pages/CreditCustomers";
-import Shifts from "./pages/Shifts";
 import StationSetup from "./pages/StationSetup";
-import GroundStock from "./pages/GroundStock";
+import TodayHome from "./pages/today/TodayHome.jsx";
+import StartShift from "./pages/today/StartShift.jsx";
+import ShiftRun from "./pages/today/ShiftRun.jsx";
+import TodayHistory from "./pages/today/TodayHistory.jsx";
+import TodayAccount from "./pages/today/TodayAccount.jsx";
+import ShiftsList from "./pages/shifts/ShiftsList.jsx";
+import ShiftDetail from "./pages/shifts/ShiftDetail.jsx";
+import CloseShift from "./pages/shifts/CloseShift.jsx";
+import LedgerList from "./pages/ledger/LedgerList.jsx";
+import LedgerDay from "./pages/ledger/LedgerDay.jsx";
+import StockList from "./pages/stock/StockList.jsx";
+import TankDetail from "./pages/stock/TankDetail.jsx";
+import CreditList from "./pages/credit/CreditList.jsx";
+import CustomerDetail from "./pages/credit/CustomerDetail.jsx";
 import { useAuth } from "./state/AuthContext";
 import { SkeletonLine } from "./components/motion.jsx";
 
@@ -29,6 +39,12 @@ function Protect({ roles, children }) {
   return children;
 }
 
+/**
+ * One screen, one concern: every route below is a list, a detail, or a
+ * focused action — never several stacked together. The role prefixes keep
+ * the same destinations each role has always had; only the shape of what
+ * renders behind them changes.
+ */
 export default function App() {
   const { profile, loading } = useAuth();
 
@@ -65,6 +81,7 @@ export default function App() {
         element={<Navigate to={HOME[profile.role] || "/"} replace />}
       />
       <Route element={<Layout />}>
+        {/* ---- developer ---- */}
         <Route
           path="/admin"
           element={
@@ -73,11 +90,13 @@ export default function App() {
             </Protect>
           }
         />
+
+        {/* ---- owner ---- */}
         <Route
           path="/owner"
           element={
             <Protect roles={["owner"]}>
-              <OwnerDashboard />
+              <OwnerHome />
             </Protect>
           }
         />
@@ -85,7 +104,31 @@ export default function App() {
           path="/owner/shifts"
           element={
             <Protect roles={["owner"]}>
-              <Shifts />
+              <ShiftsList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/shifts/start"
+          element={
+            <Protect roles={["owner"]}>
+              <StartShift />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/shifts/:id"
+          element={
+            <Protect roles={["owner"]}>
+              <ShiftDetail />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/shifts/:id/close"
+          element={
+            <Protect roles={["owner"]}>
+              <CloseShift />
             </Protect>
           }
         />
@@ -101,7 +144,15 @@ export default function App() {
           path="/owner/stock"
           element={
             <Protect roles={["owner"]}>
-              <GroundStock />
+              <StockList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/stock/:tankId"
+          element={
+            <Protect roles={["owner"]}>
+              <TankDetail />
             </Protect>
           }
         />
@@ -109,7 +160,15 @@ export default function App() {
           path="/owner/ledger"
           element={
             <Protect roles={["owner"]}>
-              <DailyLedger />
+              <LedgerList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/ledger/:date"
+          element={
+            <Protect roles={["owner"]}>
+              <LedgerDay />
             </Protect>
           }
         />
@@ -117,7 +176,15 @@ export default function App() {
           path="/owner/credit"
           element={
             <Protect roles={["owner"]}>
-              <CreditCustomers />
+              <CreditList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/owner/credit/:customerId"
+          element={
+            <Protect roles={["owner"]}>
+              <CustomerDetail />
             </Protect>
           }
         />
@@ -129,11 +196,37 @@ export default function App() {
             </Protect>
           }
         />
+
+        {/* ---- manager ---- */}
         <Route
           path="/station"
           element={
             <Protect roles={["manager"]}>
-              <Shifts />
+              <ShiftsList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/start"
+          element={
+            <Protect roles={["manager"]}>
+              <StartShift />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/shift/:id"
+          element={
+            <Protect roles={["manager"]}>
+              <ShiftDetail />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/shift/:id/close"
+          element={
+            <Protect roles={["manager"]}>
+              <CloseShift />
             </Protect>
           }
         />
@@ -141,7 +234,15 @@ export default function App() {
           path="/station/stock"
           element={
             <Protect roles={["manager"]}>
-              <GroundStock />
+              <StockList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/stock/:tankId"
+          element={
+            <Protect roles={["manager"]}>
+              <TankDetail />
             </Protect>
           }
         />
@@ -149,7 +250,15 @@ export default function App() {
           path="/station/ledger"
           element={
             <Protect roles={["manager"]}>
-              <DailyLedger />
+              <LedgerList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/ledger/:date"
+          element={
+            <Protect roles={["manager"]}>
+              <LedgerDay />
             </Protect>
           }
         />
@@ -157,15 +266,73 @@ export default function App() {
           path="/station/credit"
           element={
             <Protect roles={["manager"]}>
-              <CreditCustomers />
+              <CreditList />
             </Protect>
           }
         />
         <Route
+          path="/station/credit/:customerId"
+          element={
+            <Protect roles={["manager"]}>
+              <CustomerDetail />
+            </Protect>
+          }
+        />
+
+        {/* ---- attendant: a real multi-screen flow under /today ---- */}
+        <Route
           path="/today"
           element={
             <Protect roles={["attendant"]}>
-              <Shifts />
+              <TodayHome />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/start"
+          element={
+            <Protect roles={["attendant"]}>
+              <StartShift />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/shift/:id"
+          element={
+            <Protect roles={["attendant"]}>
+              <ShiftRun />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/shift/:id/close"
+          element={
+            <Protect roles={["attendant"]}>
+              <CloseShift />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/history"
+          element={
+            <Protect roles={["attendant"]}>
+              <TodayHistory />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/history/:id"
+          element={
+            <Protect roles={["attendant"]}>
+              <ShiftDetail />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/account"
+          element={
+            <Protect roles={["attendant"]}>
+              <TodayAccount />
             </Protect>
           }
         />

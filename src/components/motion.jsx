@@ -310,3 +310,60 @@ export function LoadingPanels({ count = 2, lines = 3, label = "Loading" }) {
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* screen transitions                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Direction of travel between two locations.
+ *
+ * Drilling deeper into the app (list → detail) reads as "forward", returning
+ * to a shallower screen reads as "back". Switching between top-level tab
+ * destinations is a lateral move — those fade rather than slide, the way
+ * consumer apps treat tab changes, so the tab bar never feels like it is
+ * pushing a whole new stack at you.
+ */
+export function routeDirection(prev, next, tabPaths = []) {
+  if (!prev || !next || prev === next) return "none";
+  const tabs = new Set(tabPaths);
+  if (tabs.has(prev) || tabs.has(next)) return "none";
+  const depth = (p) => p.split("/").filter(Boolean).length;
+  if (depth(next) > depth(prev)) return "forward";
+  if (depth(next) < depth(prev)) return "back";
+  return "none";
+}
+
+/**
+ * The animation class for the screen that just mounted.
+ *
+ * Returns one of `route-fade`, `route-push` (in from the right), or
+ * `route-pop` (in from the left). Reduced-motion users get the plain fade —
+ * checked in JS here as well as in the stylesheet, because the class choice
+ * is made before CSS ever sees the element.
+ */
+export function useRouteTransition(pathname, tabPaths = []) {
+  const [className, setClassName] = useState("route-fade");
+  const prevRef = useRef(null);
+  const tabsRef = useRef(tabPaths);
+  tabsRef.current = tabPaths;
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = pathname;
+    if (prev == null || prev === pathname) return undefined;
+
+    if (prefersReducedMotion()) {
+      setClassName("route-fade");
+      return undefined;
+    }
+
+    const dir = routeDirection(prev, pathname, tabsRef.current);
+    setClassName(
+      dir === "forward" ? "route-push" : dir === "back" ? "route-pop" : "route-fade"
+    );
+    return undefined;
+  }, [pathname]);
+
+  return className;
+}
