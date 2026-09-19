@@ -85,7 +85,14 @@ export default function Login() {
       <div className="stack" style={{ width: 360, maxWidth: "100%" }}>
         <div className="login-card">
           <div className="head">
-            <div className="mark">STATION LEDGER</div>
+            <div className="brand-lockup brand-lockup--login">
+              <img
+                src={`${import.meta.env.BASE_URL}logo.svg`}
+                alt=""
+                className="brand-logo"
+              />
+              <div className="mark">PUMPMITHRA</div>
+            </div>
             <p>Daily operations and accounts for fuel stations</p>
           </div>
 

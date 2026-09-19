@@ -3,15 +3,6 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { watchConnection } from "../lib/pwa";
 import { useTheme } from "../state/ThemeContext";
-import {
-  CreditIcon,
-  LedgerIcon,
-  PeopleIcon,
-  PumpIcon,
-  ShiftIcon,
-  StationIcon,
-  TankIcon,
-} from "./icons";
 
 const ROLE_LABEL = {
   admin: "Developer",
@@ -34,39 +25,37 @@ const ROLE_EMOJI = {
 function navFor(profile) {
   switch (profile.role) {
     case "admin":
-      return [
-        { to: "/admin", label: "Invite Owner", icon: PeopleIcon, emoji: "✉️", end: true },
-      ];
+      return [{ to: "/admin", label: "Invite Owner", emoji: "✉️", end: true }];
     case "owner":
       return [
         {
           to: "/owner",
           label: "All stations",
-          icon: StationIcon,
+
           emoji: "🏪",
           end: true,
         },
-        { to: "/owner/shifts", label: "Shifts", icon: ShiftIcon, emoji: "🧾" },
-        { to: "/owner/setup", label: "Pumps & rates", icon: PumpIcon, emoji: "⛽" },
-        { to: "/owner/stock", label: "Ground stock", icon: TankIcon, emoji: "🛢️" },
-        { to: "/owner/ledger", label: "Daily ledger", icon: LedgerIcon, emoji: "📊" },
-        { to: "/owner/credit", label: "Credit customers", icon: CreditIcon, emoji: "💳" },
-        { to: "/owner/staff", label: "Staff & access", icon: PeopleIcon, emoji: "👥" },
+        { to: "/owner/shifts", label: "Shifts", emoji: "🧾" },
+        { to: "/owner/setup", label: "Pumps & rates", emoji: "⛽" },
+        { to: "/owner/stock", label: "Ground stock", emoji: "🛢️" },
+        { to: "/owner/ledger", label: "Daily ledger", emoji: "📊" },
+        { to: "/owner/credit", label: "Credit customers", emoji: "💳" },
+        { to: "/owner/staff", label: "Staff & access", emoji: "👥" },
       ];
     case "manager":
       return [
-        { to: "/station", label: "Shifts", icon: ShiftIcon, emoji: "🧾", end: true },
-        { to: "/station/stock", label: "Ground stock", icon: TankIcon, emoji: "🛢️" },
-        { to: "/station/ledger", label: "Daily ledger", icon: LedgerIcon, emoji: "📊" },
+        { to: "/station", label: "Shifts", emoji: "🧾", end: true },
+        { to: "/station/stock", label: "Ground stock", emoji: "🛢️" },
+        { to: "/station/ledger", label: "Daily ledger", emoji: "📊" },
         {
           to: "/station/credit",
           label: "Credit customers",
-          icon: CreditIcon,
+
           emoji: "💳",
         },
       ];
     case "attendant":
-      return [{ to: "/today", label: "Shift", icon: ShiftIcon, emoji: "🧾", end: true }];
+      return [{ to: "/today", label: "Shift", emoji: "🧾", end: true }];
     default:
       return [];
   }
@@ -88,7 +77,14 @@ export default function Layout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="mark">STATION LEDGER</div>
+          <div className="brand-lockup">
+            <img
+              src={`${import.meta.env.BASE_URL}logo.svg`}
+              alt=""
+              className="brand-logo"
+            />
+            <div className="mark">PUMPMITHRA</div>
+          </div>
           <div className="who">
             <span className="who__name">{profile.name}</span>
             <span className={`role-pill role-pill--${profile.role}`}>
@@ -99,7 +95,6 @@ export default function Layout() {
         </div>
         <nav>
           {links.map((l) => {
-            const Icon = l.icon;
             return (
               <NavLink key={l.to} to={l.to} end={l.end}>
                 {l.emoji && (
@@ -107,7 +102,6 @@ export default function Layout() {
                     {l.emoji}
                   </span>
                 )}
-                {Icon && <Icon size={16} />}
                 <span>{l.label}</span>
               </NavLink>
             );
@@ -151,7 +145,7 @@ export default function Layout() {
         {install.available && (
           <div className="install-bar">
             <span style={{ flex: 1 }}>
-              Install Station Ledger on this device for full-screen use and faster starts.
+              Install PumpMithra on this device for full-screen use and faster starts.
             </span>
             <button type="button" onClick={install.prompt}>
               Install
@@ -223,7 +217,7 @@ function useConnection() {
 function useInstallPrompt() {
   const [deferred, setDeferred] = useState(null);
   const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem("stationledger.install.dismissed") === "1"
+    () => localStorage.getItem("pumpmithra.install.dismissed") === "1"
   );
 
   useEffect(() => {
@@ -249,7 +243,7 @@ function useInstallPrompt() {
       setDeferred(null);
     },
     dismiss: () => {
-      localStorage.setItem("stationledger.install.dismissed", "1");
+      localStorage.setItem("pumpmithra.install.dismissed", "1");
       setDismissed(true);
     },
   };

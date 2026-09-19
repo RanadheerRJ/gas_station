@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const ThemeContext = createContext(null);
-const KEY = "stationledger.theme";
+const KEY = "pumpmithra.theme";
 
 function preferredTheme() {
   if (typeof window === "undefined") return "light";
