@@ -63,7 +63,7 @@ export default function Shifts() {
   const [pumps, setPumps] = useState([]);
   const [nozzles, setNozzles] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [busyNozzleIds, setBusyNozzleIds] = useState([]);
+  const [busyNozzleIds, setBusyNozzleIds] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -93,7 +93,7 @@ export default function Shifts() {
         listShifts(stationId),
         listPumps(stationId),
         isAttendant ? Promise.resolve([]) : listCustomers(stationId),
-        isAttendant ? listNozzleOccupancy(stationId) : Promise.resolve([]),
+        isAttendant ? listNozzleOccupancy(stationId) : Promise.resolve(null),
       ]);
       setShifts(sh);
       setPumps(eq.pumps);
@@ -121,10 +121,14 @@ export default function Shifts() {
 
   // Attendants get availability from the anonymous RPC; owners and managers
   // derive it from the shift data they are entitled to see, which also names
-  // the operator on each pump.
+  // the operator on each pump. busyNozzleIds is null when that RPC is not in
+  // the database yet, in which case fall back to the shifts this account can
+  // see rather than showing every nozzle as free.
   const nozzleBusy = useMemo(
     () =>
-      isAttendant ? anonymousNozzleOccupancy(busyNozzleIds) : nozzleOccupancy(openShifts),
+      isAttendant && busyNozzleIds
+        ? anonymousNozzleOccupancy(busyNozzleIds)
+        : nozzleOccupancy(openShifts),
     [isAttendant, busyNozzleIds, openShifts]
   );
 

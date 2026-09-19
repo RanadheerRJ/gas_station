@@ -339,16 +339,43 @@ export async function listShifts(stationId) {
   return rows.map(mapShift);
 }
 
+/** PostgREST's code for "that function does not exist". */
+const MISSING_FUNCTION = "PGRST202";
+
+function isMissingFunction(error) {
+  return (
+    error?.code === MISSING_FUNCTION ||
+    /could not find the function|does not exist/i.test(error?.message || "")
+  );
+}
+
 /**
  * Busy nozzle ids for a station, with no operator identity attached.
  *
  * Attendants are not allowed to read other people's shifts, so availability
  * for the "start a shift" screen comes from this deliberately anonymous RPC
  * rather than from station-wide shift rows.
+ *
+ * Returns null — rather than throwing — when the RPC is not in the database
+ * yet. A Pages deploy can land before `supabase db push` has been run, and a
+ * missing availability hint should not take the whole screen down: the caller
+ * falls back to whatever shifts it is allowed to see. Claiming a nozzle is
+ * still safe either way, because `shift_nozzles_one_open_shift` refuses a
+ * second open claim at the database level.
  */
 export async function listNozzleOccupancy(stationId) {
-  const rows = await rpc("list_nozzle_occupancy", { p_station_id: stationId });
-  return (rows || []).map((row) => row.nozzle_id ?? row.nozzleId);
+  try {
+    const rows = await rpc("list_nozzle_occupancy", { p_station_id: stationId });
+    return (rows || []).map((row) => row.nozzle_id ?? row.nozzleId);
+  } catch (error) {
+    if (isMissingFunction(error)) {
+      console.warn(
+        "list_nozzle_occupancy is missing — apply the latest Supabase migration."
+      );
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function openShift(stationId, payload) {
