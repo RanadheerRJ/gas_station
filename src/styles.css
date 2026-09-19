@@ -513,6 +513,43 @@ tr.total td {
   color: #9fa9b0;
 }
 
+.login-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #f0ece1;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.login-tab {
+  padding: 10px 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.login-tab:hover:not(.active) {
+  background: #e8e3d6;
+  color: var(--ink);
+}
+
+.login-tab.active {
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom: 2px solid var(--amber);
+}
+
 .login-card form {
   padding: 18px;
   display: flex;
