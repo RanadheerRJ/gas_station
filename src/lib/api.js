@@ -2,13 +2,13 @@
  * Single data-access facade for the UI.
  *
  * When a Firebase project is configured it talks to Auth + Firestore +
- * callable Cloud Functions. Otherwise it delegates to the local demo backend
- * so the app is runnable without credentials. The UI never branches on this.
+ * callable Cloud Functions.
  */
 
 import {
   onAuthStateChanged,
   signInWithCustomToken,
+  signInWithEmailAndPassword,
   signOut as fbSignOut,
 } from "firebase/auth";
 import {
@@ -60,6 +60,19 @@ function database() {
 
 /** Normalise a callable/Firestore error into something a user can read. */
 export function readableError(err) {
+  if (
+    err?.code === "auth/invalid-credential" ||
+    err?.code === "auth/wrong-password" ||
+    err?.code === "auth/user-not-found"
+  ) {
+    return "Invalid email or password.";
+  }
+  if (err?.code === "auth/invalid-email") {
+    return "Invalid email address.";
+  }
+  if (err?.code === "auth/too-many-requests") {
+    return "Too many failed attempts. Try again later.";
+  }
   const msg = err?.message || "Something went wrong.";
   return msg.replace(/^firebase:\s*/i, "").replace(/\s*\(.*\)\.?$/, "");
 }
@@ -86,7 +99,7 @@ export function onAuthProfile(callback) {
           role: "admin",
           ownerId: null,
           stationIds: [],
-          username: claims.email || "developer",
+          username: user.email || claims.email || "developer",
         });
       }
 
@@ -113,6 +126,26 @@ export async function pinLogin({ username, pin }) {
   const res = await call("pinLogin")({ username, pin });
   await signInWithCustomToken(auth, res.data.token);
   return res.data.profile;
+}
+
+export async function developerLogin({ email, password }) {
+  assertConfigured();
+  const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+  const tokenResult = await cred.user.getIdTokenResult(true);
+  if (tokenResult.claims.admin !== true) {
+    await fbSignOut(auth);
+    throw new Error(
+      "This account is not a developer account. Developer access must be granted with scripts/setAdminClaim.cjs."
+    );
+  }
+  return {
+    uid: cred.user.uid,
+    name: cred.user.displayName || "Developer",
+    role: "admin",
+    ownerId: null,
+    stationIds: [],
+    username: cred.user.email || tokenResult.claims.email || "developer",
+  };
 }
 
 export async function signOut() {

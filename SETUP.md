@@ -66,13 +66,9 @@ If that errors, install from <https://git-scm.com/downloads>.
 ## Step 1 — Download the code
 
 ```bash
-git clone --branch arena/01a0b35a-gas-station https://github.com/RanadheerRJ/gas_station.git
+git clone https://github.com/RanadheerRJ/gas_station.git
 cd gas_station
 ```
-
-> **Why that long branch name?** The `main` branch of the repository is still
-> almost empty — all the work is on this branch until you merge it in Part 2.
-> A plain `git clone` would leave you with just a README.
 
 Check it worked:
 
@@ -253,9 +249,11 @@ Miss this and the site loads perfectly but every sign-in fails with
 https://ranadheerrj.github.io/gas_station/
 ```
 
-Sign in with the email and password from Step 7a. You should land on a screen
-whose only option is **Invite Owner** — correct, because the developer account
-exists only to create owners.
+Switch to the **Developer** tab and sign in with the email and password from
+Step 7a. You should land on a screen whose only option is **Invite Owner** —
+correct, because the developer account exists only to create owners. Staff
+(owners, managers, attendants) use the default **Staff** tab with username and
+PIN.
 
 On a phone, use your browser's **Add to Home Screen** and it installs like an
 app, full screen and offline-capable.

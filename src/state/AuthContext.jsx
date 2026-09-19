@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { onAuthProfile, pinLogin, signOut } from "../lib/api";
+import { developerLogin, onAuthProfile, pinLogin, signOut } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       login: (creds) => pinLogin(creds),
+      developerLogin: (creds) => developerLogin(creds),
       logout: () => signOut(),
       isAdmin: profile?.role === "admin",
       isOwner: profile?.role === "owner",
