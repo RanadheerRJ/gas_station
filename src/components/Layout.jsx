@@ -115,7 +115,7 @@ export default function Layout() {
         </nav>
         <div className="foot">
           {profile.username && (
-            <div className="small" style={{ color: "#7f8b93", marginBottom: 8 }}>
+            <div className="small" style={{ color: "var(--muted)", marginBottom: 8 }}>
               signed in as <span className="mono">{profile.username}</span>
             </div>
           )}

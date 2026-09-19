@@ -129,7 +129,7 @@ export function CreditIcon(props) {
 
 /** Small status dot used in shift rows. */
 export function StatusDot({ tone = "green", title }) {
-  const fill = tone === "green" ? "#3F7D58" : tone === "rust" ? "#B5473B" : "#E8A33D";
+  const fill = tone === "green" ? "#15803d" : tone === "rust" ? "#dc2626" : "#b45309";
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
       <title>{title}</title>
