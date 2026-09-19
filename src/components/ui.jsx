@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NumberRoll } from "./motion.jsx";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 export function Panel({ title, actions, children, flush = false, note }) {
   return (
@@ -81,10 +82,11 @@ export function Empty({ children }) {
  * confirms the username and echoes the PIN they just set for handover.
  */
 export function CredentialPanel({ username, pin, onDismiss, subject }) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
-    const text = `Username: ${username}\nPIN: ${pin}`;
+    const text = `${t("cred.username")}: ${username}\n${t("cred.pin")}: ${pin}`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -96,27 +98,23 @@ export function CredentialPanel({ username, pin, onDismiss, subject }) {
 
   return (
     <div className="stack" style={{ gap: 10 }}>
-      <Notice kind="good">
-        Account created for {subject}. Share the username and the PIN you chose — only its
-        hash is stored, so it cannot be looked up later. If it is lost you can set a new
-        one from this page.
-      </Notice>
+      <Notice kind="good">{t("cred.created", { name: subject })}</Notice>
       <div className="credential">
         <div>
-          <div className="k">Username</div>
+          <div className="k">{t("cred.username")}</div>
           <div className="v">{username}</div>
         </div>
         <div>
-          <div className="k">PIN</div>
+          <div className="k">{t("cred.pin")}</div>
           <div className="v">{pin}</div>
         </div>
       </div>
       <div className="row" style={{ gap: 8 }}>
         <button type="button" onClick={copy}>
-          {copied ? "Copied" : "Copy credentials"}
+          {copied ? t("cred.copied") : t("cred.copy")}
         </button>
         <button type="button" className="quiet" onClick={onDismiss}>
-          Done, hide these
+          {t("cred.done")}
         </button>
       </div>
     </div>

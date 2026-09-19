@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { pinProblem } from "../lib/api";
 import { useOneShot } from "./motion.jsx";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 /**
  * PIN entry with confirmation. The creator chooses the PIN, so both boxes
  * must agree before the form will submit — a typo here would lock someone
  * out of an account they have never used.
  */
-export default function PinField({
-  pin,
-  confirm,
-  onPin,
-  onConfirm,
-  label = "PIN for this account",
-  hint = "4 digits — you will share this with them",
-}) {
+export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }) {
+  const { t } = useLanguage();
+  const resolvedLabel = label ?? t("staff.pinForLogin");
+  const resolvedHint = hint ?? t("cred.pinHint");
   const [touched, setTouched] = useState(false);
   const [visible, setVisible] = useState(false);
 
@@ -56,8 +53,8 @@ export default function PinField({
     <>
       <label className="field">
         <span>
-          {label}
-          <span className="muted small"> · {hint}</span>
+          {resolvedLabel}
+          <span className="muted small"> · {resolvedHint}</span>
         </span>
         <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
           <input
@@ -78,13 +75,13 @@ export default function PinField({
             onClick={() => setVisible((v) => !v)}
             style={{ whiteSpace: "nowrap" }}
           >
-            {visible ? "hide" : "show"}
+            {visible ? t("cred.hide") : t("cred.show")}
           </button>
         </div>
       </label>
 
       <label className="field">
-        <span>Confirm PIN</span>
+        <span>{t("cred.confirmPin")}</span>
         <input
           className={`mono ${confirmShake} ${accepted ? "field-accepted" : ""}`.trim()}
           inputMode="numeric"
@@ -103,7 +100,7 @@ export default function PinField({
         )}
         {!problem && mismatch && (
           <span className="small" style={{ color: "var(--rust)" }}>
-            The two PINs do not match.
+            {t("cred.pinMismatch")}
           </span>
         )}
       </label>

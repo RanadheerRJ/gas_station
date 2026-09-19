@@ -24,6 +24,45 @@ have been removed. The source of truth is now:
 
 No Firebase credentials or service account key should remain in this project.
 
+## Reporting and exports
+
+Daily Ledger, Shifts, Credit Customers, and Ground Stock each carry a date
+range and a pair of export buttons (`src/components/ReportTools.jsx`).
+
+- The range control filters the on-screen table and the export from the same
+  piece of state, so a downloaded file always matches what was displayed for
+  the selected station, dates, and status.
+- CSV and PDF are generated in the browser by `src/lib/export.js`. CSV fields
+  are escaped per RFC 4180; the PDF is a hand-written PDF 1.4 document, which
+  avoids a heavyweight dependency for what is a monospaced table.
+- Filenames always carry the station and the window, e.g.
+  `pumpmithra-shifts-cityctr-2026-09-01_2026-09-19.csv`.
+- Exports are on demand only. Nothing is written back — there is no
+  saved-report table — and `src/lib/export.js` imports no Supabase client: it
+  is handed rows that already came through `src/lib/api.js`, so RLS has
+  already decided what the caller may see. `npm run test:rbac` proves the
+  server refuses an attendant another operator's shift even for a hand-crafted
+  request.
+- Report column headings stay in English regardless of interface language,
+  because spreadsheets and the PDF standard fonts cannot be relied on to carry
+  Telugu or Devanagari text.
+
+## Languages
+
+The interface ships in English, Telugu, and Hindi. The dictionaries live in
+`src/state/translations.js` and are served by a deliberately small context
+(`src/state/LanguageContext.jsx`) rather than an i18n dependency — the app
+needs key lookup and one placeholder substitution.
+
+- The selector sits on the login card and in the authenticated sidebar. The
+  choice is per device, persisted in `localStorage`, and defaults to English.
+- Raw user data is never translated: staff and customer names, station names,
+  notes, expense labels, and invoice numbers are shown exactly as entered.
+- `src/state/translations.test.js` fails the build if a key is missing from
+  Telugu or Hindi, if a placeholder is dropped in translation, or if a
+  component asks for a key that does not exist — so missing-key text cannot
+  reach a screen.
+
 ## Security model
 
 ### Auth and roles
@@ -179,7 +218,7 @@ settings, set **Pages → Source** to **GitHub Actions**.
 ## Tests and checks
 
 ```bash
-npm test                 # unit tests for shift/tank maths and Auth credential derivation
+npm test                 # unit tests: shift/tank maths, exports, translations, credentials
 npm run check:schema     # migration contract guard used by CI
 npm run test:rbac        # role matrix enforced against a real PostgreSQL instance
 npm run lint
@@ -197,7 +236,7 @@ To confirm those assertions are not vacuous, run them against the initial
 schema alone:
 
 ```bash
-npm run test:rbac -- --without-rbac    # 24 failures: the exposure the follow-up migration closes
+npm run test:rbac -- --without-rbac    # 31 failures: the exposure the follow-up migration closes
 ```
 
 See `scripts/rbac/README.md` for the full coverage list.

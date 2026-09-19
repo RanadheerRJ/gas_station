@@ -5,10 +5,12 @@ import { supabaseConfigured } from "../lib/supabase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
 import { useTheme } from "../state/ThemeContext";
+import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 
 export default function Login() {
   const { login, developerLogin } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [tab, setTab] = useState("staff");
 
   const [username, setUsername] = useState("");
@@ -35,11 +37,11 @@ export default function Login() {
     e.preventDefault();
     setError("");
     if (!supabaseConfigured) {
-      setError("This build has no Supabase configuration. See the README.");
+      setError(t("login.noConfig"));
       return;
     }
     if (!/^\d{4}$/.test(pin)) {
-      setError("Enter the 4-digit PIN.");
+      setError(t("login.enterPin"));
       setRejections((n) => n + 1);
       return;
     }
@@ -59,15 +61,15 @@ export default function Login() {
     e.preventDefault();
     setError("");
     if (!supabaseConfigured) {
-      setError("This build has no Supabase configuration. See the README.");
+      setError(t("login.noConfig"));
       return;
     }
     if (!email.trim()) {
-      setError("Enter your developer email.");
+      setError(t("login.enterEmail"));
       return;
     }
     if (!password) {
-      setError("Enter your password.");
+      setError(t("login.enterPassword"));
       return;
     }
     setBusy(true);
@@ -93,7 +95,7 @@ export default function Login() {
               />
               <div className="mark">PUMPMITHRA</div>
             </div>
-            <p>Daily operations and accounts for fuel stations</p>
+            <p>{t("app.tagline")}</p>
           </div>
 
           <div className="login-tabs" role="tablist">
@@ -104,7 +106,7 @@ export default function Login() {
               className={`login-tab ${tab === "staff" ? "active" : ""}`}
               onClick={() => switchTab("staff")}
             >
-              Staff
+              {t("login.staff")}
             </button>
             <button
               type="button"
@@ -113,14 +115,14 @@ export default function Login() {
               className={`login-tab ${tab === "developer" ? "active" : ""}`}
               onClick={() => switchTab("developer")}
             >
-              Developer
+              {t("login.developer")}
             </button>
           </div>
 
           {tab === "staff" ? (
             <form onSubmit={submitStaff}>
               <label className="field">
-                <span>Username</span>
+                <span>{t("login.username")}</span>
                 <input
                   className="mono"
                   autoCapitalize="none"
@@ -128,12 +130,12 @@ export default function Login() {
                   spellCheck="false"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="your username"
+                  placeholder={t("login.usernamePlaceholder")}
                   autoFocus
                 />
               </label>
               <label className="field">
-                <span>4-digit PIN</span>
+                <span>{t("login.pin")}</span>
                 <input
                   className={`pin-input ${shake}`.trim()}
                   inputMode="numeric"
@@ -146,15 +148,7 @@ export default function Login() {
                 />
               </label>
               {!supabaseConfigured && (
-                <Notice kind="error">
-                  No Supabase project is configured, so sign-in cannot work. Copy{" "}
-                  <span className="mono">.env.example</span> to{" "}
-                  <span className="mono">.env.local</span>, fill in the{" "}
-                  <span className="mono">
-                    VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-                  </span>{" "}
-                  values from your project settings, and restart the dev server.
-                </Notice>
+                <Notice kind="error">{t("login.noProject")}</Notice>
               )}
               {error && <Notice kind="error">{error}</Notice>}
               <button
@@ -162,17 +156,16 @@ export default function Login() {
                 type="submit"
                 disabled={busy || !username || !supabaseConfigured}
               >
-                {busy ? "Checking…" : "Sign in"}
+                {busy ? t("login.checking") : t("login.signIn")}
               </button>
               <p className="small muted" style={{ margin: 0 }}>
-                Accounts are issued by your station owner or the system developer. There
-                is no self sign-up.
+                {t("login.noSelfSignup")}
               </p>
             </form>
           ) : (
             <form onSubmit={submitDeveloper}>
               <label className="field">
-                <span>Developer email</span>
+                <span>{t("login.developerEmail")}</span>
                 <input
                   className="mono"
                   type="email"
@@ -186,7 +179,7 @@ export default function Login() {
                 />
               </label>
               <label className="field">
-                <span>Password</span>
+                <span>{t("login.password")}</span>
                 <input
                   type="password"
                   value={password}
@@ -196,15 +189,7 @@ export default function Login() {
                 />
               </label>
               {!supabaseConfigured && (
-                <Notice kind="error">
-                  No Supabase project is configured, so sign-in cannot work. Copy{" "}
-                  <span className="mono">.env.example</span> to{" "}
-                  <span className="mono">.env.local</span>, fill in the{" "}
-                  <span className="mono">
-                    VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-                  </span>{" "}
-                  values from your project settings, and restart the dev server.
-                </Notice>
+                <Notice kind="error">{t("login.noProject")}</Notice>
               )}
               {error && <Notice kind="error">{error}</Notice>}
               <button
@@ -212,23 +197,21 @@ export default function Login() {
                 type="submit"
                 disabled={busy || !email || !password || !supabaseConfigured}
               >
-                {busy ? "Signing in…" : "Sign in as developer"}
+                {busy ? t("login.signingIn") : t("login.signInDeveloper")}
               </button>
               <p className="small muted" style={{ margin: 0 }}>
-                Developer accounts are created in Supabase Auth, then assigned the
-                <span className="mono">admin</span> profile role as described in the
-                README.
+                {t("login.developerNote")}
               </p>
             </form>
           )}
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-          >
-            {theme === "dark" ? "☀ Light mode" : "☾ Dark mode"}
-          </button>
+          <div className="login-prefs">
+            <LanguageSelect compact />
+            <button type="button" className="theme-toggle" onClick={toggleTheme}>
+              {theme === "dark"
+                ? `☀ ${t("chrome.lightMode")}`
+                : `☾ ${t("chrome.darkMode")}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>

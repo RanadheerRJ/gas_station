@@ -518,6 +518,108 @@ async function main() {
     crossOcc.error?.message || "no error raised"
   );
 
+  console.log("\n== exports are scoped by the server, not by the UI ==");
+  // An export is only ever a read of what the screen already loaded, so the
+  // boundary that matters is the one the database enforces on that read.
+  // These are hand-crafted requests: no UI, no client-side filter, exactly the
+  // PostgREST queries the export path issues.
+  const attendantExport = await asUser(
+    IDS.att1,
+    `select s.id, s.employee_name, s.shift_date, s.payments, s.testing
+       from public.shifts s
+      where s.station_id = $1
+      order by s.start_time desc`,
+    [IDS.station]
+  );
+  check(
+    "attendant export request is server-scoped to their own shifts",
+    attendantExport.rows?.length === 1 && attendantExport.rows[0].id === amyShift,
+    attendantExport.error?.message || `saw ${attendantExport.rows?.length} rows`
+  );
+  check(
+    "attendant export cannot name another operator",
+    !attendantExport.rows?.some((r) => r.employee_name === "Ben Attendant"),
+    JSON.stringify(attendantExport.rows?.map((r) => r.employee_name))
+  );
+
+  // Asking for a co-worker's shift by id directly — the request a tampered
+  // client would make — returns nothing rather than erroring, because RLS
+  // filters the row out before the query can see it.
+  const targeted = await asUser(
+    IDS.att1,
+    "select id, employee_name, payments from public.shifts where id = $1",
+    [benShift]
+  );
+  check(
+    "attendant cannot export a co-worker's shift by id",
+    targeted.rows?.length === 0,
+    targeted.error?.message || `saw ${targeted.rows?.length} rows`
+  );
+
+  // The joined reads the shift export actually issues must be scoped too, or
+  // the readings and expenses would leak even with the parent row hidden.
+  const joined = await asUser(
+    IDS.att1,
+    `select (select count(*) from public.shift_nozzles) n,
+            (select count(*) from public.shift_expenses) e`
+  );
+  check(
+    "attendant export sees only their own nozzle and expense lines",
+    Number(joined.rows?.[0]?.n) === 1 && Number(joined.rows?.[0]?.e) === 1,
+    JSON.stringify(joined.rows?.[0])
+  );
+
+  // The other three exports read tables an attendant has no claim on at all.
+  for (const [label, sql] of [
+    ["ledger", "select * from public.shifts where status <> 'open'"],
+    ["credit", "select * from public.credit_customers"],
+    ["ground stock", "select * from public.tank_readings"],
+  ]) {
+    const r = await asUser(IDS.att1, sql);
+    const ownOnly = label === "ledger";
+    check(
+      `attendant ${label} export returns ${ownOnly ? "only their own rows" : "nothing"}`,
+      ownOnly
+        ? r.rows?.every((row) => row.employee_id === IDS.att1)
+        : r.rows?.length === 0,
+      `saw ${r.rows?.length}`
+    );
+  }
+
+  const managerExport = await asUser(
+    IDS.manager,
+    "select id, employee_name from public.shifts where station_id = $1",
+    [IDS.station]
+  );
+  check(
+    "manager export still covers the whole station",
+    managerExport.rows?.length === 2,
+    managerExport.error?.message || `saw ${managerExport.rows?.length}`
+  );
+
+  const ownerExport = await asUser(
+    IDS.owner,
+    `select (select count(*) from public.shifts) sh,
+            (select count(*) from public.credit_customers) cu,
+            (select count(*) from public.tank_readings) tr`
+  );
+  check(
+    "owner export covers their own station's shifts, credit, and stock",
+    Number(ownerExport.rows?.[0]?.sh) === 2 && Number(ownerExport.rows?.[0]?.cu) === 1,
+    JSON.stringify(ownerExport.rows?.[0])
+  );
+
+  const foreignExport = await asUser(
+    IDS.owner2,
+    "select id from public.shifts where station_id = $1",
+    [IDS.station]
+  );
+  check(
+    "another owner's export of this station returns nothing",
+    foreignExport.rows?.length === 0,
+    `saw ${foreignExport.rows?.length}`
+  );
+
   console.log("\n== the anonymous key is granted nothing ==");
   const anon = await asUser(null, "select * from public.list_nozzle_occupancy($1)", [
     IDS.station,

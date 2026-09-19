@@ -20,10 +20,12 @@ import { activePrices } from "../lib/shiftMath";
 import { fuelClass } from "./Shifts";
 import { formatStamp, money, num } from "../lib/format";
 import { LoadingPanels } from "../components/motion.jsx";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 
 export default function StationSetup() {
+  const { t, tn } = useLanguage();
   const { profile } = useAuth();
   const { stations, loading: stationsLoading } = useStations();
   const [params, setParams] = useSearchParams();
@@ -94,7 +96,7 @@ export default function StationSetup() {
   if (stationsLoading) {
     return (
       <>
-        <PageHeader title="Pumps & rates" />
+        <PageHeader title={t("setup.shortTitle")} />
         <div className="content">
           <LoadingPanels count={1} lines={2} />
         </div>
@@ -105,16 +107,16 @@ export default function StationSetup() {
   return (
     <>
       <PageHeader
-        title="Pumps, nozzles & rates"
+        title={t("setup.title")}
         sub={
           station
-            ? `${station.name} · ${nozzles.length} nozzle${nozzles.length === 1 ? "" : "s"}`
+            ? `${station.name} · ${tn(nozzles.length, "setup.nozzleCountOne", "setup.nozzleCount")}`
             : ""
         }
       />
       <div className="content stack">
         {stations.length > 1 && (
-          <Panel title="Station">
+          <Panel title={t("common.station")}>
             <StationPicker
               stations={stations}
               value={stationId}
@@ -129,13 +131,13 @@ export default function StationSetup() {
         <Panel
           title={
             <span className="row" style={{ gap: 7, alignItems: "center" }}>
-              <RateIcon /> Fuel prices
+              <RateIcon /> {t("setup.fuelPrices")}
             </span>
           }
-          note="A new price closes the previous one and starts a fresh interval — history is never overwritten, so a past shift always reprices correctly."
+          note={t("setup.pricesNote")}
         >
           {activeFuels.length === 0 ? (
-            <Empty>Add a nozzle first — prices are set per fuel type you dispense.</Empty>
+            <Empty>{t("setup.addNozzleFirst")}</Empty>
           ) : (
             <>
               <div className="price-board">
@@ -151,12 +153,12 @@ export default function StationSetup() {
                         {fuel}
                       </div>
                       <div className="price-card__value">
-                        {rec ? `₹ ${money(rec.price)}` : "Not set"}
+                        {rec ? `₹ ${money(rec.price)}` : t("setup.notSet")}
                       </div>
                       <div className="price-card__since">
                         {rec
-                          ? `Active since ${formatStamp(rec.effectiveFrom)}`
-                          : "Shifts cannot start"}
+                          ? `${t("setup.activeSince")} ${formatStamp(rec.effectiveFrom)}`
+                          : t("setup.cannotStart")}
                       </div>
                       <div
                         className="row"
@@ -186,7 +188,7 @@ export default function StationSetup() {
                             })
                           }
                         >
-                          Update
+                          {t("setup.update")}
                         </button>
                       </div>
                     </div>
@@ -199,16 +201,16 @@ export default function StationSetup() {
                   <div className="divider" />
                   <details>
                     <summary className="small muted" style={{ cursor: "pointer" }}>
-                      Price history ({priceRecords.length})
+                      {t("setup.priceHistory")} ({priceRecords.length})
                     </summary>
                     <table style={{ marginTop: 10 }}>
                       <thead>
                         <tr>
-                          <th>Fuel</th>
-                          <th className="num">Price</th>
-                          <th>From</th>
-                          <th>To</th>
-                          <th>Set by</th>
+                          <th>{t("shifts.fuel")}</th>
+                          <th className="num">{t("shifts.price")}</th>
+                          <th>{t("setup.from")}</th>
+                          <th>{t("setup.to")}</th>
+                          <th>{t("setup.setBy")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -231,7 +233,7 @@ export default function StationSetup() {
                               {h.effectiveTo ? (
                                 formatStamp(h.effectiveTo)
                               ) : (
-                                <span className="tag green">active</span>
+                                <span className="tag green">{t("setup.active")}</span>
                               )}
                             </td>
                             <td className="small">{h.setByName || "—"}</td>
@@ -250,14 +252,14 @@ export default function StationSetup() {
         <Panel
           title={
             <span className="row" style={{ gap: 7, alignItems: "center" }}>
-              <PumpIcon /> Pumps & nozzles
+              <PumpIcon /> {t("setup.pumpsNozzles")}
             </span>
           }
           flush
         >
           <div className="body" style={{ borderBottom: "1px solid var(--hairline)" }}>
             <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
-              <Field label="Add a pump">
+              <Field label={t("setup.addAPump")}>
                 <input
                   value={pumpName}
                   onChange={(e) => setPumpName(e.target.value)}
@@ -275,15 +277,15 @@ export default function StationSetup() {
                   })
                 }
               >
-                Add pump
+                {t("setup.addPump")}
               </button>
             </div>
           </div>
 
           {loading ? (
-            <LoadingPanels count={2} lines={3} label="Loading equipment" />
+            <LoadingPanels count={2} lines={3} label={t("common.loading")} />
           ) : pumps.length === 0 ? (
-            <Empty>No pumps yet. Add your first pump above.</Empty>
+            <Empty>{t("setup.noPumps")}</Empty>
           ) : (
             <div>
               {pumps.map((p) => {
@@ -301,7 +303,7 @@ export default function StationSetup() {
                         <PumpIcon size={16} />
                         <strong>{p.name}</strong>
                         <span className="tag">
-                          {mine.length} nozzle{mine.length === 1 ? "" : "s"}
+                          {tn(mine.length, "setup.nozzleCountOne", "setup.nozzleCount")}
                         </span>
                       </span>
                       <span className="row" style={{ gap: 4 }}>
@@ -317,7 +319,7 @@ export default function StationSetup() {
                             });
                           }}
                         >
-                          {nozzleFor === p.id ? "cancel" : "add nozzle"}
+                          {nozzleFor === p.id ? t("common.cancel") : t("setup.addNozzle")}
                         </button>
                         <button
                           type="button"
@@ -332,7 +334,9 @@ export default function StationSetup() {
                             )
                           }
                         >
-                          {p.state === "retired" ? "return to service" : "out of service"}
+                          {p.state === "retired"
+                            ? t("setup.returnToService")
+                            : t("setup.outOfService")}
                         </button>
                       </span>
                     </div>
@@ -346,7 +350,7 @@ export default function StationSetup() {
                         }}
                       >
                         <div className="form-grid" style={{ marginBottom: 10 }}>
-                          <Field label="Nozzle name">
+                          <Field label={t("setup.nozzleName")}>
                             <input
                               value={nozzleForm.name}
                               onChange={(e) =>
@@ -355,7 +359,7 @@ export default function StationSetup() {
                               placeholder="N3"
                             />
                           </Field>
-                          <Field label="Fuel type">
+                          <Field label={t("setup.fuelType")}>
                             <select
                               value={nozzleForm.fuelType}
                               onChange={(e) =>
@@ -370,8 +374,8 @@ export default function StationSetup() {
                             </select>
                           </Field>
                           <Field
-                            label="Current meter reading"
-                            hint="totaliser as it reads right now"
+                            label={t("setup.meterNow")}
+                            hint={t("setup.meterNowHint")}
                           >
                             <input
                               className="mono"
@@ -404,7 +408,7 @@ export default function StationSetup() {
                             })
                           }
                         >
-                          Add nozzle
+                          {t("setup.addNozzleButton")}
                         </button>
                       </div>
                     )}
@@ -413,10 +417,10 @@ export default function StationSetup() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Nozzle</th>
-                            <th>Fuel</th>
-                            <th className="num">Meter reading</th>
-                            <th className="num">Price</th>
+                            <th>{t("shifts.nozzleCol")}</th>
+                            <th>{t("shifts.fuel")}</th>
+                            <th className="num">{t("setup.meterReading")}</th>
+                            <th className="num">{t("shifts.price")}</th>
                             <th />
                           </tr>
                         </thead>
@@ -463,7 +467,9 @@ export default function StationSetup() {
                                     )
                                   }
                                 >
-                                  {n.state === "retired" ? "return" : "out of service"}
+                                  {n.state === "retired"
+                                    ? t("setup.return")
+                                    : t("setup.outOfService")}
                                 </button>
                               </td>
                             </tr>
@@ -481,7 +487,7 @@ export default function StationSetup() {
         <Panel
           title={
             <span className="row" style={{ gap: 7, alignItems: "center" }}>
-              <GaugeIcon /> How readings flow
+              <GaugeIcon /> {t("setup.howReadingsFlow")}
             </span>
           }
         >

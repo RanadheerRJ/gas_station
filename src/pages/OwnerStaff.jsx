@@ -8,8 +8,10 @@ import ResetPinPanel from "../components/ResetPinPanel";
 import { createStaff, listStaff, readableError } from "../lib/api";
 import { formatStamp } from "../lib/format";
 import { LoadingPanels } from "../components/motion.jsx";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 export default function OwnerStaff() {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const { stations } = useStations();
   const [staff, setStaff] = useState([]);
@@ -76,13 +78,10 @@ export default function OwnerStaff() {
 
   return (
     <>
-      <PageHeader
-        title="Staff & access"
-        sub="Managers and attendants you have issued logins to"
-      />
+      <PageHeader title={t("staff.title")} sub={t("staff.subtitle")} />
       <div className="content stack">
         {credentials && (
-          <Panel title="New staff credentials">
+          <Panel title={t("staff.newCredentials")}>
             <CredentialPanel
               username={credentials.username}
               pin={credentials.pin}
@@ -92,20 +91,17 @@ export default function OwnerStaff() {
           </Panel>
         )}
 
-        <Panel
-          title="Invite a manager or attendant"
-          note="Managers can correct past entries; attendants can only log the day."
-        >
+        <Panel title={t("staff.inviteTitle")} note={t("staff.inviteNote")}>
           <form className="stack" onSubmit={submit}>
             <div className="form-grid">
-              <Field label="Name">
+              <Field label={t("common.name")}>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="Suresh Babu"
                 />
               </Field>
-              <Field label="Phone">
+              <Field label={t("common.phone")}>
                 <input
                   className="mono"
                   inputMode="tel"
@@ -114,7 +110,7 @@ export default function OwnerStaff() {
                   placeholder="+91 98765 44556"
                 />
               </Field>
-              <Field label="Station">
+              <Field label={t("common.station")}>
                 <select
                   value={form.stationId}
                   onChange={(e) => setForm((f) => ({ ...f, stationId: e.target.value }))}
@@ -126,13 +122,13 @@ export default function OwnerStaff() {
                   ))}
                 </select>
               </Field>
-              <Field label="Role">
+              <Field label={t("staff.role")}>
                 <select
                   value={form.role}
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                 >
-                  <option value="attendant">Attendant</option>
-                  <option value="manager">Manager</option>
+                  <option value="attendant">{t("role.attendant")}</option>
+                  <option value="manager">{t("role.manager")}</option>
                 </select>
               </Field>
               <PinField
@@ -140,7 +136,7 @@ export default function OwnerStaff() {
                 confirm={form.confirmPin}
                 onPin={(v) => setForm((f) => ({ ...f, pin: v }))}
                 onConfirm={(v) => setForm((f) => ({ ...f, confirmPin: v }))}
-                label="PIN for this login"
+                label={t("staff.pinForLogin")}
               />
             </div>
             {error && <Notice kind="error">{error}</Notice>}
@@ -156,27 +152,27 @@ export default function OwnerStaff() {
                   !pinReady(form.pin, form.confirmPin)
                 }
               >
-                {busy ? "Creating…" : "Create login"}
+                {busy ? t("staff.creating") : t("staff.createLogin")}
               </button>
             </div>
           </form>
         </Panel>
 
-        <Panel title="Existing staff" flush>
+        <Panel title={t("staff.existing")} flush>
           {loading ? (
-            <LoadingPanels count={2} lines={3} label="Loading staff" />
+            <LoadingPanels count={2} lines={3} label={t("common.loading")} />
           ) : staff.length === 0 ? (
-            <Empty>You haven’t issued any staff logins yet.</Empty>
+            <Empty>{t("staff.none")}</Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Username</th>
-                  <th>Phone</th>
-                  <th>Role</th>
-                  <th>Station</th>
-                  <th>Created</th>
+                  <th>{t("common.name")}</th>
+                  <th>{t("staff.username")}</th>
+                  <th>{t("common.phone")}</th>
+                  <th>{t("staff.role")}</th>
+                  <th>{t("common.station")}</th>
+                  <th>{t("staff.created")}</th>
                   <th />
                 </tr>
               </thead>
@@ -187,7 +183,7 @@ export default function OwnerStaff() {
                       <td style={{ fontWeight: 500 }}>{s.name}</td>
                       <td className="mono">{s.username}</td>
                       <td className="mono small">{s.phone}</td>
-                      <td style={{ textTransform: "capitalize" }}>{s.role}</td>
+                      <td>{t(`role.${s.role}`)}</td>
                       <td>{stationName((s.stationIds || [])[0])}</td>
                       <td className="small muted">{formatStamp(s.createdAt)}</td>
                       <td className="num">
@@ -196,7 +192,7 @@ export default function OwnerStaff() {
                           className="quiet"
                           onClick={() => setResetting(resetting === s.uid ? null : s.uid)}
                         >
-                          {resetting === s.uid ? "cancel" : "reset PIN"}
+                          {resetting === s.uid ? t("common.cancel") : t("staff.resetPin")}
                         </button>
                       </td>
                     </tr>

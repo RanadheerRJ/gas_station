@@ -2,12 +2,14 @@ import { useState } from "react";
 import PinField, { pinReady } from "./PinField";
 import { Notice } from "./ui";
 import { readableError, resetPin } from "../lib/api";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 /**
  * Inline "set a new PIN" form for one subordinate account.
  * Authority is re-checked server-side; this only shows the affordance.
  */
 export default function ResetPinPanel({ target, onDone }) {
+  const { t } = useLanguage();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,11 +34,12 @@ export default function ResetPinPanel({ target, onDone }) {
   if (done) {
     return (
       <Notice kind="good">
-        New PIN set for {target.name} (<span className="mono">{target.username}</span>):{" "}
+        {t("cred.newPinSet", { name: target.name })} (
+        <span className="mono">{target.username}</span>):{" "}
         <span className="mono" style={{ fontWeight: 600 }}>
           {pin}
         </span>
-        . Share it with them now — it cannot be shown again.
+        . {t("cred.shareNow")}
       </Notice>
     );
   }
@@ -44,9 +47,8 @@ export default function ResetPinPanel({ target, onDone }) {
   return (
     <form className="stack" onSubmit={submit} style={{ maxWidth: 520 }}>
       <div className="small muted">
-        Setting a new PIN for {target.name} (
-        <span className="mono">{target.username}</span>). Their old PIN stops working
-        immediately.
+        {t("cred.settingFor", { name: target.name })} (
+        <span className="mono">{target.username}</span>)
       </div>
       <div className="form-grid">
         <PinField
@@ -54,8 +56,8 @@ export default function ResetPinPanel({ target, onDone }) {
           confirm={confirm}
           onPin={setPin}
           onConfirm={setConfirm}
-          label="New PIN"
-          hint="4 digits"
+          label={t("cred.newPin")}
+          hint={t("cred.fourDigits")}
         />
       </div>
       {error && <Notice kind="error">{error}</Notice>}
@@ -65,10 +67,10 @@ export default function ResetPinPanel({ target, onDone }) {
           type="submit"
           disabled={busy || !pinReady(pin, confirm)}
         >
-          {busy ? "Setting…" : "Set new PIN"}
+          {busy ? t("cred.setting") : t("cred.setNewPin")}
         </button>
         <button type="button" onClick={() => onDone?.()} disabled={busy}>
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </form>

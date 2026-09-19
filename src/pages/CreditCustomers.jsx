@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "../components/Layout";
 import { Empty, Field, Notice, Panel, Stat } from "../components/ui";
@@ -12,8 +12,12 @@ import {
   readableError,
 } from "../lib/api";
 import { formatDate, money, num, todayISO } from "../lib/format";
+import ReportTools from "../components/ReportTools.jsx";
+import { creditReport, defaultRange, filterByRange } from "../lib/export.js";
+import { useLanguage } from "../state/LanguageContext.jsx";
 
 export default function CreditCustomers() {
+  const { t } = useLanguage();
   const { stations, loading: stationsLoading } = useStations();
   const [params, setParams] = useSearchParams();
   const [stationId, setStationId] = useState("");
@@ -30,6 +34,7 @@ export default function CreditCustomers() {
     date: todayISO(),
   });
   const [busy, setBusy] = useState(false);
+  const [range, setRange] = useState(() => defaultRange());
 
   useEffect(() => {
     if (stations.length === 0) return;
@@ -67,6 +72,25 @@ export default function CreditCustomers() {
 
   // Keeps a removed customer mounted long enough to collapse out of the table.
   const customerRows = useAnimatedList(customers);
+
+  // Transactions of the open account, narrowed to the report window so the
+  // drawer and the export agree on what "in range" means.
+  const visibleTransactions = useMemo(
+    () =>
+      filterByRange(
+        selected?.transactions || [],
+        range,
+        (tx) => tx.date || tx.recordedAt
+      ),
+    [selected, range]
+  );
+
+  // How many rows an export would write: a customer with no movement still
+  // contributes their balance line.
+  const exportRowCount = useMemo(
+    () => creditReport({ customers, range, stationName: "" }).rows.length,
+    [customers, range]
+  );
 
   const addCustomer = async (e) => {
     e.preventDefault();
@@ -132,17 +156,17 @@ export default function CreditCustomers() {
   return (
     <>
       <PageHeader
-        title="Credit customers"
+        title={t("credit.title")}
         sub={station?.name}
         actions={
           <button type="button" onClick={() => setShowAdd((v) => !v)}>
-            {showAdd ? "Cancel" : "Add customer"}
+            {showAdd ? t("common.cancel") : t("credit.addCustomer")}
           </button>
         }
       />
       <div className="content stack">
         {stations.length > 1 && (
-          <Panel title="Station">
+          <Panel title={t("common.station")}>
             <StationPicker
               stations={stations}
               value={stationId}
@@ -156,22 +180,36 @@ export default function CreditCustomers() {
 
         {error && <Notice kind="error">{error}</Notice>}
 
-        <Panel title="Outstanding position">
+        <Panel title={t("report.title")} note={t("report.note")}>
+          <ReportTools
+            report="credit"
+            title="Credit customers"
+            stationName={station?.name || ""}
+            range={range}
+            onRangeChange={setRange}
+            rowCount={exportRowCount}
+            buildReport={() =>
+              creditReport({ customers, range, stationName: station?.name || "" })
+            }
+          />
+        </Panel>
+
+        <Panel title={t("credit.outstandingPosition")}>
           <div className="row" style={{ gap: 40 }}>
             <Stat
-              label="Total outstanding"
+              label={t("credit.totalOutstanding")}
               amount={totalOutstanding}
               format={money}
               prefix="₹ "
               tone={totalOutstanding > 0 ? "neg" : "pos"}
             />
             <Stat
-              label="Customers"
+              label={t("credit.customers")}
               amount={customers.length}
               format={(n) => String(Math.round(n))}
             />
             <Stat
-              label="Fully settled"
+              label={t("credit.fullySettled")}
               amount={settled}
               format={(n) => String(Math.round(n))}
               tone="pos"
@@ -180,10 +218,10 @@ export default function CreditCustomers() {
         </Panel>
 
         {showAdd && (
-          <Panel title="New credit customer">
+          <Panel title={t("credit.newCustomer")}>
             <form className="stack" onSubmit={addCustomer}>
               <div className="form-grid">
-                <Field label="Customer name">
+                <Field label={t("credit.customerName")}>
                   <input
                     value={newCustomer.name}
                     onChange={(e) =>
@@ -192,7 +230,7 @@ export default function CreditCustomers() {
                     placeholder="Sri Balaji Transports"
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label={t("common.phone")}>
                   <input
                     className="mono"
                     inputMode="tel"
@@ -210,28 +248,28 @@ export default function CreditCustomers() {
                   type="submit"
                   disabled={busy || !newCustomer.name.trim()}
                 >
-                  {busy ? "Saving…" : "Add customer"}
+                  {busy ? t("common.saving") : t("credit.addCustomer")}
                 </button>
               </div>
             </form>
           </Panel>
         )}
 
-        <Panel title="Customer balances" flush>
+        <Panel title={t("credit.balances")} flush>
           {loading ? (
-            <LoadingPanels count={2} lines={3} label="Loading customers" />
+            <LoadingPanels count={2} lines={3} label={t("common.loading")} />
           ) : customers.length === 0 ? (
-            <Empty>No credit customers at this station.</Empty>
+            <Empty>{t("credit.empty")}</Empty>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Customer</th>
-                  <th>Phone</th>
-                  <th className="num">Credit given</th>
-                  <th className="num">Payments</th>
-                  <th className="num">Balance</th>
-                  <th>Status</th>
+                  <th>{t("credit.customer")}</th>
+                  <th>{t("common.phone")}</th>
+                  <th className="num">{t("credit.creditGiven")}</th>
+                  <th className="num">{t("credit.payments")}</th>
+                  <th className="num">{t("credit.balance")}</th>
+                  <th>{t("common.status")}</th>
                   <th />
                 </tr>
               </thead>
@@ -259,9 +297,9 @@ export default function CreditCustomers() {
                       </td>
                       <td>
                         {bal > 0 ? (
-                          <span className="tag rust">outstanding</span>
+                          <span className="tag rust">{t("credit.outstanding")}</span>
                         ) : (
-                          <span className="tag green">settled</span>
+                          <span className="tag green">{t("credit.settled")}</span>
                         )}
                       </td>
                       <td className="num">
@@ -270,7 +308,7 @@ export default function CreditCustomers() {
                           className="quiet"
                           onClick={() => setSelected(selected?.id === c.id ? null : c)}
                         >
-                          {selected?.id === c.id ? "close" : "open"}
+                          {selected?.id === c.id ? t("common.close") : t("common.open")}
                         </button>
                       </td>
                     </tr>
@@ -279,7 +317,7 @@ export default function CreditCustomers() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>Total outstanding</td>
+                  <td colSpan={4}>{t("credit.totalOutstanding")}</td>
                   <td className="num mono">{money(totalOutstanding)}</td>
                   <td colSpan={2} />
                 </tr>
@@ -290,8 +328,8 @@ export default function CreditCustomers() {
 
         {selected && (
           <Panel
-            title={`${selected.name} · account`}
-            note={`Balance ₹ ${money(selected.outstandingBalance)}`}
+            title={t("credit.account", { name: selected.name })}
+            note={`${t("credit.balanceIs")} ₹ ${money(selected.outstandingBalance)}`}
           >
             <div className="row" style={{ gap: 24, alignItems: "flex-start" }}>
               <div style={{ flex: "1 1 380px", minWidth: 320 }}>
@@ -299,37 +337,42 @@ export default function CreditCustomers() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Note</th>
-                        <th className="num">Amount</th>
-                        <th className="num">Running</th>
+                        <th>{t("common.date")}</th>
+                        <th>{t("common.type")}</th>
+                        <th>{t("common.note")}</th>
+                        <th className="num">{t("common.amount")}</th>
+                        <th className="num">{t("credit.running")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(selected.transactions || []).length === 0 && (
+                      {visibleTransactions.length === 0 && (
                         <tr>
                           <td colSpan={5} className="muted small">
-                            No transactions yet.
+                            {(selected.transactions || []).length === 0
+                              ? t("credit.noTransactions")
+                              : t("credit.noTransactionsInRange")}
                           </td>
                         </tr>
                       )}
                       {(() => {
                         let running = 0;
-                        return (selected.transactions || []).map((t, i) => {
-                          running += t.type === "credit" ? num(t.amount) : -num(t.amount);
+                        return visibleTransactions.map((row, i) => {
+                          running +=
+                            row.type === "credit" ? num(row.amount) : -num(row.amount);
                           return (
                             <tr key={i}>
-                              <td className="mono small">{formatDate(t.date)}</td>
+                              <td className="mono small">{formatDate(row.date)}</td>
                               <td>
                                 <span
-                                  className={`tag ${t.type === "credit" ? "rust" : "green"}`}
+                                  className={`tag ${row.type === "credit" ? "rust" : "green"}`}
                                 >
-                                  {t.type}
+                                  {row.type === "credit"
+                                    ? t("credit.creditGivenOption")
+                                    : t("credit.paymentReceived")}
                                 </span>
                               </td>
-                              <td className="small">{t.note || "—"}</td>
-                              <td className="num mono">{money(t.amount)}</td>
+                              <td className="small">{row.note || "—"}</td>
+                              <td className="num mono">{money(row.amount)}</td>
                               <td className="num mono">{money(running)}</td>
                             </tr>
                           );
@@ -345,17 +388,17 @@ export default function CreditCustomers() {
                 onSubmit={postTransaction}
                 style={{ flex: "0 1 260px", minWidth: 240 }}
               >
-                <h3>Record transaction</h3>
-                <Field label="Type">
+                <h3>{t("credit.recordTransaction")}</h3>
+                <Field label={t("common.type")}>
                   <select
                     value={tx.type}
                     onChange={(e) => setTx((t) => ({ ...t, type: e.target.value }))}
                   >
-                    <option value="credit">Credit given</option>
-                    <option value="payment">Payment received</option>
+                    <option value="credit">{t("credit.creditGivenOption")}</option>
+                    <option value="payment">{t("credit.paymentReceived")}</option>
                   </select>
                 </Field>
-                <Field label="Date">
+                <Field label={t("common.date")}>
                   <input
                     type="date"
                     className="mono"
@@ -364,7 +407,7 @@ export default function CreditCustomers() {
                     onChange={(e) => setTx((t) => ({ ...t, date: e.target.value }))}
                   />
                 </Field>
-                <Field label="Amount">
+                <Field label={t("common.amount")}>
                   <input
                     className="mono"
                     inputMode="decimal"
@@ -373,7 +416,7 @@ export default function CreditCustomers() {
                     placeholder="0.00"
                   />
                 </Field>
-                <Field label="Note">
+                <Field label={t("common.note")}>
                   <input
                     value={tx.note}
                     onChange={(e) => setTx((t) => ({ ...t, note: e.target.value }))}
@@ -386,7 +429,7 @@ export default function CreditCustomers() {
                     type="submit"
                     disabled={busy || !num(tx.amount)}
                   >
-                    {busy ? "Posting…" : "Post to account"}
+                    {busy ? t("credit.posting") : t("credit.postToAccount")}
                   </button>
                 </div>
               </form>

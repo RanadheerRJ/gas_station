@@ -3,12 +3,13 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { watchConnection } from "../lib/pwa";
 import { useTheme } from "../state/ThemeContext";
+import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 
 const ROLE_LABEL = {
-  admin: "Developer",
-  owner: "Owner",
-  manager: "Manager",
-  attendant: "Attendant",
+  admin: "role.admin",
+  owner: "role.owner",
+  manager: "role.manager",
+  attendant: "role.attendant",
 };
 
 /** A small badge per role, so who you are signed in as is obvious at a glance. */
@@ -25,37 +26,26 @@ const ROLE_EMOJI = {
 function navFor(profile) {
   switch (profile.role) {
     case "admin":
-      return [{ to: "/admin", label: "Invite Owner", emoji: "✉️", end: true }];
+      return [{ to: "/admin", label: "nav.inviteOwner", emoji: "✉️", end: true }];
     case "owner":
       return [
-        {
-          to: "/owner",
-          label: "All stations",
-
-          emoji: "🏪",
-          end: true,
-        },
-        { to: "/owner/shifts", label: "Shifts", emoji: "🧾" },
-        { to: "/owner/setup", label: "Pumps & rates", emoji: "⛽" },
-        { to: "/owner/stock", label: "Ground stock", emoji: "🛢️" },
-        { to: "/owner/ledger", label: "Daily ledger", emoji: "📊" },
-        { to: "/owner/credit", label: "Credit customers", emoji: "💳" },
-        { to: "/owner/staff", label: "Staff & access", emoji: "👥" },
+        { to: "/owner", label: "nav.allStations", emoji: "🏪", end: true },
+        { to: "/owner/shifts", label: "nav.shifts", emoji: "🧾" },
+        { to: "/owner/setup", label: "nav.pumpsRates", emoji: "⛽" },
+        { to: "/owner/stock", label: "nav.groundStock", emoji: "🛢️" },
+        { to: "/owner/ledger", label: "nav.dailyLedger", emoji: "📊" },
+        { to: "/owner/credit", label: "nav.creditCustomers", emoji: "💳" },
+        { to: "/owner/staff", label: "nav.staffAccess", emoji: "👥" },
       ];
     case "manager":
       return [
-        { to: "/station", label: "Shifts", emoji: "🧾", end: true },
-        { to: "/station/stock", label: "Ground stock", emoji: "🛢️" },
-        { to: "/station/ledger", label: "Daily ledger", emoji: "📊" },
-        {
-          to: "/station/credit",
-          label: "Credit customers",
-
-          emoji: "💳",
-        },
+        { to: "/station", label: "nav.shifts", emoji: "🧾", end: true },
+        { to: "/station/stock", label: "nav.groundStock", emoji: "🛢️" },
+        { to: "/station/ledger", label: "nav.dailyLedger", emoji: "📊" },
+        { to: "/station/credit", label: "nav.creditCustomers", emoji: "💳" },
       ];
     case "attendant":
-      return [{ to: "/today", label: "Shift", emoji: "🧾", end: true }];
+      return [{ to: "/today", label: "nav.shift", emoji: "🧾", end: true }];
     default:
       return [];
   }
@@ -64,6 +54,7 @@ function navFor(profile) {
 export default function Layout() {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   // Hooks must run before any early return, or signing out changes the hook
   // order between renders and React throws.
   const { online, restored } = useConnection();
@@ -89,7 +80,7 @@ export default function Layout() {
             <span className="who__name">{profile.name}</span>
             <span className={`role-pill role-pill--${profile.role}`}>
               <span aria-hidden="true">{ROLE_EMOJI[profile.role] || "•"}</span>
-              {ROLE_LABEL[profile.role] || profile.role}
+              {ROLE_LABEL[profile.role] ? t(ROLE_LABEL[profile.role]) : profile.role}
             </span>
           </div>
         </div>
@@ -102,7 +93,7 @@ export default function Layout() {
                     {l.emoji}
                   </span>
                 )}
-                <span>{l.label}</span>
+                <span>{t(l.label)}</span>
               </NavLink>
             );
           })}
@@ -110,18 +101,21 @@ export default function Layout() {
         <div className="foot">
           {profile.username && (
             <div className="small" style={{ color: "var(--muted)", marginBottom: 8 }}>
-              signed in as <span className="mono">{profile.username}</span>
+              {t("chrome.signedInAs")} <span className="mono">{profile.username}</span>
             </div>
           )}
+          <LanguageSelect className="language-select--sidebar" />
           <button
             type="button"
             className="theme-toggle theme-toggle--sidebar"
             onClick={toggleTheme}
           >
-            {theme === "dark" ? "☀ Light mode" : "☾ Dark mode"}
+            {theme === "dark"
+              ? `☀ ${t("chrome.lightMode")}`
+              : `☾ ${t("chrome.darkMode")}`}
           </button>
           <button type="button" className="small" onClick={logout}>
-            Sign out
+            {t("chrome.signOut")}
           </button>
         </div>
       </aside>
@@ -130,28 +124,25 @@ export default function Layout() {
         {!online && (
           <div className="conn-banner">
             <span className="live-dot">●</span>
-            Offline — showing the last data loaded. Anything you save will fail until the
-            connection returns.
+            {t("chrome.offline")}
           </div>
         )}
 
         {online && restored && (
           <div className="conn-banner restored">
             <span>●</span>
-            Back online — saving works again.
+            {t("chrome.backOnline")}
           </div>
         )}
 
         {install.available && (
           <div className="install-bar">
-            <span style={{ flex: 1 }}>
-              Install PumpMithra on this device for full-screen use and faster starts.
-            </span>
+            <span style={{ flex: 1 }}>{t("chrome.installPrompt")}</span>
             <button type="button" onClick={install.prompt}>
-              Install
+              {t("chrome.install")}
             </button>
             <button type="button" className="ghost" onClick={install.dismiss}>
-              Not now
+              {t("chrome.notNow")}
             </button>
           </div>
         )}
