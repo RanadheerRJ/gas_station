@@ -19,31 +19,53 @@ const ROLE_LABEL = {
   attendant: "Attendant",
 };
 
+/** A small badge per role, so who you are signed in as is obvious at a glance. */
+const ROLE_EMOJI = {
+  admin: "🛠️",
+  owner: "🏪",
+  manager: "📋",
+  attendant: "⛽",
+};
+
 /** Nav is strictly role-scoped: a developer only invites owners, an
- *  attendant only sees today’s entry. */
+ *  attendant only sees today’s entry. The emoji is decorative — the label
+ *  carries the meaning, and the icon stays for consistent alignment. */
 function navFor(profile) {
   switch (profile.role) {
     case "admin":
-      return [{ to: "/admin", label: "Invite Owner", icon: PeopleIcon, end: true }];
+      return [
+        { to: "/admin", label: "Invite Owner", icon: PeopleIcon, emoji: "✉️", end: true },
+      ];
     case "owner":
       return [
-        { to: "/owner", label: "All stations", icon: StationIcon, end: true },
-        { to: "/owner/shifts", label: "Shifts", icon: ShiftIcon },
-        { to: "/owner/setup", label: "Pumps & rates", icon: PumpIcon },
-        { to: "/owner/stock", label: "Ground stock", icon: TankIcon },
-        { to: "/owner/ledger", label: "Daily ledger", icon: LedgerIcon },
-        { to: "/owner/credit", label: "Credit customers", icon: CreditIcon },
-        { to: "/owner/staff", label: "Staff & access", icon: PeopleIcon },
+        {
+          to: "/owner",
+          label: "All stations",
+          icon: StationIcon,
+          emoji: "🏪",
+          end: true,
+        },
+        { to: "/owner/shifts", label: "Shifts", icon: ShiftIcon, emoji: "🧾" },
+        { to: "/owner/setup", label: "Pumps & rates", icon: PumpIcon, emoji: "⛽" },
+        { to: "/owner/stock", label: "Ground stock", icon: TankIcon, emoji: "🛢️" },
+        { to: "/owner/ledger", label: "Daily ledger", icon: LedgerIcon, emoji: "📊" },
+        { to: "/owner/credit", label: "Credit customers", icon: CreditIcon, emoji: "💳" },
+        { to: "/owner/staff", label: "Staff & access", icon: PeopleIcon, emoji: "👥" },
       ];
     case "manager":
       return [
-        { to: "/station", label: "Shifts", icon: ShiftIcon, end: true },
-        { to: "/station/stock", label: "Ground stock", icon: TankIcon },
-        { to: "/station/ledger", label: "Daily ledger", icon: LedgerIcon },
-        { to: "/station/credit", label: "Credit customers", icon: CreditIcon },
+        { to: "/station", label: "Shifts", icon: ShiftIcon, emoji: "🧾", end: true },
+        { to: "/station/stock", label: "Ground stock", icon: TankIcon, emoji: "🛢️" },
+        { to: "/station/ledger", label: "Daily ledger", icon: LedgerIcon, emoji: "📊" },
+        {
+          to: "/station/credit",
+          label: "Credit customers",
+          icon: CreditIcon,
+          emoji: "💳",
+        },
       ];
     case "attendant":
-      return [{ to: "/today", label: "Shift", icon: ShiftIcon, end: true }];
+      return [{ to: "/today", label: "Shift", icon: ShiftIcon, emoji: "🧾", end: true }];
     default:
       return [];
   }
@@ -66,7 +88,11 @@ export default function Layout() {
         <div className="brand">
           <div className="mark">STATION LEDGER</div>
           <div className="who">
-            {profile.name} · {ROLE_LABEL[profile.role] || profile.role}
+            <span className="who__name">{profile.name}</span>
+            <span className={`role-pill role-pill--${profile.role}`}>
+              <span aria-hidden="true">{ROLE_EMOJI[profile.role] || "•"}</span>
+              {ROLE_LABEL[profile.role] || profile.role}
+            </span>
           </div>
         </div>
         <nav>
@@ -74,6 +100,11 @@ export default function Layout() {
             const Icon = l.icon;
             return (
               <NavLink key={l.to} to={l.to} end={l.end}>
+                {l.emoji && (
+                  <span className="nav-emoji" aria-hidden="true">
+                    {l.emoji}
+                  </span>
+                )}
                 {Icon && <Icon size={16} />}
                 <span>{l.label}</span>
               </NavLink>

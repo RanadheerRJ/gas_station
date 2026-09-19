@@ -339,6 +339,18 @@ export async function listShifts(stationId) {
   return rows.map(mapShift);
 }
 
+/**
+ * Busy nozzle ids for a station, with no operator identity attached.
+ *
+ * Attendants are not allowed to read other people's shifts, so availability
+ * for the "start a shift" screen comes from this deliberately anonymous RPC
+ * rather than from station-wide shift rows.
+ */
+export async function listNozzleOccupancy(stationId) {
+  const rows = await rpc("list_nozzle_occupancy", { p_station_id: stationId });
+  return (rows || []).map((row) => row.nozzle_id ?? row.nozzleId);
+}
+
 export async function openShift(stationId, payload) {
   const shiftId = await rpc("open_shift", {
     p_station_id: stationId,

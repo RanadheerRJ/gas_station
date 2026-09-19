@@ -11,6 +11,7 @@ import {
   approveShift,
   closeShift,
   listCustomers,
+  listNozzleOccupancy,
   listPumps,
   listShifts,
   openShift,
@@ -25,6 +26,8 @@ import {
   PAYMENT_MODES,
   SHIFT_STATUS,
   VARIANCE_TOLERANCE,
+  ANONYMOUS_OPERATOR,
+  anonymousNozzleOccupancy,
   litresBetween,
   nozzleOccupancy,
   pumpOccupancy,
@@ -60,6 +63,7 @@ export default function Shifts() {
   const [pumps, setPumps] = useState([]);
   const [nozzles, setNozzles] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [busyNozzleIds, setBusyNozzleIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -75,26 +79,34 @@ export default function Shifts() {
     setStationId(valid ? valid.id : stations[0].id);
   }, [stations, params]);
 
+  const isAttendant = profile.role === "attendant";
+
   const load = useCallback(async () => {
     if (!stationId) return;
     setLoading(true);
     try {
-      const [sh, eq, cust] = await Promise.all([
+      // An attendant is only entitled to their own shifts plus anonymous
+      // nozzle availability. Asking for the customer directory or the
+      // station's other shifts would be refused by RLS anyway — not
+      // requesting them keeps the screen honest about what it needs.
+      const [sh, eq, cust, busy] = await Promise.all([
         listShifts(stationId),
         listPumps(stationId),
-        listCustomers(stationId),
+        isAttendant ? Promise.resolve([]) : listCustomers(stationId),
+        isAttendant ? listNozzleOccupancy(stationId) : Promise.resolve([]),
       ]);
       setShifts(sh);
       setPumps(eq.pumps);
       setNozzles(eq.nozzles);
       setCustomers(cust);
+      setBusyNozzleIds(busy);
       setError("");
     } catch (err) {
       setError(readableError(err));
     } finally {
       setLoading(false);
     }
-  }, [stationId]);
+  }, [stationId, isAttendant]);
 
   useEffect(() => {
     load();
@@ -107,11 +119,32 @@ export default function Shifts() {
   const station = stations.find((s) => s.id === stationId);
   const canReview = profile.role === "owner" || profile.role === "manager";
 
-  const occupancy = useMemo(
-    () => pumpOccupancy(pumps, nozzles, openShifts),
-    [pumps, nozzles, openShifts]
+  // Attendants get availability from the anonymous RPC; owners and managers
+  // derive it from the shift data they are entitled to see, which also names
+  // the operator on each pump.
+  const nozzleBusy = useMemo(
+    () =>
+      isAttendant ? anonymousNozzleOccupancy(busyNozzleIds) : nozzleOccupancy(openShifts),
+    [isAttendant, busyNozzleIds, openShifts]
   );
-  const nozzleBusy = useMemo(() => nozzleOccupancy(openShifts), [openShifts]);
+
+  const occupancy = useMemo(() => {
+    const board = pumpOccupancy(pumps, nozzles, openShifts);
+    if (!isAttendant) return board;
+    // Rebuild from the anonymous map so a pump held by a co-worker still
+    // reads as busy even though its shift row is invisible here.
+    Object.entries(board).forEach(([pumpId, entry]) => {
+      const mine = nozzles.filter((n) => n.pumpId === pumpId);
+      const held = mine.filter((n) => nozzleBusy[n.id]);
+      board[pumpId] = {
+        ...entry,
+        busy: held.length > 0,
+        operators: held.length ? [ANONYMOUS_OPERATOR] : [],
+        heldNozzleIds: held.map((n) => n.id),
+      };
+    });
+    return board;
+  }, [pumps, nozzles, openShifts, isAttendant, nozzleBusy]);
 
   const busyCount = Object.values(occupancy).filter((o) => o.busy).length;
   const freeCount = pumps.length - busyCount;
@@ -376,6 +409,7 @@ export default function Shifts() {
               key={s.id}
               shift={s}
               customers={customers}
+              canEnterCredit={!isAttendant}
               busy={busy}
               onCancel={() => setClosingFor(null)}
               onSubmit={async (payload) => {
@@ -583,7 +617,14 @@ export default function Shifts() {
 /* closing: enter closing readings + split the payments                */
 /* ------------------------------------------------------------------ */
 
-function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
+function CloseShiftPanel({
+  shift,
+  customers,
+  onSubmit,
+  onCancel,
+  busy,
+  canEnterCredit = true,
+}) {
   const [closings, setClosings] = useState({});
   const [creditSales, setCreditSales] = useState([]);
   const [payments, setPayments] = useState({
@@ -614,6 +655,13 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
     [withClosings, expenses, creditSales, payments, testing]
   );
 
+  // Without the customer directory there is no way to attribute a credit
+  // sale, so that payment mode is not offered at all.
+  const visibleModes = useMemo(
+    () => (canEnterCredit ? PAYMENT_MODES : PAYMENT_MODES.filter((m) => m !== "credit")),
+    [canEnterCredit]
+  );
+
   // Credit taken this shift is a payment mode too — keep the two in step so
   // the operator isn't asked for the same figure twice.
   const creditTotal = creditSales.reduce((n, c) => n + num(c.amount), 0);
@@ -632,8 +680,10 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
       closingReadings: Object.fromEntries(
         withClosings.map((n) => [n.nozzleId, n.closingReading])
       ),
-      creditSales,
-      payments,
+      // Never send credit rows the operator was not allowed to enter; the
+      // database refuses them anyway.
+      creditSales: canEnterCredit ? creditSales : [],
+      payments: canEnterCredit ? payments : { ...payments, credit: "" },
       testing,
       note,
     });
@@ -743,14 +793,25 @@ function CloseShiftPanel({ shift, customers, onSubmit, onCancel, busy }) {
 
         <TestingEditor testing={testing} setTesting={setTesting} />
 
-        <CreditEditor rows={creditSales} setRows={setCreditSales} customers={customers} />
+        {canEnterCredit ? (
+          <CreditEditor
+            rows={creditSales}
+            setRows={setCreditSales}
+            customers={customers}
+          />
+        ) : (
+          <Notice kind="info">
+            💳 Credit sales are added by your manager. Hand the docket over at the end of
+            your shift and record the rest of the money below.
+          </Notice>
+        )}
 
         <div>
           <h3 className="row" style={{ gap: 7, alignItems: "center", marginBottom: 8 }}>
             <CashIcon size={16} /> What you collected
           </h3>
           <div className="form-grid">
-            {PAYMENT_MODES.map((mode) => (
+            {visibleModes.map((mode) => (
               <Field
                 key={mode}
                 label={PAYMENT_LABELS[mode]}

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  ANONYMOUS_OPERATOR,
   METER_ROLLOVER,
   VARIANCE_TOLERANCE,
+  anonymousNozzleOccupancy,
   classifyFuel,
   litresBetween,
   nozzleLines,
+  nozzleOccupancy,
   paymentsTotal,
   shiftTotals,
   validateClosing,
@@ -220,5 +223,50 @@ describe("validateClosing", () => {
 describe("variance tolerance", () => {
   it("is small enough that a real shortfall is never absorbed", () => {
     expect(VARIANCE_TOLERANCE).toBeLessThanOrEqual(1);
+  });
+});
+
+/**
+ * Attendants are not entitled to know which co-worker holds a nozzle, so the
+ * anonymous occupancy map has to be useful for availability while carrying no
+ * identity at all. The database refuses the wider read regardless; this keeps
+ * the client from ever rendering a name it should not have.
+ */
+describe("nozzle occupancy", () => {
+  const openShifts = [
+    {
+      id: "shift-1",
+      employeeName: "Ben Attendant",
+      nozzles: [{ nozzleId: "n1" }, { nozzleId: "n2" }],
+    },
+  ];
+
+  it("names the operator for owners and managers", () => {
+    const map = nozzleOccupancy(openShifts);
+    expect(map.n1.operator).toBe("Ben Attendant");
+    expect(map.n1.shiftId).toBe("shift-1");
+  });
+
+  it("marks the same nozzles busy from bare ids", () => {
+    const map = anonymousNozzleOccupancy(["n1", "n2"]);
+    expect(Object.keys(map).sort()).toEqual(["n1", "n2"]);
+    expect(map.n1.operator).toBe(ANONYMOUS_OPERATOR);
+  });
+
+  it("never exposes a co-worker's name or shift id", () => {
+    const map = anonymousNozzleOccupancy(["n1"]);
+    expect(map.n1.shiftId).toBeNull();
+    expect(JSON.stringify(map)).not.toContain("Ben Attendant");
+  });
+
+  it("accepts the RPC's row shape as well as bare ids", () => {
+    expect(anonymousNozzleOccupancy([{ nozzleId: "n7" }]).n7.operator).toBe(
+      ANONYMOUS_OPERATOR
+    );
+  });
+
+  it("ignores empty input rather than inventing availability", () => {
+    expect(anonymousNozzleOccupancy()).toEqual({});
+    expect(anonymousNozzleOccupancy([null, undefined])).toEqual({});
   });
 });

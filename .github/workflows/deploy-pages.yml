@@ -31,6 +31,9 @@ jobs:
       - run: npm test
       - run: npm run check:schema
 
+      # Do not publish a build whose database role matrix has regressed.
+      - run: npm run test:rbac
+
       - name: Build
         env:
           # Project sites are served at /<repository>/; user/org sites use /.

@@ -14,6 +14,9 @@ have been removed. The source of truth is now:
 
 - `supabase/migrations/20260919000000_initial_schema.sql` — tables, RLS,
   indexes, and database RPCs.
+- `supabase/migrations/20260919010000_tighten_role_visibility.sql` — the role
+  matrix: self-only attendant reads, owner/manager-only financial and stock
+  reads, anonymous nozzle occupancy, and the attendant write guards.
 - `supabase/functions/accounts/index.ts` — privileged account provisioning and
   PIN reset Edge Function.
 - `src/lib/supabase.js` — browser client initialization.
@@ -36,12 +39,43 @@ No Firebase credentials or service account key should remain in this project.
   That key must never be placed in a Vite variable, Pages variable, or browser
   bundle.
 
+### Role matrix
+
+Operational and financial data is private. Route guards and hidden buttons are
+**not** the boundary — Supabase RLS, `SECURITY DEFINER` RPCs, and row triggers
+are, so a hand-written PostgREST or RPC call is refused exactly like a click is.
+
+| | Developer | Owner | Manager | Attendant |
+| --- | --- | --- | --- | --- |
+| Provision accounts | ✅ | own staff | — | — |
+| Station operational data | ❌ | own stations | assigned station | availability only |
+| Shifts | ❌ | all | all | **own only** |
+| Other operators' identities | ❌ | ✅ | ✅ | ❌ shown as “Another operator” |
+| Credit customers & balances | ❌ | ✅ | ✅ | ❌ |
+| Fuel-price history | ❌ | ✅ | ✅ | ❌ |
+| Tanks & tank readings | ❌ | ✅ | ✅ | ❌ |
+| Review/approve shifts | ❌ | ✅ | ✅ | ❌ |
+
+A developer account provisions accounts and nothing else: it cannot read any
+station, shift, price, tank, or credit row.
+
+An attendant can see the stations, pumps, and nozzles needed to start a shift,
+and calls `list_nozzle_occupancy(p_station_id)` for availability. That RPC
+returns **busy nozzle ids only** — no shift id, operator, reading, or amount —
+so the forecourt board can show a pump as busy without naming who has it.
+
+`guard_attendant_writes()` is the backstop. Mutation RPCs are
+`SECURITY DEFINER`, so RLS does not apply inside them, but row triggers still
+fire: an attendant cannot modify another employee's shift, nor touch credit,
+price, or stock rows, even by calling an RPC directly.
+
 ### Database access
 
 All application tables have RLS enabled. An authenticated user can read only
-stations they own or are assigned to. Browsers have no table write policies.
-Writes go through `SECURITY DEFINER` PostgreSQL RPCs, which check the current
-`auth.uid()` and role before changing state.
+stations they own or are assigned to, narrowed further by the role matrix
+above. Browsers have no table write policies. Writes go through
+`SECURITY DEFINER` PostgreSQL RPCs, which check the current `auth.uid()` and
+role before changing state.
 
 The financial and operational critical paths are one transaction each:
 
@@ -147,11 +181,26 @@ settings, set **Pages → Source** to **GitHub Actions**.
 ```bash
 npm test                 # unit tests for shift/tank maths and Auth credential derivation
 npm run check:schema     # migration contract guard used by CI
+npm run test:rbac        # role matrix enforced against a real PostgreSQL instance
 npm run lint
 npm run format:check
 npm run build
 npm run check
 ```
+
+`npm run test:rbac` is the behavioural proof of the table above. It fetches a
+self-contained PostgreSQL build on first run, applies `supabase/migrations/*`
+in order, seeds a two-station tenancy, then signs in as each role and asserts
+what it can and cannot read or write. No Docker and no hosted project needed.
+
+To confirm those assertions are not vacuous, run them against the initial
+schema alone:
+
+```bash
+npm run test:rbac -- --without-rbac    # 24 failures: the exposure the follow-up migration closes
+```
+
+See `scripts/rbac/README.md` for the full coverage list.
 
 For a local Supabase database test run, start the Supabase stack and run:
 
@@ -160,13 +209,18 @@ supabase start
 supabase test db
 ```
 
-`supabase/tests/database_test.sql` verifies the RLS boundary and required
-atomic RPC/index surface. GitHub Actions keeps the fast, Docker-free migration
-contract check as part of each pull request.
+`supabase/tests/database_test.sql` verifies the RLS boundary, the role-matrix
+helpers, and the attendant write guards. GitHub Actions runs the fast
+Docker-free migration contract check and the RBAC suite on every pull request
+and before every Pages deployment.
 
 ## Deployment checklist
 
-1. `supabase db push`
+1. `supabase db push` — applies any migration the hosted project has not seen,
+   including `20260919010000_tighten_role_visibility.sql`. Apply it **before**
+   publishing the matching frontend. The follow-up migration is idempotent and
+   safe to re-run; never edit the already-applied initial migration to change
+   production RBAC.
 2. `supabase functions deploy accounts`
 3. Create the first developer profile via SQL.
 4. Disable Auth self-sign-up.
