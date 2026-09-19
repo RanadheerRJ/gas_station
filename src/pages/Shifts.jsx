@@ -587,7 +587,10 @@ export default function Shifts() {
                       </tr>
                       {open && (
                         <tr>
-                          <td colSpan={10} style={{ background: "#fbfaf6" }}>
+                          <td
+                            colSpan={10}
+                            style={{ background: "var(--surface-sunken)" }}
+                          >
                             <ClosedShiftDetail
                               shift={s}
                               totals={t}

@@ -184,7 +184,7 @@ export default function AdminInviteOwner() {
                     </tr>
                     {resetting === o.uid && (
                       <tr>
-                        <td colSpan={5} style={{ background: "#fbfaf6" }}>
+                        <td colSpan={5} style={{ background: "var(--surface-sunken)" }}>
                           <ResetPinPanel target={o} onDone={() => setResetting(null)} />
                         </td>
                       </tr>

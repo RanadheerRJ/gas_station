@@ -292,7 +292,10 @@ export default function StationSetup() {
                   <div key={p.id} style={{ borderBottom: "1px solid var(--hairline)" }}>
                     <div
                       className="between"
-                      style={{ padding: "10px 14px", background: "#fbfaf6" }}
+                      style={{
+                        padding: "10px 14px",
+                        background: "var(--surface-sunken)",
+                      }}
                     >
                       <span className="row" style={{ gap: 7, alignItems: "center" }}>
                         <PumpIcon size={16} />
@@ -338,7 +341,7 @@ export default function StationSetup() {
                       <div
                         className="body"
                         style={{
-                          background: "#fffdf7",
+                          background: "var(--surface-sunken)",
                           borderBottom: "1px solid var(--hairline)",
                         }}
                       >

@@ -16,7 +16,7 @@ export function ThemeProvider({ children }) {
     document.documentElement.dataset.theme = theme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#202631" : "#e7ebf0");
+      ?.setAttribute("content", theme === "dark" ? "#0a0e17" : "#f4f6f9");
   }, [theme]);
   const value = useMemo(
     () => ({

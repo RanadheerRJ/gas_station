@@ -202,7 +202,7 @@ export default function OwnerStaff() {
                     </tr>
                     {resetting === s.uid && (
                       <tr>
-                        <td colSpan={7} style={{ background: "#fbfaf6" }}>
+                        <td colSpan={7} style={{ background: "var(--surface-sunken)" }}>
                           <ResetPinPanel target={s} onDone={() => setResetting(null)} />
                         </td>
                       </tr>

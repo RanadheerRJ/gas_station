@@ -214,7 +214,7 @@ export default function DailyLedger() {
                       </tr>
                       {open && (
                         <tr>
-                          <td colSpan={9} style={{ background: "#fbfaf6" }}>
+                          <td colSpan={9} style={{ background: "var(--surface-sunken)" }}>
                             <div
                               className="row"
                               style={{ gap: 28, alignItems: "flex-start" }}
