@@ -1,426 +1,547 @@
 /**
- * Single data-access facade for the UI.
+ * Single Supabase data-access facade for the UI.
  *
- * When a Firebase project is configured it talks to Auth + Firestore +
- * callable Cloud Functions.
+ * Reads are protected by Postgres row-level security. Every state transition
+ * that changes balances, stock, equipment, or shifts is an SQL RPC so it is
+ * atomic even when two operators act at the same time.
  */
 
-import {
-  onAuthStateChanged,
-  signInWithCustomToken,
-  signInWithEmailAndPassword,
-  signOut as fbSignOut,
-} from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-
-import { auth, db, functions, firebaseConfigured } from "./firebase";
+import { staffLoginEmail, staffPinPassword } from "./credentials";
 import { pinProblem } from "./pin.js";
+import { supabase, supabaseConfigured } from "./supabase";
 
-/**
- * Firebase is the only backend. A missing or half-filled .env.local is a
- * configuration error, not a reason to silently serve different data, so it
- * fails loudly at the first call rather than part-way through a shift.
- */
 function assertConfigured() {
-  if (!firebaseConfigured) {
+  if (!supabaseConfigured || !supabase) {
     throw new Error(
-      "Firebase is not configured. Copy .env.example to .env.local and fill in " +
-        "the VITE_FIREBASE_* values from your Firebase project settings."
+      "Supabase is not configured. Copy .env.example to .env.local and fill in " +
+        "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
     );
   }
+  return supabase;
 }
 
-/**
- * Every call and every query goes through one of these two, so the
- * configuration check lives in exactly two places instead of being repeated
- * in each of the forty-odd exported functions.
- */
-const call = (name) => {
-  assertConfigured();
-  return httpsCallable(functions, name);
-};
-
-/** The Firestore handle, guaranteed non-null. */
-function database() {
-  assertConfigured();
-  return db;
+/** Convert PostgreSQL snake_case responses to the UI's established camelCase contract. */
+function camelize(value) {
+  if (Array.isArray(value)) return value.map(camelize);
+  if (!value || typeof value !== "object" || value instanceof Date) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
+      camelize(child),
+    ])
+  );
 }
 
-/** Normalise a callable/Firestore error into something a user can read. */
-export function readableError(err) {
-  if (
-    err?.code === "auth/invalid-credential" ||
-    err?.code === "auth/wrong-password" ||
-    err?.code === "auth/user-not-found"
-  ) {
-    return "Invalid email or password.";
+function result({ data, error }) {
+  if (error) throw error;
+  return data;
+}
+
+async function rpc(name, args) {
+  return result(await assertConfigured().rpc(name, args));
+}
+
+async function query(request) {
+  return result(await request);
+}
+
+function mapProfile(row) {
+  if (!row) return null;
+  const profile = camelize(row);
+  return {
+    ...profile,
+    uid: row.id,
+    stationIds: row.station_id ? [row.station_id] : [],
+  };
+}
+
+function mapShift(row) {
+  const {
+    shift_nozzles: rawNozzles = [],
+    shift_expenses: rawExpenses = [],
+    ...shift
+  } = row;
+  return {
+    ...camelize(shift),
+    id: row.id,
+    stationId: row.station_id,
+    userId: row.employee_id,
+    date: row.shift_date,
+    nozzles: rawNozzles
+      .map(camelize)
+      .sort((a, b) => String(a.label).localeCompare(String(b.label))),
+    expenses: rawExpenses
+      .map((expense) => ({ ...camelize(expense), at: expense.occurred_at }))
+      .sort((a, b) => String(a.at).localeCompare(String(b.at))),
+  };
+}
+
+function mapCustomer(row) {
+  const { customer_transactions: rawTransactions = [], ...customer } = row;
+  return {
+    ...camelize(customer),
+    transactions: rawTransactions
+      .map((tx) => ({ ...camelize(tx), date: tx.transaction_date }))
+      .sort((a, b) => String(b.recordedAt).localeCompare(String(a.recordedAt))),
+  };
+}
+
+/** Normalise Auth/PostgREST/Edge Function errors into a user-readable message. */
+export function readableError(error) {
+  const message = error?.message || error?.error || "Something went wrong.";
+  if (/invalid login credentials|invalid.*credential/i.test(message)) {
+    return "Incorrect username or PIN.";
   }
-  if (err?.code === "auth/invalid-email") {
-    return "Invalid email address.";
-  }
-  if (err?.code === "auth/too-many-requests") {
+  if (/email not confirmed/i.test(message))
+    return "This account is not ready to sign in.";
+  if (/rate limit|too many requests/i.test(message))
     return "Too many failed attempts. Try again later.";
-  }
-  const msg = err?.message || "Something went wrong.";
-  return msg.replace(/^firebase:\s*/i, "").replace(/\s*\(.*\)\.?$/, "");
+  if (/jwt|token.*expired/i.test(message))
+    return "Your session has expired. Please sign in again.";
+  return String(message).replace(/^postgres(?:ql)?:\s*/i, "");
 }
 
 /* ------------------------------------------------------------------ */
-/* auth                                                                */
+/* Auth                                                                */
 /* ------------------------------------------------------------------ */
 
-/**
- * Subscribes to the signed-in profile (users doc + claims), or null.
- * Returns an unsubscribe function.
- */
+/** Subscribe to the current Supabase Auth session and its RLS-protected profile. */
 export function onAuthProfile(callback) {
-  return onAuthStateChanged(auth, async (user) => {
-    if (!user) return callback(null);
-    try {
-      const tokenResult = await user.getIdTokenResult(true);
-      const claims = tokenResult.claims;
+  if (!supabaseConfigured || !supabase) {
+    callback(null);
+    return () => {};
+  }
 
-      if (claims.admin === true) {
-        return callback({
-          uid: user.uid,
-          name: user.displayName || "Developer",
-          role: "admin",
-          ownerId: null,
-          stationIds: [],
-          username: user.email || claims.email || "developer",
-        });
-      }
-
-      const snap = await getDoc(doc(database(), "users", user.uid));
-      if (!snap.exists()) return callback(null);
-      const data = snap.data();
-      return callback({
-        uid: user.uid,
-        name: data.name,
-        phone: data.phone,
-        role: data.role || claims.role,
-        ownerId: data.ownerId || claims.ownerId || null,
-        stationIds: data.stationIds || (claims.stationId ? [claims.stationId] : []),
-        username: data.username,
-      });
-    } catch (err) {
-      console.error("Failed to resolve profile", err);
-      return callback(null);
+  let active = true;
+  let version = 0;
+  const resolve = async (user) => {
+    const requestVersion = ++version;
+    if (!user) {
+      if (active) callback(null);
+      return;
     }
+    try {
+      const row = await query(
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+      );
+      if (active && requestVersion === version) callback(mapProfile(row));
+    } catch (error) {
+      console.error("Failed to resolve Supabase profile", error);
+      if (active && requestVersion === version) callback(null);
+    }
+  };
+
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Do not issue a PostgREST request inside the Auth callback itself; the
+    // SDK documents that this can deadlock token refresh in some browsers.
+    setTimeout(() => resolve(session?.user || null), 0);
   });
+
+  return () => {
+    active = false;
+    data.subscription.unsubscribe();
+  };
 }
 
 export async function pinLogin({ username, pin }) {
-  const res = await call("pinLogin")({ username, pin });
-  await signInWithCustomToken(auth, res.data.token);
-  return res.data.profile;
+  const name = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!name || !/^\d{4}$/.test(String(pin || ""))) {
+    throw new Error("Incorrect username or PIN.");
+  }
+  const client = assertConfigured();
+  const { data, error } = await client.auth.signInWithPassword({
+    email: staffLoginEmail(name),
+    password: staffPinPassword(name, pin),
+  });
+  if (error) throw error;
+  return mapProfile(
+    await query(client.from("profiles").select("*").eq("id", data.user.id).single())
+  );
 }
 
 export async function developerLogin({ email, password }) {
-  assertConfigured();
-  const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-  const tokenResult = await cred.user.getIdTokenResult(true);
-  if (tokenResult.claims.admin !== true) {
-    await fbSignOut(auth);
-    throw new Error(
-      "This account is not a developer account. Developer access must be granted with scripts/setAdminClaim.cjs."
-    );
+  const client = assertConfigured();
+  const { data, error } = await client.auth.signInWithPassword({
+    email: String(email || "").trim(),
+    password,
+  });
+  if (error) throw error;
+  const profile = mapProfile(
+    await query(client.from("profiles").select("*").eq("id", data.user.id).single())
+  );
+  if (profile?.role !== "admin") {
+    await client.auth.signOut();
+    throw new Error("This account is not a developer account.");
   }
-  return {
-    uid: cred.user.uid,
-    name: cred.user.displayName || "Developer",
-    role: "admin",
-    ownerId: null,
-    stationIds: [],
-    username: cred.user.email || tokenResult.claims.email || "developer",
-  };
+  return profile;
 }
 
 export async function signOut() {
-  return fbSignOut(auth);
+  return result(await assertConfigured().auth.signOut());
 }
 
 /* ------------------------------------------------------------------ */
-/* account provisioning (Cloud Functions only)                         */
+/* Account provisioning (accounts Edge Function only)                  */
 /* ------------------------------------------------------------------ */
 
-export async function createOwner(payload) {
-  const res = await call("createOwner")(payload);
-  return res.data;
+async function accountRequest(body) {
+  const client = assertConfigured();
+  const { data, error } = await client.functions.invoke("accounts", { body });
+  if (error) {
+    // FunctionsHttpError exposes the JSON response through context. Preserve
+    // its useful server-side validation message when it is available.
+    let bodyError = null;
+    if (error.context && typeof error.context.json === "function") {
+      bodyError = await error.context.json().catch(() => null);
+    }
+    throw new Error(bodyError?.error || error.message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
 }
 
-export async function createStaff(payload) {
-  const res = await call("createStaff")(payload);
-  return res.data;
+export function createOwner(payload) {
+  return accountRequest({ action: "create_owner", ...payload });
 }
 
-export async function resetPin(payload) {
-  const res = await call("resetPin")(payload);
-  return res.data;
+export function createStaff(payload) {
+  return accountRequest({ action: "create_staff", ...payload });
+}
+
+export function resetPin(payload) {
+  return accountRequest({ action: "reset_pin", ...payload });
 }
 
 export async function addStation(payload) {
-  const res = await call("addStation")(payload);
-  return res.data;
-}
-
-/* ------------------------------------------------------------------ */
-/* stations & staff                                                    */
-/* ------------------------------------------------------------------ */
-
-export async function listStations(profile) {
-  if (profile.role === "owner") {
-    const snap = await getDocs(
-      query(collection(database(), "stations"), where("ownerId", "==", profile.ownerId))
-    );
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  }
-
-  const results = await Promise.all(
-    (profile.stationIds || []).map(async (id) => {
-      const s = await getDoc(doc(database(), "stations", id));
-      return s.exists() ? { id: s.id, ...s.data() } : null;
-    })
+  return camelize(
+    await rpc("add_station", { p_name: payload.name, p_address: payload.address })
   );
-  return results.filter(Boolean);
 }
 
-/** Developer-only: every owner account in the system. */
+/* ------------------------------------------------------------------ */
+/* Stations & staff                                                    */
+/* ------------------------------------------------------------------ */
+
+export async function listStations(_profile) {
+  const rows = await query(assertConfigured().from("stations").select("*").order("name"));
+  return rows.map(camelize);
+}
+
 export async function listOwners() {
-  const snap = await getDocs(
-    query(collection(database(), "users"), where("role", "==", "owner"))
+  const rows = await query(
+    assertConfigured().from("profiles").select("*").eq("role", "owner").order("name")
   );
-  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  return rows.map(mapProfile);
 }
 
 export async function listStaff(profile) {
-  const snap = await getDocs(
-    query(collection(database(), "users"), where("ownerId", "==", profile.uid))
+  const rows = await query(
+    assertConfigured()
+      .from("profiles")
+      .select("*")
+      .eq("owner_id", profile.uid)
+      .in("role", ["manager", "attendant"])
+      .order("created_at")
   );
-  return snap.docs
-    .map((d) => ({ uid: d.id, ...d.data() }))
-    .filter((u) => u.uid !== profile.uid);
+  return rows.map(mapProfile);
 }
 
 /* ------------------------------------------------------------------ */
-/* pumps, nozzles & rates                                              */
+/* Pumps, nozzles & rates                                              */
 /* ------------------------------------------------------------------ */
 
 export async function listPumps(stationId) {
-  const [pumpSnap, nozzleSnap] = await Promise.all([
-    getDocs(collection(database(), "stations", stationId, "pumps")),
-    getDocs(collection(database(), "stations", stationId, "nozzles")),
+  const client = assertConfigured();
+  const [pumps, nozzles] = await Promise.all([
+    query(
+      client.from("pumps").select("*").eq("station_id", stationId).order("created_at")
+    ),
+    query(
+      client.from("nozzles").select("*").eq("station_id", stationId).order("created_at")
+    ),
   ]);
-  return {
-    pumps: pumpSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-    nozzles: nozzleSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-  };
+  return { pumps: pumps.map(camelize), nozzles: nozzles.map(camelize) };
 }
 
 export async function addPump(stationId, payload) {
-  const ref = await addDoc(collection(database(), "stations", stationId, "pumps"), {
-    ...payload,
-    createdAt: serverTimestamp(),
-  });
-  return { id: ref.id, ...payload };
+  return camelize(
+    await rpc("add_pump", { p_station_id: stationId, p_name: payload.name })
+  );
 }
 
 export async function addNozzle(stationId, payload) {
-  const { openingReading, ...rest } = payload;
-  const doc_ = {
-    ...rest,
-    lastReading: Number(openingReading) || 0,
-    createdAt: serverTimestamp(),
-  };
-  const ref = await addDoc(
-    collection(database(), "stations", stationId, "nozzles"),
-    doc_
+  return camelize(
+    await rpc("add_nozzle", {
+      p_station_id: stationId,
+      p_pump_id: payload.pumpId,
+      p_name: payload.name,
+      p_fuel_type: payload.fuelType,
+      p_opening_reading: Number(payload.openingReading) || 0,
+    })
   );
-  return { id: ref.id, ...doc_ };
 }
 
 export async function setNozzleState(stationId, nozzleId, state) {
-  await updateDoc(doc(database(), "stations", stationId, "nozzles", nozzleId), { state });
-  return { id: nozzleId, state };
+  return camelize(
+    await rpc("set_nozzle_state", {
+      p_station_id: stationId,
+      p_nozzle_id: nozzleId,
+      p_state: state,
+    })
+  );
 }
 
 export async function setPumpState(stationId, pumpId, state) {
-  const res = await call("setPumpState")({ stationId, pumpId, state });
-  return res.data;
+  return camelize(
+    await rpc("set_pump_state", {
+      p_station_id: stationId,
+      p_pump_id: pumpId,
+      p_state: state,
+    })
+  );
 }
 
-/**
- * Prices are effective-dated intervals, so a past shift can always be
- * repriced with the rate that actually applied when it ran.
- */
 export async function getPrices(stationId) {
-  const snap = await getDocs(
-    query(
-      collection(database(), "stations", stationId, "prices"),
-      orderBy("effectiveFrom", "desc")
-    )
+  const rows = await query(
+    assertConfigured()
+      .from("fuel_prices")
+      .select("*")
+      .eq("station_id", stationId)
+      .order("effective_from", { ascending: false })
   );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return rows.map(camelize);
 }
 
 export async function setPrice(stationId, payload) {
-  const res = await call("setPrice")({ stationId, ...payload });
-  return res.data;
+  return camelize(
+    await rpc("set_price", {
+      p_station_id: stationId,
+      p_fuel_type: payload.fuelType,
+      p_price: payload.price,
+    })
+  );
 }
 
 /* ------------------------------------------------------------------ */
-/* shifts                                                              */
+/* Atomic shift operations                                              */
 /* ------------------------------------------------------------------ */
 
 export async function listShifts(stationId) {
-  const snap = await getDocs(
-    // startTime is the field openShift actually writes; ordering by anything
-    // else returns an empty set in Firestore rather than failing loudly.
-    query(
-      collection(database(), "shifts", stationId, "records"),
-      orderBy("startTime", "desc")
-    )
+  const rows = await query(
+    assertConfigured()
+      .from("shifts")
+      .select("*, shift_nozzles(*), shift_expenses(*)")
+      .eq("station_id", stationId)
+      .order("start_time", { ascending: false })
   );
-  return snap.docs.map((d) => ({ id: d.id, stationId, ...d.data() }));
+  return rows.map(mapShift);
 }
 
 export async function openShift(stationId, payload) {
-  const res = await call("openShift")({ stationId, ...payload });
-  return res.data;
+  const shiftId = await rpc("open_shift", {
+    p_station_id: stationId,
+    p_nozzle_ids: payload.nozzleIds,
+    p_employee_name: payload.employeeName,
+  });
+  return { shiftId };
 }
 
 export async function closeShift(stationId, shiftId, payload) {
-  const res = await call("closeShift")({ stationId, shiftId, ...payload });
-  return res.data;
-}
-
-/* ------------------------------ tanks ------------------------------ */
-
-export async function listTanks(stationId) {
-  const [tankSnap, dipSnap] = await Promise.all([
-    getDocs(
-      query(collection(database(), "stations", stationId, "tanks"), orderBy("createdAt"))
-    ),
-    getDocs(
-      query(
-        collection(database(), "tankReadings", stationId, "readings"),
-        orderBy("recordedAt", "desc")
-      )
-    ),
-  ]);
-  return {
-    tanks: tankSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-    dips: dipSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-  };
-}
-
-export async function addTank(stationId, tank) {
-  const res = await call("addTank")({ stationId, ...tank });
-  return res.data;
-}
-
-export async function setTankState(stationId, tankId, state) {
-  const res = await call("setTankState")({ stationId, tankId, state });
-  return res.data;
-}
-
-export async function updateTank(stationId, tankId, patch) {
-  const res = await call("updateTank")({ stationId, tankId, ...patch });
-  return res.data;
-}
-
-export async function recordDip(stationId, tankId, reading) {
-  const res = await call("recordDip")({ stationId, tankId, ...reading });
-  return res.data;
-}
-
-export async function recordDelivery(stationId, tankId, delivery) {
-  const res = await call("recordDelivery")({ stationId, tankId, ...delivery });
-  return res.data;
+  return camelize(
+    await rpc("close_shift", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_closing_readings: payload.closingReadings || {},
+      p_payments: payload.payments || {},
+      p_testing: payload.testing || {},
+      p_note: payload.note || "",
+      p_credit_sales: payload.creditSales || [],
+    })
+  );
 }
 
 export async function addShiftExpense(stationId, shiftId, expense) {
-  const res = await call("addShiftExpense")({ stationId, shiftId, ...expense });
-  return res.data;
+  return camelize(
+    await rpc("add_shift_expense", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_label: expense.label,
+      p_amount: expense.amount,
+    })
+  );
 }
 
 export async function removeShiftExpense(stationId, shiftId, index) {
-  const res = await call("removeShiftExpense")({ stationId, shiftId, index });
-  return res.data;
+  return camelize(
+    await rpc("remove_shift_expense", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_index: index,
+    })
+  );
 }
 
 export async function approveShift(stationId, shiftId) {
-  const res = await call("reviewShift")({ stationId, shiftId, action: "approve" });
-  return res.data;
+  return camelize(
+    await rpc("review_shift", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_action: "approve",
+      p_reason: "",
+    })
+  );
 }
 
 export async function rejectShift(stationId, shiftId, reason) {
-  const res = await call("reviewShift")({ stationId, shiftId, action: "reject", reason });
-  return res.data;
+  return camelize(
+    await rpc("review_shift", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_action: "reject",
+      p_reason: reason,
+    })
+  );
 }
 
 export async function reviseShift(stationId, shiftId, patch) {
-  const res = await call("reviseShift")({ stationId, shiftId, ...patch });
-  return res.data;
+  return camelize(
+    await rpc("revise_shift", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_expenses: patch.expenses,
+      p_testing: patch.testing,
+      p_payments: patch.payments,
+      p_note: patch.note,
+    })
+  );
 }
 
 export async function setStationState(stationId, state) {
-  const res = await call("setStationState")({ stationId, state });
-  return res.data;
+  return camelize(
+    await rpc("set_station_state", { p_station_id: stationId, p_state: state })
+  );
 }
 
 /* ------------------------------------------------------------------ */
-/* credit customers                                                    */
+/* Tanks & ground stock                                                 */
+/* ------------------------------------------------------------------ */
+
+export async function listTanks(stationId) {
+  const client = assertConfigured();
+  const [tanks, dips] = await Promise.all([
+    query(
+      client.from("tanks").select("*").eq("station_id", stationId).order("created_at")
+    ),
+    query(
+      client
+        .from("tank_readings")
+        .select("*")
+        .eq("station_id", stationId)
+        .order("recorded_at", { ascending: false })
+    ),
+  ]);
+  return { tanks: tanks.map(camelize), dips: dips.map(camelize) };
+}
+
+export async function addTank(stationId, tank) {
+  return camelize(
+    await rpc("add_tank", {
+      p_station_id: stationId,
+      p_name: tank.name,
+      p_fuel_type: tank.fuelType,
+      p_capacity: tank.capacity,
+      p_current_stock: tank.currentStock,
+    })
+  );
+}
+
+export async function setTankState(stationId, tankId, state) {
+  return camelize(
+    await rpc("set_tank_state", {
+      p_station_id: stationId,
+      p_tank_id: tankId,
+      p_state: state,
+    })
+  );
+}
+
+export async function updateTank(stationId, tankId, patch) {
+  return camelize(
+    await rpc("update_tank", {
+      p_station_id: stationId,
+      p_tank_id: tankId,
+      p_name: patch.name,
+      p_fuel_type: patch.fuelType,
+      p_capacity: patch.capacity,
+    })
+  );
+}
+
+export async function recordDip(stationId, tankId, reading) {
+  return camelize(
+    await rpc("record_dip", {
+      p_station_id: stationId,
+      p_tank_id: tankId,
+      p_stock_litres: reading.stockLitres,
+      p_temperature_c: reading.temperatureC,
+      p_water_cm: reading.waterCm === "" ? null : reading.waterCm,
+      p_note: reading.note || "",
+    })
+  );
+}
+
+export async function recordDelivery(stationId, tankId, delivery) {
+  return camelize(
+    await rpc("record_delivery", {
+      p_station_id: stationId,
+      p_tank_id: tankId,
+      p_litres: delivery.litres,
+      p_temperature_c: delivery.temperatureC,
+      p_invoice: delivery.invoice || "",
+      p_note: delivery.note || "",
+    })
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Credit customers                                                     */
 /* ------------------------------------------------------------------ */
 
 export async function listCustomers(stationId) {
-  const snap = await getDocs(
-    collection(database(), "creditCustomers", stationId, "customers")
+  const rows = await query(
+    assertConfigured()
+      .from("credit_customers")
+      .select("*, customer_transactions(*)")
+      .eq("station_id", stationId)
+      .order("name")
   );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return rows.map(mapCustomer);
 }
 
 export async function createCustomer(stationId, payload) {
-  const ref = await addDoc(
-    collection(database(), "creditCustomers", stationId, "customers"),
-    {
-      ...payload,
-      outstandingBalance: 0,
-      transactions: [],
-      createdAt: serverTimestamp(),
-    }
+  return camelize(
+    await rpc("create_customer", {
+      p_station_id: stationId,
+      p_name: payload.name,
+      p_phone: payload.phone || "",
+    })
   );
-  return { id: ref.id, ...payload, outstandingBalance: 0, transactions: [] };
 }
 
-/**
- * Post a credit sale or a repayment. Balance arithmetic happens server-side
- * in a transaction — a read-modify-write from the client would lose one of
- * two concurrent payments, and this is real money.
- */
 export async function addCustomerTransaction(stationId, customerId, tx) {
-  const res = await call("recordCustomerPayment")({
-    stationId,
-    customerId,
-    type: tx.type,
-    amount: tx.amount,
-    note: tx.note || "",
-    date: tx.date,
-  });
-  return res.data;
+  return camelize(
+    await rpc("record_customer_transaction", {
+      p_station_id: stationId,
+      p_customer_id: customerId,
+      p_type: tx.type,
+      p_amount: tx.amount,
+      p_note: tx.note || "",
+      p_date: tx.date || null,
+    })
+  );
 }
 
-/** Client-side PIN validation, mirroring the server's rules. */
+/** Client-side PIN validation, mirroring the accounts Edge Function. */
 export { pinProblem };

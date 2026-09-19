@@ -1,8 +1,8 @@
 /**
  * PIN validation, shared by every screen that sets or changes one.
  *
- * This mirrors WEAK_PINS and validatePin in functions/index.js. The server is
- * the authority — it re-validates every PIN it is given — but checking here
+ * This mirrors WEAK_PINS and validatePin in the accounts Edge Function. The
+ * server is the authority — it re-validates every PIN it is given — but checking here
  * too means the user is told immediately instead of after a round trip.
  *
  * Keep the two lists in step. A PIN this file accepts and the server rejects

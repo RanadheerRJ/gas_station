@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../state/AuthContext";
 import { readableError } from "../lib/api";
-import { firebaseConfigured, useEmulators } from "../lib/firebase";
+import { supabaseConfigured } from "../lib/supabase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
 
@@ -32,8 +32,8 @@ export default function Login() {
   const submitStaff = async (e) => {
     e.preventDefault();
     setError("");
-    if (!firebaseConfigured) {
-      setError("This build has no Firebase configuration. See the README.");
+    if (!supabaseConfigured) {
+      setError("This build has no Supabase configuration. See the README.");
       return;
     }
     if (!/^\d{4}$/.test(pin)) {
@@ -56,8 +56,8 @@ export default function Login() {
   const submitDeveloper = async (e) => {
     e.preventDefault();
     setError("");
-    if (!firebaseConfigured) {
-      setError("This build has no Firebase configuration. See the README.");
+    if (!supabaseConfigured) {
+      setError("This build has no Supabase configuration. See the README.");
       return;
     }
     if (!email.trim()) {
@@ -136,20 +136,22 @@ export default function Login() {
                   aria-invalid={error ? true : undefined}
                 />
               </label>
-              {!firebaseConfigured && (
+              {!supabaseConfigured && (
                 <Notice kind="error">
-                  No Firebase project is configured, so sign-in cannot work. Copy{" "}
+                  No Supabase project is configured, so sign-in cannot work. Copy{" "}
                   <span className="mono">.env.example</span> to{" "}
                   <span className="mono">.env.local</span>, fill in the{" "}
-                  <span className="mono">VITE_FIREBASE_*</span> values from your project
-                  settings, and restart the dev server.
+                  <span className="mono">
+                    VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+                  </span>{" "}
+                  values from your project settings, and restart the dev server.
                 </Notice>
               )}
               {error && <Notice kind="error">{error}</Notice>}
               <button
                 className="primary"
                 type="submit"
-                disabled={busy || !username || !firebaseConfigured}
+                disabled={busy || !username || !supabaseConfigured}
               >
                 {busy ? "Checking…" : "Sign in"}
               </button>
@@ -157,11 +159,6 @@ export default function Login() {
                 Accounts are issued by your station owner or the system developer. There
                 is no self sign-up.
               </p>
-              {useEmulators && (
-                <p className="small mono" style={{ margin: 0, color: "var(--rust)" }}>
-                  Connected to local emulators — not live data.
-                </p>
-              )}
             </form>
           ) : (
             <form onSubmit={submitDeveloper}>
@@ -189,32 +186,30 @@ export default function Login() {
                   aria-invalid={error ? true : undefined}
                 />
               </label>
-              {!firebaseConfigured && (
+              {!supabaseConfigured && (
                 <Notice kind="error">
-                  No Firebase project is configured, so sign-in cannot work. Copy{" "}
+                  No Supabase project is configured, so sign-in cannot work. Copy{" "}
                   <span className="mono">.env.example</span> to{" "}
                   <span className="mono">.env.local</span>, fill in the{" "}
-                  <span className="mono">VITE_FIREBASE_*</span> values from your project
-                  settings, and restart the dev server.
+                  <span className="mono">
+                    VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+                  </span>{" "}
+                  values from your project settings, and restart the dev server.
                 </Notice>
               )}
               {error && <Notice kind="error">{error}</Notice>}
               <button
                 className="primary"
                 type="submit"
-                disabled={busy || !email || !password || !firebaseConfigured}
+                disabled={busy || !email || !password || !supabaseConfigured}
               >
                 {busy ? "Signing in…" : "Sign in as developer"}
               </button>
               <p className="small muted" style={{ margin: 0 }}>
-                Developer accounts are created in the Firebase console and granted admin
-                rights with <span className="mono">scripts/setAdminClaim.cjs</span>.
+                Developer accounts are created in Supabase Auth, then assigned the
+                <span className="mono">admin</span> profile role as described in the
+                README.
               </p>
-              {useEmulators && (
-                <p className="small mono" style={{ margin: 0, color: "var(--rust)" }}>
-                  Connected to local emulators — not live data.
-                </p>
-              )}
             </form>
           )}
         </div>

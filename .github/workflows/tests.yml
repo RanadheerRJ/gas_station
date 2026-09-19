@@ -18,21 +18,12 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "21"
-
       - run: npm ci
-
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
 
-      # End-to-end tests against the emulator suite: real Cloud Functions and
-      # real security rules, no connection to the live project.
-      - name: Install function dependencies
-        run: npm ci --prefix functions
-
-      - name: End-to-end tests against the emulators
-        run: npm run test:emulator
+      # This catches accidentally removing an RPC or weakening the migration's
+      # RLS/RPC boundary without requiring Docker or a hosted Supabase project.
+      - run: npm run check:schema
+      - run: npm run build
