@@ -1,4 +1,4 @@
-# Station Ledger
+# PumpMithra
 
 A role-scoped fuel-station ledger: username + PIN access for owners, managers,
 and attendants; meter-driven shifts; ground stock; customer credit; and daily

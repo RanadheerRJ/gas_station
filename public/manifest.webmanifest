@@ -1,6 +1,6 @@
 {
-  "name": "Station Ledger",
-  "short_name": "Ledger",
+  "name": "PumpMithra",
+  "short_name": "PumpMithra",
   "description": "Daily operations and ledgers for fuel stations.",
   "start_url": ".",
   "scope": ".",

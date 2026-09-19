@@ -1,5 +1,5 @@
 /*
- * Service worker for Station Ledger.
+ * Service worker for PumpMithra.
  *
  * A forecourt office is exactly where the signal drops out, so the shell is
  * cached on install and served from cache first. Data requests are never
@@ -7,7 +7,7 @@
  * because someone would act on it.
  */
 
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 
@@ -26,6 +26,7 @@ const SHELL_URLS = [
   SHELL_URL,
   `${BASE}manifest.webmanifest`,
   `${BASE}icon-192.png`,
+  `${BASE}logo.svg`,
 ];
 
 self.addEventListener("install", (event) => {

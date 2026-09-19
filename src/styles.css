@@ -1,5 +1,5 @@
 /* =====================================================================
-   Station Ledger — premium SaaS visual system
+   PumpMithra — premium SaaS visual system
    ---------------------------------------------------------------------
    Neutral, layered surfaces; a single confident accent; restrained
    shadows instead of heavy borders; generous but disciplined spacing.
@@ -204,6 +204,23 @@ th.num {
   padding: 2px 18px 18px;
   border-bottom: 1px solid var(--sidebar-border);
   margin-bottom: 6px;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.brand-lockup--login {
+  justify-content: center;
 }
 
 .sidebar .brand .mark {
