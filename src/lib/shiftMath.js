@@ -266,9 +266,15 @@ export function activePrices(priceRecords = []) {
 /* pump occupancy                                                      */
 /* ------------------------------------------------------------------ */
 
+/** Shown instead of a co-worker's name when the viewer may not know who it is. */
+export const ANONYMOUS_OPERATOR = "Another operator";
+
 /**
  * Which nozzles are tied up by an open shift, and who has them.
  * Returns { [nozzleId]: { shiftId, operator } }.
+ *
+ * Only owners and managers receive station-wide shift data, so this is the
+ * privileged form of the lookup.
  */
 export function nozzleOccupancy(openShifts = []) {
   const out = {};
@@ -276,6 +282,21 @@ export function nozzleOccupancy(openShifts = []) {
     (s.nozzles || []).forEach((n) => {
       out[n.nozzleId] = { shiftId: s.id, operator: s.employeeName || "Someone" };
     });
+  });
+  return out;
+}
+
+/**
+ * The same shape, built from the anonymous list_nozzle_occupancy RPC.
+ *
+ * Attendants may only see that a nozzle is taken — never whose shift holds it
+ * — so the RPC returns bare nozzle ids and the operator is a fixed label.
+ */
+export function anonymousNozzleOccupancy(busyNozzleIds = []) {
+  const out = {};
+  busyNozzleIds.forEach((entry) => {
+    const id = typeof entry === "string" ? entry : entry?.nozzleId;
+    if (id) out[id] = { shiftId: null, operator: ANONYMOUS_OPERATOR };
   });
   return out;
 }
