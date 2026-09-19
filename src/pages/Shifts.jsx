@@ -603,7 +603,7 @@ export default function Shifts() {
               </thead>
               <tbody>
                 {reportable.map((s) => {
-                  const t = shiftTotals(s);
+                  const totals = shiftTotals(s);
                   const open = expanded === s.id;
                   return (
                     <Fragment key={s.id}>
@@ -612,8 +612,10 @@ export default function Shifts() {
                         <td>
                           <span className="row" style={{ gap: 6, alignItems: "center" }}>
                             <StatusDot
-                              tone={varianceTone(t.variance) === "neg" ? "rust" : "green"}
-                              title={varianceLabel(t.variance)}
+                              tone={
+                                varianceTone(totals.variance) === "neg" ? "rust" : "green"
+                              }
+                              title={varianceLabel(totals.variance)}
                             />
                             {s.employeeName}
                           </span>
@@ -621,21 +623,21 @@ export default function Shifts() {
                         <td>
                           <StatusTag status={s.status} />
                         </td>
-                        <td className="num mono">{money(t.totalLitres)}</td>
-                        <td className="num mono">{money(t.gross)}</td>
-                        <td className="num mono">{money(t.testingTotal)}</td>
-                        <td className="num mono">{money(t.net)}</td>
-                        <td className="num mono">{money(t.handover)}</td>
+                        <td className="num mono">{money(totals.totalLitres)}</td>
+                        <td className="num mono">{money(totals.gross)}</td>
+                        <td className="num mono">{money(totals.testingTotal)}</td>
+                        <td className="num mono">{money(totals.net)}</td>
+                        <td className="num mono">{money(totals.handover)}</td>
                         <td
                           className="num mono"
                           style={{
                             color:
-                              varianceTone(t.variance) === "neg"
+                              varianceTone(totals.variance) === "neg"
                                 ? "var(--rust)"
                                 : "var(--green)",
                           }}
                         >
-                          {money(t.variance)}
+                          {money(totals.variance)}
                         </td>
                         <td className="num">
                           <button

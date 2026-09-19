@@ -193,15 +193,32 @@ export function useStatusChange(status) {
  * Items are matched by `keyOf`. Anything absent from the new list is held
  * with `exiting: true` until the animation has run.
  */
-export function useAnimatedList(items, keyOf = (item) => item.id, duration = 180) {
+const defaultKeyOf = (item) => item.id;
+
+function sameRows(left, right) {
+  return (
+    left.length === right.length &&
+    left.every(
+      (row, index) =>
+        row.item === right[index].item &&
+        row.key === right[index].key &&
+        row.exiting === right[index].exiting
+    )
+  );
+}
+
+export function useAnimatedList(items, keyOf = defaultKeyOf, duration = 180) {
+  const keyOfRef = useRef(keyOf);
+  keyOfRef.current = keyOf;
   const [rendered, setRendered] = useState(() =>
     (items || []).map((item) => ({ item, key: keyOf(item), exiting: false }))
   );
   const timers = useRef(new Map());
 
   useEffect(() => {
+    const getKey = keyOfRef.current;
     const next = items || [];
-    const nextKeys = new Set(next.map(keyOf));
+    const nextKeys = new Set(next.map(getKey));
 
     setRendered((current) => {
       const leaving = current
@@ -209,7 +226,8 @@ export function useAnimatedList(items, keyOf = (item) => item.id, duration = 180
         .map((entry) => entry.key);
 
       if (prefersReducedMotion()) {
-        return next.map((item) => ({ item, key: keyOf(item), exiting: false }));
+        const fresh = next.map((item) => ({ item, key: getKey(item), exiting: false }));
+        return sameRows(current, fresh) ? current : fresh;
       }
 
       leaving.forEach((key) => {
@@ -225,7 +243,7 @@ export function useAnimatedList(items, keyOf = (item) => item.id, duration = 180
         .filter((entry) => !nextKeys.has(entry.key))
         .map((entry) => ({ ...entry, exiting: true }));
 
-      const fresh = next.map((item) => ({ item, key: keyOf(item), exiting: false }));
+      const fresh = next.map((item) => ({ item, key: getKey(item), exiting: false }));
 
       // Departing rows keep roughly their old position so the list does not
       // reshuffle while one of its rows is still collapsing.
@@ -241,9 +259,9 @@ export function useAnimatedList(items, keyOf = (item) => item.id, duration = 180
         }
       });
       byKey.forEach((entry) => out.push(entry));
-      return out;
+      return sameRows(current, out) ? current : out;
     });
-  }, [items, keyOf, duration]);
+  }, [items, duration]);
 
   useEffect(() => {
     const pending = timers.current;
