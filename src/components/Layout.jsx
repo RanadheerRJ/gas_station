@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { watchConnection } from "../lib/pwa";
+import { useTheme } from "../state/ThemeContext";
 import {
   CreditIcon,
   LedgerIcon,
@@ -73,6 +74,7 @@ function navFor(profile) {
 
 export default function Layout() {
   const { profile, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   // Hooks must run before any early return, or signing out changes the hook
   // order between renders and React throws.
   const { online, restored } = useConnection();
@@ -117,6 +119,13 @@ export default function Layout() {
               signed in as <span className="mono">{profile.username}</span>
             </div>
           )}
+          <button
+            type="button"
+            className="theme-toggle theme-toggle--sidebar"
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? "☀ Light mode" : "☾ Dark mode"}
+          </button>
           <button type="button" className="small" onClick={logout}>
             Sign out
           </button>
