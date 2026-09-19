@@ -4,9 +4,11 @@ import { readableError } from "../lib/api";
 import { supabaseConfigured } from "../lib/supabase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
+import { useTheme } from "../state/ThemeContext";
 
 export default function Login() {
   const { login, developerLogin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [tab, setTab] = useState("staff");
 
   const [username, setUsername] = useState("");
@@ -212,6 +214,14 @@ export default function Login() {
               </p>
             </form>
           )}
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            {theme === "dark" ? "☀ Light mode" : "☾ Dark mode"}
+          </button>
         </div>
       </div>
     </div>

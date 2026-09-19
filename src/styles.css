@@ -1484,3 +1484,154 @@ button:focus-visible {
   background: #faeeec;
   color: var(--rust);
 }
+
+/* Neumorphic surfaces and theme tokens. Keep components colour-agnostic. */
+:root {
+  --paper: #e7ebf0;
+  --panel: #e7ebf0;
+  --ink: #24303b;
+  --muted: #5d6975;
+  --hairline: #cbd3dc;
+  --petrol: #28627a;
+  --amber: #a96100;
+  --green: #26704a;
+  --rust: #a53d35;
+  --neo-light: #ffffff;
+  --neo-dark: #c2cad3;
+}
+:root[data-theme="dark"] {
+  --paper: #202631;
+  --panel: #202631;
+  --ink: #e8edf3;
+  --muted: #aeb9c5;
+  --hairline: #3b4654;
+  --petrol: #83c9e6;
+  --amber: #f2bd62;
+  --green: #79d39e;
+  --rust: #f08b80;
+  --neo-light: #2c3542;
+  --neo-dark: #151b23;
+}
+body,
+.login-card,
+.card,
+.panel,
+input,
+select,
+textarea,
+button,
+.table-wrap {
+  background-color: var(--paper);
+  color: var(--ink);
+}
+.login-wrap {
+  background: var(--paper);
+}
+.login-card,
+.card,
+.panel,
+.skeleton-panel {
+  border: 0;
+  border-radius: 18px;
+  box-shadow:
+    10px 10px 22px var(--neo-dark),
+    -10px -10px 22px var(--neo-light);
+}
+input,
+select,
+textarea {
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    inset 4px 4px 9px var(--neo-dark),
+    inset -4px -4px 9px var(--neo-light);
+}
+button:not(.primary),
+.login-tab {
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    5px 5px 10px var(--neo-dark),
+    -5px -5px 10px var(--neo-light);
+  color: var(--ink);
+}
+button:not(.primary):active,
+.login-tab.active {
+  box-shadow:
+    inset 3px 3px 7px var(--neo-dark),
+    inset -3px -3px 7px var(--neo-light);
+}
+.primary {
+  background: var(--petrol);
+  color: #fff;
+  border-radius: 10px;
+  box-shadow:
+    5px 5px 10px var(--neo-dark),
+    -5px -5px 10px var(--neo-light);
+}
+.theme-toggle {
+  width: 100%;
+  margin-top: 16px;
+  padding: 9px;
+  font-size: 12px;
+}
+.theme-toggle--sidebar {
+  margin: 0 0 12px;
+  background: transparent;
+  color: inherit !important;
+  box-shadow:
+    3px 3px 7px #151b23,
+    -3px -3px 7px #2c3542 !important;
+}
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .topbar {
+  background: #171d26;
+}
+:root[data-theme="dark"] .sidebar {
+  color: var(--ink);
+}
+@media (max-width: 860px) {
+  .shell {
+    display: block;
+  }
+  .sidebar {
+    position: relative;
+    height: auto;
+    padding: 10px;
+  }
+  .sidebar .brand {
+    padding: 0 8px 10px;
+    border: 0;
+  }
+  .sidebar nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 4px 0 8px;
+  }
+  .sidebar nav a {
+    white-space: nowrap;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 8px;
+  }
+  .sidebar nav a.active {
+    border-bottom-color: var(--amber);
+  }
+  .sidebar .foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border: 0;
+  }
+  .sidebar .foot .small:first-child {
+    display: none;
+  }
+  .theme-toggle--sidebar {
+    width: auto;
+    margin: 0;
+  }
+  .content {
+    padding: 16px;
+  }
+}
