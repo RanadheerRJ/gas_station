@@ -3,6 +3,7 @@ import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import ChangePinPanel from "./ChangePinPanel.jsx";
 import { LogOutIcon, MoonIcon, StationIcon, SunIcon } from "./icons.jsx";
+import { APP_VERSION } from "../lib/version.js";
 
 const ROLE_LABEL = {
   admin: "role.admin",
@@ -94,6 +95,10 @@ export default function AccountPanel({ onDone, stationName = "" }) {
           </div>
         </section>
       )}
+
+      <div className="small muted" style={{ padding: "4px 12px 0" }}>
+        App version {APP_VERSION}
+      </div>
 
       <button
         type="button"
