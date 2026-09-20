@@ -10,6 +10,8 @@ import {
   addPump,
   getPrices,
   listPumps,
+  listTanks,
+  mapNozzleTank,
   readableError,
   setNozzleState,
   setPumpState,
@@ -36,6 +38,7 @@ export default function StationSetup() {
 
   const [pumps, setPumps] = useState([]);
   const [nozzles, setNozzles] = useState([]);
+  const [tanks, setTanks] = useState([]);
   const [priceRecords, setPriceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -54,9 +57,14 @@ export default function StationSetup() {
     if (!stationId) return;
     setLoading(true);
     try {
-      const [eq, pr] = await Promise.all([listPumps(stationId), getPrices(stationId)]);
+      const [eq, pr, stock] = await Promise.all([
+        listPumps(stationId),
+        getPrices(stationId),
+        listTanks(stationId),
+      ]);
       setPumps(eq.pumps);
       setNozzles(eq.nozzles);
+      setTanks(stock.tanks.filter((tank) => tank.state !== "retired"));
       setPriceRecords(pr);
       setRateDraft({});
       setError("");
@@ -407,6 +415,7 @@ export default function StationSetup() {
                           <tr>
                             <th>{t("shifts.nozzleCol")}</th>
                             <th>{t("shifts.fuel")}</th>
+                            <th>{t("setup.tankCol")}</th>
                             <th className="num">{t("setup.meterReading")}</th>
                             <th className="num">{t("shifts.price")}</th>
                             <th />
@@ -434,6 +443,46 @@ export default function StationSetup() {
                                   />
                                   {n.fuelType}
                                 </span>
+                              </td>
+                              <td>
+                                {(() => {
+                                  // Meter sales are posted to this tank at
+                                  // shift close; an unmapped nozzle blocks
+                                  // closing, so surface the gap loudly.
+                                  const options = tanks.filter(
+                                    (tank) =>
+                                      tank.fuelType.toLowerCase() ===
+                                      n.fuelType.toLowerCase()
+                                  );
+                                  if (options.length === 0) {
+                                    return (
+                                      <span className="tag rust">
+                                        {t("setup.noTankForFuel")}
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <select
+                                      value={n.tankId || ""}
+                                      disabled={busy}
+                                      onChange={(e) =>
+                                        e.target.value &&
+                                        run(() =>
+                                          mapNozzleTank(stationId, n.id, e.target.value)
+                                        )
+                                      }
+                                    >
+                                      {!n.tankId && (
+                                        <option value="">{t("setup.pickTank")}</option>
+                                      )}
+                                      {options.map((tank) => (
+                                        <option key={tank.id} value={tank.id}>
+                                          {tank.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  );
+                                })()}
                               </td>
                               <td className="num mono">{money(n.lastReading)}</td>
                               <td className="num mono">
