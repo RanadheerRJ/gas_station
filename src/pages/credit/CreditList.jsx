@@ -28,8 +28,14 @@ export function creditBase(role) {
 export default function CreditList() {
   const { t } = useLanguage();
   const { profile } = useAuth();
-  const { stations, station, stationId, setStation, link, loading: stationsLoading } =
-    useStation();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    link,
+    loading: stationsLoading,
+  } = useStation();
   const base = creditBase(profile.role);
 
   const [customers, setCustomers] = useState([]);

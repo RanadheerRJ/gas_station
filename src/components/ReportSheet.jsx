@@ -19,7 +19,10 @@ export default function ReportSheet({ report, title, stationName, buildReport, n
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState(() => defaultRange());
 
-  const built = useMemo(() => (open ? buildReport(range) : null), [open, buildReport, range]);
+  const built = useMemo(
+    () => (open ? buildReport(range) : null),
+    [open, buildReport, range]
+  );
   const rowCount = built ? built.rows.length : 0;
 
   return (

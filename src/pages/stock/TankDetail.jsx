@@ -126,7 +126,9 @@ export default function TankDetail() {
               {tank.temperatureC == null ? (
                 <span>{t("stock.noTemperature")}</span>
               ) : (
-                <span className={`temp-chip${num(tank.temperatureC) > 35 ? " warm" : ""}`}>
+                <span
+                  className={`temp-chip${num(tank.temperatureC) > 35 ? " warm" : ""}`}
+                >
                   {num(tank.temperatureC).toFixed(1)} °C
                 </span>
               )}

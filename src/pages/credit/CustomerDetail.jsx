@@ -27,7 +27,12 @@ export default function CustomerDetail() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tx, setTx] = useState({ type: "credit", amount: "", note: "", date: todayISO() });
+  const [tx, setTx] = useState({
+    type: "credit",
+    amount: "",
+    note: "",
+    date: todayISO(),
+  });
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -113,7 +118,9 @@ export default function CustomerDetail() {
         {runError && <Notice kind="error">{runError}</Notice>}
 
         {/* ---- the balance ---- */}
-        <section className={`card balance-hero${balance > 0 ? " balance-hero--due" : ""}`}>
+        <section
+          className={`card balance-hero${balance > 0 ? " balance-hero--due" : ""}`}
+        >
           <span className="k">{t("credit.balanceIs")}</span>
           <span className="v mono">₹ {money(balance)}</span>
           {balance > 0 ? (
@@ -128,12 +135,19 @@ export default function CustomerDetail() {
           <div className="card__head">
             <h2>{t("credit.recordTransaction")}</h2>
           </div>
-          <form id="customer-tx-form" className="stack" style={{ gap: 14 }} onSubmit={submit}>
+          <form
+            id="customer-tx-form"
+            className="stack"
+            style={{ gap: 14 }}
+            onSubmit={submit}
+          >
             <div className="form-grid">
               <Field label={t("common.type")}>
                 <select
                   value={tx.type}
-                  onChange={(e) => setTx((current) => ({ ...current, type: e.target.value }))}
+                  onChange={(e) =>
+                    setTx((current) => ({ ...current, type: e.target.value }))
+                  }
                 >
                   <option value="credit">{t("credit.creditGivenOption")}</option>
                   <option value="payment">{t("credit.paymentReceived")}</option>
@@ -145,7 +159,9 @@ export default function CustomerDetail() {
                   className="mono"
                   value={tx.date}
                   max={todayISO()}
-                  onChange={(e) => setTx((current) => ({ ...current, date: e.target.value }))}
+                  onChange={(e) =>
+                    setTx((current) => ({ ...current, date: e.target.value }))
+                  }
                 />
               </Field>
               <Field label={t("common.amount")}>
@@ -154,14 +170,18 @@ export default function CustomerDetail() {
                   inputMode="decimal"
                   style={{ textAlign: "right" }}
                   value={tx.amount}
-                  onChange={(e) => setTx((current) => ({ ...current, amount: e.target.value }))}
+                  onChange={(e) =>
+                    setTx((current) => ({ ...current, amount: e.target.value }))
+                  }
                   placeholder="0.00"
                 />
               </Field>
               <Field label={t("common.note")} hint={t("common.optional")}>
                 <input
                   value={tx.note}
-                  onChange={(e) => setTx((current) => ({ ...current, note: e.target.value }))}
+                  onChange={(e) =>
+                    setTx((current) => ({ ...current, note: e.target.value }))
+                  }
                   placeholder="Diesel 200L / NEFT"
                 />
               </Field>
@@ -191,13 +211,14 @@ export default function CustomerDetail() {
                 {(() => {
                   let running = 0;
                   return transactions.map((row, index) => {
-                    running +=
-                      row.type === "credit" ? num(row.amount) : -num(row.amount);
+                    running += row.type === "credit" ? num(row.amount) : -num(row.amount);
                     return (
                       <tr key={index}>
                         <td className="mono small">{formatDate(row.date)}</td>
                         <td>
-                          <span className={`tag ${row.type === "credit" ? "rust" : "green"}`}>
+                          <span
+                            className={`tag ${row.type === "credit" ? "rust" : "green"}`}
+                          >
                             {row.type === "credit"
                               ? t("credit.creditGivenOption")
                               : t("credit.paymentReceived")}

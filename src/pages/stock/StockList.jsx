@@ -33,8 +33,14 @@ export function stockBase(role) {
 export default function StockList() {
   const { t, tn } = useLanguage();
   const { profile } = useAuth();
-  const { stations, station, stationId, setStation, link, loading: stationsLoading } =
-    useStation();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    link,
+    loading: stationsLoading,
+  } = useStation();
   const base = stockBase(profile.role);
   const isOwner = profile.role === "owner";
 
@@ -111,7 +117,11 @@ export default function StockList() {
     <>
       <ScreenHeader
         title={t("stock.title")}
-        sub={station ? `${station.name} · ${tn(tanks.length, "stock.tank", "stock.tanks")}` : ""}
+        sub={
+          station
+            ? `${station.name} · ${tn(tanks.length, "stock.tank", "stock.tanks")}`
+            : ""
+        }
         filter={
           <StationFilter stations={stations} value={stationId} onChange={setStation} />
         }
@@ -176,7 +186,9 @@ export default function StockList() {
                     <TankVessel tank={tank} />
                     <div className="tank-card__body">
                       <div className="tank-card__name">
-                        <span className={`fuel-dot fuel-dot--${fuelClass(tank.fuelType)}`} />
+                        <span
+                          className={`fuel-dot fuel-dot--${fuelClass(tank.fuelType)}`}
+                        />
                         {tank.name}
                       </div>
                       <div className="tank-card__fuel">{tank.fuelType}</div>

@@ -136,9 +136,7 @@ export default function ExpensesSheet({ open, onClose, shift, stationId, onChang
             />
           </label>
           <label className="field">
-            <span>
-              {t("common.amount")} · ₹
-            </span>
+            <span>{t("common.amount")} · ₹</span>
             <input
               className={`mono ${amountShake}`.trim()}
               inputMode="decimal"
@@ -152,12 +150,7 @@ export default function ExpensesSheet({ open, onClose, shift, stationId, onChang
           </label>
         </div>
 
-        <button
-          type="button"
-          className="cta"
-          disabled={busy || !ready}
-          onClick={submit}
-        >
+        <button type="button" className="cta" disabled={busy || !ready} onClick={submit}>
           {busy ? t("common.saving") : t("shifts.addExpense")}
         </button>
       </div>

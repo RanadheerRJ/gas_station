@@ -95,10 +95,7 @@ export default function Layout() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const { tabs, more } = useMemo(
-    () => destinationsFor(profile?.role),
-    [profile?.role]
-  );
+  const { tabs, more } = useMemo(() => destinationsFor(profile?.role), [profile?.role]);
   // Tab switches fade rather than slide — sliding on a lateral move reads as
   // a new stack being pushed, which a tab bar never is.
   const tabPaths = useMemo(() => tabs.map((tab) => tab.to), [tabs]);

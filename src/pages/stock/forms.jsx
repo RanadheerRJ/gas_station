@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { Field, Notice, Stat } from "../../components/ui.jsx";
-import { tankStatus, validateDip, TEMP_RANGE, REFERENCE_TEMP_C } from "../../lib/tankMath";
+import {
+  tankStatus,
+  validateDip,
+  TEMP_RANGE,
+  REFERENCE_TEMP_C,
+} from "../../lib/tankMath";
 import { money, num } from "../../lib/format";
 import { FUEL_TYPES } from "../../lib/fuel.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";

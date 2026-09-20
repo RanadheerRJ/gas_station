@@ -34,6 +34,24 @@ function spaFallback() {
 export default defineConfig({
   base,
   plugins: [react(), spaFallback()],
+  build: {
+    rollupOptions: {
+      output: {
+        /**
+         * Split third-party code from the app. The framework stack
+         * (React, Router) and the Supabase client each churn on their own
+         * release cadence, so keeping them in separate content-hashed
+         * chunks means an app-only change re-downloads neither — and no
+         * single bundle trips the 500 kB warning.
+         */
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@supabase")) return "supabase";
+          return "vendor";
+        },
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,

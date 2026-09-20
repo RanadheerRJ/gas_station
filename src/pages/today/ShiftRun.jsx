@@ -128,9 +128,7 @@ export default function ShiftRun() {
           <div>
             {shift.nozzles.map((nozzle) => (
               <div key={nozzle.nozzleId} className="reading-row">
-                <span
-                  className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
-                />
+                <span className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`} />
                 <span className="reading-row__label">{nozzle.label}</span>
                 <span className="muted small">{nozzle.fuelType}</span>
                 <span className="reading-row__value mono">

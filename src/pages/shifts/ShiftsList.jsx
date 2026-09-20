@@ -28,8 +28,14 @@ export default function ShiftsList() {
   const { t, tn } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { stations, station, stationId, setStation, link, loading: stationsLoading } =
-    useStation();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    link,
+    loading: stationsLoading,
+  } = useStation();
   const paths = shiftPaths(profile.role);
 
   const [shifts, setShifts] = useState([]);
@@ -137,11 +143,7 @@ export default function ShiftsList() {
                         <div className="open-card__name">{shift.employeeName}</div>
                         <div className="small muted">
                           {t("shifts.started")} {formatStamp(shift.startTime)} ·{" "}
-                          {tn(
-                            shift.nozzles.length,
-                            "shifts.nozzle",
-                            "shifts.nozzles"
-                          )}
+                          {tn(shift.nozzles.length, "shifts.nozzle", "shifts.nozzles")}
                         </div>
                       </div>
                       <span className="open-card__nozzles">
@@ -209,9 +211,7 @@ export default function ShiftsList() {
                         <div className="list-card__row list-card__row--figures">
                           <span className="list-card__figure">
                             <span className="k">{t("shifts.litres")}</span>
-                            <span className="v mono">
-                              {money(totals.totalLitres)} L
-                            </span>
+                            <span className="v mono">{money(totals.totalLitres)} L</span>
                           </span>
                           <span className="list-card__figure">
                             <span className="k">{t("shifts.net")}</span>

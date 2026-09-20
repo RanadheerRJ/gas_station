@@ -48,7 +48,13 @@ export default function CloseShift() {
 
   const [closings, setClosings] = useState({});
   const [creditSales, setCreditSales] = useState([]);
-  const [payments, setPayments] = useState({ cash: "", card: "", upi: "", credit: "", other: "" });
+  const [payments, setPayments] = useState({
+    cash: "",
+    card: "",
+    upi: "",
+    credit: "",
+    other: "",
+  });
   const [testing, setTesting] = useState({ MS: "", HSD: "" });
   const [note, setNote] = useState("");
   const [problems, setProblems] = useState([]);
@@ -117,7 +123,8 @@ export default function CloseShift() {
   }, [creditTotal]);
 
   const visibleModes = useMemo(
-    () => (canEnterCredit ? PAYMENT_MODES : PAYMENT_MODES.filter((mode) => mode !== "credit")),
+    () =>
+      canEnterCredit ? PAYMENT_MODES : PAYMENT_MODES.filter((mode) => mode !== "credit"),
     [canEnterCredit]
   );
 

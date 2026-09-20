@@ -47,7 +47,8 @@ export default function TodayHistory() {
   }, [load]);
 
   const mine = useMemo(
-    () => scopeShiftsToViewer(shifts, profile).filter((s) => s.status !== SHIFT_STATUS.OPEN),
+    () =>
+      scopeShiftsToViewer(shifts, profile).filter((s) => s.status !== SHIFT_STATUS.OPEN),
     [shifts, profile]
   );
 
@@ -76,7 +77,15 @@ export default function TodayHistory() {
       <ScreenHeader
         title={t("history.title")}
         sub={station ? station.name : ""}
-        actions={<ReportSheet report="shifts" title="Shifts" stationName={station?.name || ""} buildReport={buildReport} note={t("report.scopedToYou")} />}
+        actions={
+          <ReportSheet
+            report="shifts"
+            title="Shifts"
+            stationName={station?.name || ""}
+            buildReport={buildReport}
+            note={t("report.scopedToYou")}
+          />
+        }
       />
       <div className="content stack">
         {error && <Notice kind="error">{error}</Notice>}

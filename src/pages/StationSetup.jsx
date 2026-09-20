@@ -26,8 +26,13 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 export default function StationSetup() {
   const { t, tn } = useLanguage();
   const { profile } = useAuth();
-  const { stations, station, stationId, setStation, loading: stationsLoading } =
-    useStation();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    loading: stationsLoading,
+  } = useStation();
 
   const [pumps, setPumps] = useState([]);
   const [nozzles, setNozzles] = useState([]);

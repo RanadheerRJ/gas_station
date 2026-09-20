@@ -6,12 +6,7 @@ import { LoadingPanels } from "../../components/motion.jsx";
 import { ChevronIcon, PumpIcon } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
-import {
-  listNozzleOccupancy,
-  listPumps,
-  listShifts,
-  readableError,
-} from "../../lib/api";
+import { listNozzleOccupancy, listPumps, listShifts, readableError } from "../../lib/api";
 import { formatStamp, money, todayISO } from "../../lib/format";
 import {
   SHIFT_STATUS,
@@ -120,10 +115,7 @@ export default function TodayHome() {
 
   return (
     <>
-      <ScreenHeader
-        title={t("today.title")}
-        sub={station ? station.name : ""}
-      />
+      <ScreenHeader title={t("today.title")} sub={station ? station.name : ""} />
       <div className="content stack">
         {error && <Notice kind="error">{error}</Notice>}
 
@@ -210,11 +202,7 @@ export default function TodayHome() {
                 {pumps.length === 0
                   ? t("shifts.noPumps")
                   : freeNozzleCount > 0
-                    ? tn(
-                        freeNozzleCount,
-                        "today.freeNozzleOne",
-                        "today.freeNozzles"
-                      )
+                    ? tn(freeNozzleCount, "today.freeNozzleOne", "today.freeNozzles")
                     : t("today.allBusy")}
               </p>
             </div>

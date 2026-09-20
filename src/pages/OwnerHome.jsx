@@ -7,12 +7,7 @@ import { ChevronIcon, PlusIcon } from "../components/icons.jsx";
 import Sheet from "../components/Sheet.jsx";
 import { useStations } from "../state/useStations.js";
 import { useRunner } from "../state/useRunner.js";
-import {
-  addStation,
-  listCustomers,
-  listShifts,
-  setStationState,
-} from "../lib/api";
+import { addStation, listCustomers, listShifts, setStationState } from "../lib/api";
 import { money, todayISO } from "../lib/format";
 import { SHIFT_STATUS, shiftTotals, varianceTone } from "../lib/shiftMath";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -204,7 +199,9 @@ export default function OwnerHome() {
 
                       <div className="station-card__meta">
                         {summary?.openShifts > 0 ? (
-                          <span className="tag">{t("owner.openCount", { count: summary.openShifts })}</span>
+                          <span className="tag">
+                            {t("owner.openCount", { count: summary.openShifts })}
+                          </span>
                         ) : summary?.closedToday > 0 ? (
                           <span className="tag green">
                             {t("owner.closedCount", { count: summary.closedToday })}
@@ -213,7 +210,9 @@ export default function OwnerHome() {
                           <span className="tag rust">{t("owner.noneToday")}</span>
                         )}
                         {summary?.pending > 0 && (
-                          <span className="tag">{t("owner.toReview", { count: summary.pending })}</span>
+                          <span className="tag">
+                            {t("owner.toReview", { count: summary.pending })}
+                          </span>
                         )}
                         {summary && varianceTone(summary.variance) === "neg" && (
                           <span className="tag rust">

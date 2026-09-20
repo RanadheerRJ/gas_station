@@ -126,10 +126,7 @@ export default function StartShift() {
   if (stationsLoading || loading) {
     return (
       <>
-        <ScreenHeader
-          title={t("shifts.startYours")}
-          back={{ to: paths.home }}
-        />
+        <ScreenHeader title={t("shifts.startYours")} back={{ to: paths.home }} />
         <div className="content">
           <LoadingPanels count={2} lines={3} label={t("common.loading")} />
         </div>

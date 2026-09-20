@@ -247,7 +247,9 @@ export default function OwnerStaff() {
         onClose={() => setResetting(null)}
         title={t("cred.settingFor", { name: resetting?.name || "" })}
       >
-        {resetting && <ResetPinPanel target={resetting} onDone={() => setResetting(null)} />}
+        {resetting && (
+          <ResetPinPanel target={resetting} onDone={() => setResetting(null)} />
+        )}
       </Sheet>
     </>
   );

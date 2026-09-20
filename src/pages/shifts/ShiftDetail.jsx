@@ -231,7 +231,9 @@ export function SettledShiftDetail({
                 <tr key={line.nozzleId}>
                   <td>
                     <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                      <span className={`fuel-dot fuel-dot--${fuelClass(line.fuelType)}`} />
+                      <span
+                        className={`fuel-dot fuel-dot--${fuelClass(line.fuelType)}`}
+                      />
                       {line.label}
                     </span>
                   </td>
@@ -426,7 +428,9 @@ export function SettledShiftDetail({
               <button
                 type="button"
                 className="small"
-                onClick={() => setExpenses((rows) => [...rows, { label: "", amount: "" }])}
+                onClick={() =>
+                  setExpenses((rows) => [...rows, { label: "", amount: "" }])
+                }
               >
                 {t("shifts.addExpense")}
               </button>
@@ -439,7 +443,9 @@ export function SettledShiftDetail({
                   style={{ textAlign: "right" }}
                   value={testing.MS}
                   placeholder="0.00"
-                  onChange={(e) => setTesting((prev) => ({ ...prev, MS: e.target.value }))}
+                  onChange={(e) =>
+                    setTesting((prev) => ({ ...prev, MS: e.target.value }))
+                  }
                 />
               </Field>
               <Field label={t("shifts.testingHsd")} hint="₹">
@@ -449,12 +455,19 @@ export function SettledShiftDetail({
                   style={{ textAlign: "right" }}
                   value={testing.HSD}
                   placeholder="0.00"
-                  onChange={(e) => setTesting((prev) => ({ ...prev, HSD: e.target.value }))}
+                  onChange={(e) =>
+                    setTesting((prev) => ({ ...prev, HSD: e.target.value }))
+                  }
                 />
               </Field>
             </div>
             <div className="row">
-              <button className="primary" type="button" disabled={busy} onClick={submitRevision}>
+              <button
+                className="primary"
+                type="button"
+                disabled={busy}
+                onClick={submitRevision}
+              >
                 {busy ? t("common.saving") : t("shifts.saveChanges")}
               </button>
               <button
@@ -462,7 +475,10 @@ export function SettledShiftDetail({
                 disabled={busy}
                 onClick={() => {
                   setExpenses(shift.expenses || []);
-                  setTesting({ MS: shift.testing?.MS ?? "", HSD: shift.testing?.HSD ?? "" });
+                  setTesting({
+                    MS: shift.testing?.MS ?? "",
+                    HSD: shift.testing?.HSD ?? "",
+                  });
                   setEditing(false);
                 }}
               >
@@ -544,7 +560,11 @@ export function SettledShiftDetail({
                   placeholder={t("shifts.whatNeedsCorrecting")}
                   onChange={(e) => setReason(e.target.value)}
                 />
-                <button type="button" disabled={busy || !reason.trim()} onClick={submitRejection}>
+                <button
+                  type="button"
+                  disabled={busy || !reason.trim()}
+                  onClick={submitRejection}
+                >
                   {t("common.confirm")}
                 </button>
               </div>
@@ -553,7 +573,11 @@ export function SettledShiftDetail({
               <span className="small muted action-bar__hint">
                 {t("shifts.approvingLocks", { amount: money(totals.handover) })}
               </span>
-              <button type="button" disabled={busy} onClick={() => setRejecting((v) => !v)}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setRejecting((v) => !v)}
+              >
                 {t("shifts.sendBack")}
               </button>
               <button

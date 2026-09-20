@@ -131,7 +131,9 @@ export default function LedgerDay() {
                     )}
                     className="reading-row"
                   >
-                    <span className={`fuel-dot fuel-dot--${fuelClass(totals.lines[0]?.fuelType)}`} />
+                    <span
+                      className={`fuel-dot fuel-dot--${fuelClass(totals.lines[0]?.fuelType)}`}
+                    />
                     <span className="reading-row__label">
                       {shift.employeeName}
                       <span className="muted small">{formatStamp(shift.endTime)}</span>
@@ -139,7 +141,9 @@ export default function LedgerDay() {
                     <span className="reading-row__value mono">
                       {money(totals.totalLitres)} L
                     </span>
-                    <span className="reading-row__price mono">₹ {money(totals.gross)}</span>
+                    <span className="reading-row__price mono">
+                      ₹ {money(totals.gross)}
+                    </span>
                   </Link>
                 ))}
               </div>

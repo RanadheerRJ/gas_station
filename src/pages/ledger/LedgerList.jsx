@@ -26,8 +26,14 @@ export function ledgerBase(role) {
  */
 export default function LedgerList() {
   const { t, tn } = useLanguage();
-  const { stations, station, stationId, setStation, link, loading: stationsLoading } =
-    useStation();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    link,
+    loading: stationsLoading,
+  } = useStation();
   const { profile } = useAuth();
 
   const [shifts, setShifts] = useState([]);
@@ -101,7 +107,10 @@ export default function LedgerList() {
 
   const buildReport = useCallback(
     (range) =>
-      ledgerReport({ days: filterByRange(days, range), stationName: station?.name || "" }),
+      ledgerReport({
+        days: filterByRange(days, range),
+        stationName: station?.name || "",
+      }),
     [days, station]
   );
 
@@ -204,4 +213,3 @@ export default function LedgerList() {
     </>
   );
 }
-
