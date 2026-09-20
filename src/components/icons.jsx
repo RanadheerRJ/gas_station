@@ -147,3 +147,168 @@ export function TankIcon(props) {
     </svg>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* App-shell icons: navigation, sheets, and the small affordances the  */
+/* consumer-style shell needs. Same 24-grid, same stroke weight.       */
+/* ------------------------------------------------------------------ */
+
+/** Home / today. */
+export function HomeIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 11l8-7 8 7" />
+      <path d="M6 9.5V20h12V9.5" />
+      <path d="M10 20v-6h4v6" />
+    </svg>
+  );
+}
+
+/** A receipt with lines, for shift history. */
+export function HistoryIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
+  );
+}
+
+/** A person, for the account tab and account button. */
+export function UserIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
+    </svg>
+  );
+}
+
+/** Dots in a rounded square, for the "More" tab. */
+export function MoreIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="8.2" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="15.8" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Right chevron, for tappable list rows. */
+export function ChevronIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+/** Left chevron, for back buttons. */
+export function BackIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}
+
+/** Plus, for add actions. */
+export function PlusIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+/** Check, for selected states. */
+export function CheckIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+/** Cross, for closing sheets. */
+export function CloseIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+/** An envelope, for the developer's invite screen. */
+export function MailIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
+    </svg>
+  );
+}
+
+/** Sign-out door. */
+export function LogOutIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8" />
+      <path d="M10 12h11" />
+      <path d="M17.5 8.5L21 12l-3.5 3.5" />
+    </svg>
+  );
+}
+
+/** Download tray, for exports. */
+export function DownloadIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 4v10" />
+      <path d="M8 10.5l4 4 4-4" />
+      <path d="M5 19h14" />
+    </svg>
+  );
+}
+
+/** A rising bar chart, for summaries. */
+export function ChartIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 20h16" />
+      <path d="M7 20v-6M12 20V8M17 20v-10" />
+    </svg>
+  );
+}
+
+/** Sun, for switching to the light theme. */
+export function SunIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M18.8 5.2l-1.7 1.7M6.9 17.1l-1.7 1.7" />
+    </svg>
+  );
+}
+
+/** Moon, for switching to the dark theme. */
+export function MoonIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M20 13.5A8 8 0 0 1 10.5 4a8 8 0 1 0 9.5 9.5z" />
+    </svg>
+  );
+}
+
+/** A globe, for the language control. */
+export function GlobeIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17" />
+      <path d="M12 3.5c2.6 2.3 3.9 5.1 3.9 8.5s-1.3 6.2-3.9 8.5c-2.6-2.3-3.9-5.1-3.9-8.5s1.3-6.2 3.9-8.5z" />
+    </svg>
+  );
+}

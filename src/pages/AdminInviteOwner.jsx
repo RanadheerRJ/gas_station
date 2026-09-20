@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { PageHeader } from "../components/Layout";
+import { ScreenHeader } from "../components/Layout.jsx";
 import { CredentialPanel, Empty, Field, Notice, Panel } from "../components/ui";
 import PinField, { pinReady } from "../components/PinField";
 import ResetPinPanel from "../components/ResetPinPanel";
@@ -79,7 +79,7 @@ export default function AdminInviteOwner() {
 
   return (
     <>
-      <PageHeader title={t("admin.title")} sub={t("admin.subtitle")} />
+      <ScreenHeader title={t("admin.title")} sub={t("admin.subtitle")} />
       <div className="content stack" style={{ maxWidth: 780 }}>
         {credentials && (
           <Panel title={t("admin.newOwnerCredentials")}>

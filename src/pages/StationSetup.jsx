@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { PageHeader } from "../components/Layout";
+import { ScreenHeader } from "../components/Layout.jsx";
 import { Empty, Field, Notice, Panel } from "../components/ui";
-import StationPicker from "../components/StationPicker";
+import StationFilter from "../components/StationFilter";
 import { NozzleIcon, PumpIcon, RateIcon, GaugeIcon } from "../components/icons";
 import { useAuth } from "../state/AuthContext";
-import { useStations } from "../state/useStations";
+import { useStation } from "../state/useStation";
 import {
   addNozzle,
   addPump,
@@ -17,7 +16,7 @@ import {
   setPrice as apiSetPrice,
 } from "../lib/api";
 import { activePrices } from "../lib/shiftMath";
-import { fuelClass } from "./Shifts";
+import { fuelClass } from "../lib/fuel.js";
 import { formatStamp, money, num } from "../lib/format";
 import { LoadingPanels } from "../components/motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -27,10 +26,14 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Premium Petrol", "CNG"];
 export default function StationSetup() {
   const { t, tn } = useLanguage();
   const { profile } = useAuth();
-  const { stations, loading: stationsLoading } = useStations();
-  const [params, setParams] = useSearchParams();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    loading: stationsLoading,
+  } = useStation();
 
-  const [stationId, setStationId] = useState("");
   const [pumps, setPumps] = useState([]);
   const [nozzles, setNozzles] = useState([]);
   const [priceRecords, setPriceRecords] = useState([]);
@@ -46,13 +49,6 @@ export default function StationSetup() {
     openingReading: "",
   });
   const [rateDraft, setRateDraft] = useState({});
-
-  useEffect(() => {
-    if (stations.length === 0) return;
-    const wanted = params.get("station");
-    const valid = stations.find((s) => s.id === wanted);
-    setStationId(valid ? valid.id : stations[0].id);
-  }, [stations, params]);
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -91,12 +87,11 @@ export default function StationSetup() {
   // Only fuels actually dispensed here need a price.
   const activeFuels = [...new Set(nozzles.map((n) => n.fuelType))];
   const active = activePrices(priceRecords);
-  const station = stations.find((s) => s.id === stationId);
 
   if (stationsLoading) {
     return (
       <>
-        <PageHeader title={t("setup.shortTitle")} />
+        <ScreenHeader title={t("setup.shortTitle")} />
         <div className="content">
           <LoadingPanels count={1} lines={2} />
         </div>
@@ -106,25 +101,18 @@ export default function StationSetup() {
 
   return (
     <>
-      <PageHeader
+      <ScreenHeader
         title={t("setup.title")}
         sub={
           station
             ? `${station.name} · ${tn(nozzles.length, "setup.nozzleCountOne", "setup.nozzleCount")}`
             : ""
         }
+        filter={
+          <StationFilter stations={stations} value={stationId} onChange={setStation} />
+        }
       />
       <div className="content stack">
-        {stations.length > 1 && (
-          <Panel title={t("common.station")}>
-            <StationPicker
-              stations={stations}
-              value={stationId}
-              onChange={(id) => setParams({ station: id })}
-            />
-          </Panel>
-        )}
-
         {error && <Notice kind="error">{error}</Notice>}
 
         {/* ---------------- prices ---------------- */}

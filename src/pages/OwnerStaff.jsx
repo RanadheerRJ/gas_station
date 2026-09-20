@@ -1,15 +1,22 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { PageHeader } from "../components/Layout";
-import { CredentialPanel, Empty, Field, Notice, Panel } from "../components/ui";
+import { ScreenHeader } from "../components/Layout.jsx";
+import { CredentialPanel, Field, Notice } from "../components/ui.jsx";
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import PinField, { pinReady } from "../components/PinField";
 import ResetPinPanel from "../components/ResetPinPanel";
+import Sheet from "../components/Sheet.jsx";
+import { PlusIcon } from "../components/icons.jsx";
 import { createStaff, listStaff, readableError } from "../lib/api";
 import { formatStamp } from "../lib/format";
 import { LoadingPanels } from "../components/motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
+/**
+ * Staff & access (in the owner's "More"): the roster as the screen, and both
+ * of its write actions — creating a login and resetting a PIN — in sheets,
+ * where their short-lived results (the raw PIN) live and die.
+ */
 export default function OwnerStaff() {
   const { t } = useLanguage();
   const { profile } = useAuth();
@@ -27,6 +34,7 @@ export default function OwnerStaff() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [resetting, setResetting] = useState(null);
 
   const load = useCallback(async () => {
@@ -78,21 +86,97 @@ export default function OwnerStaff() {
 
   return (
     <>
-      <PageHeader title={t("staff.title")} sub={t("staff.subtitle")} />
+      <ScreenHeader
+        title={t("staff.title")}
+        sub={t("staff.subtitle")}
+        actions={
+          <button
+            type="button"
+            className="tool-btn tool-btn--primary"
+            onClick={() => setInviteOpen(true)}
+          >
+            <PlusIcon size={16} />
+            {t("staff.createLogin")}
+          </button>
+        }
+      />
       <div className="content stack">
-        {credentials && (
-          <Panel title={t("staff.newCredentials")}>
-            <CredentialPanel
-              username={credentials.username}
-              pin={credentials.pin}
-              subject={credentials.subject}
-              onDismiss={() => setCredentials(null)}
-            />
-          </Panel>
+        {loading ? (
+          <LoadingPanels count={2} lines={3} label={t("common.loading")} />
+        ) : staff.length === 0 ? (
+          <div className="empty-card">
+            <h2>{t("staff.none")}</h2>
+          </div>
+        ) : (
+          <section className="card card--flush">
+            <div className="card__head">
+              <h2>{t("staff.existing")}</h2>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("common.name")}</th>
+                  <th>{t("staff.username")}</th>
+                  <th>{t("common.phone")}</th>
+                  <th>{t("staff.role")}</th>
+                  <th>{t("common.station")}</th>
+                  <th>{t("staff.created")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {staff.map((member) => (
+                  <Fragment key={member.uid}>
+                    <tr>
+                      <td style={{ fontWeight: 500 }}>{member.name}</td>
+                      <td className="mono">{member.username}</td>
+                      <td className="mono small">{member.phone}</td>
+                      <td>{t(`role.${member.role}`)}</td>
+                      <td>{stationName((member.stationIds || [])[0])}</td>
+                      <td className="small muted">{formatStamp(member.createdAt)}</td>
+                      <td className="num">
+                        <button
+                          type="button"
+                          className="quiet"
+                          onClick={() => setResetting(member)}
+                        >
+                          {t("staff.resetPin")}
+                        </button>
+                      </td>
+                    </tr>
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </section>
         )}
+      </div>
 
-        <Panel title={t("staff.inviteTitle")} note={t("staff.inviteNote")}>
-          <form className="stack" onSubmit={submit}>
+      {/* ---- create a login ---- */}
+      <Sheet
+        open={inviteOpen}
+        onClose={() => {
+          setInviteOpen(false);
+          setCredentials(null);
+        }}
+        title={t("staff.inviteTitle")}
+        wide
+      >
+        {credentials ? (
+          <CredentialPanel
+            username={credentials.username}
+            pin={credentials.pin}
+            subject={credentials.subject}
+            onDismiss={() => {
+              setCredentials(null);
+              setInviteOpen(false);
+            }}
+          />
+        ) : (
+          <form className="stack" style={{ gap: 14 }} onSubmit={submit}>
+            <p className="small muted" style={{ margin: 0 }}>
+              {t("staff.inviteNote")}
+            </p>
             <div className="form-grid">
               <Field label={t("common.name")}>
                 <input
@@ -140,76 +224,33 @@ export default function OwnerStaff() {
               />
             </div>
             {error && <Notice kind="error">{error}</Notice>}
-            <div>
-              <button
-                className="primary"
-                type="submit"
-                disabled={
-                  busy ||
-                  !form.name.trim() ||
-                  !form.phone.trim() ||
-                  !form.stationId ||
-                  !pinReady(form.pin, form.confirmPin)
-                }
-              >
-                {busy ? t("staff.creating") : t("staff.createLogin")}
-              </button>
-            </div>
+            <button
+              className="cta"
+              type="submit"
+              disabled={
+                busy ||
+                !form.name.trim() ||
+                !form.phone.trim() ||
+                !form.stationId ||
+                !pinReady(form.pin, form.confirmPin)
+              }
+            >
+              {busy ? t("staff.creating") : t("staff.createLogin")}
+            </button>
           </form>
-        </Panel>
+        )}
+      </Sheet>
 
-        <Panel title={t("staff.existing")} flush>
-          {loading ? (
-            <LoadingPanels count={2} lines={3} label={t("common.loading")} />
-          ) : staff.length === 0 ? (
-            <Empty>{t("staff.none")}</Empty>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>{t("common.name")}</th>
-                  <th>{t("staff.username")}</th>
-                  <th>{t("common.phone")}</th>
-                  <th>{t("staff.role")}</th>
-                  <th>{t("common.station")}</th>
-                  <th>{t("staff.created")}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((s) => (
-                  <Fragment key={s.uid}>
-                    <tr>
-                      <td style={{ fontWeight: 500 }}>{s.name}</td>
-                      <td className="mono">{s.username}</td>
-                      <td className="mono small">{s.phone}</td>
-                      <td>{t(`role.${s.role}`)}</td>
-                      <td>{stationName((s.stationIds || [])[0])}</td>
-                      <td className="small muted">{formatStamp(s.createdAt)}</td>
-                      <td className="num">
-                        <button
-                          type="button"
-                          className="quiet"
-                          onClick={() => setResetting(resetting === s.uid ? null : s.uid)}
-                        >
-                          {resetting === s.uid ? t("common.cancel") : t("staff.resetPin")}
-                        </button>
-                      </td>
-                    </tr>
-                    {resetting === s.uid && (
-                      <tr>
-                        <td colSpan={7} style={{ background: "var(--surface-sunken)" }}>
-                          <ResetPinPanel target={s} onDone={() => setResetting(null)} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Panel>
-      </div>
+      {/* ---- reset a PIN ---- */}
+      <Sheet
+        open={!!resetting}
+        onClose={() => setResetting(null)}
+        title={t("cred.settingFor", { name: resetting?.name || "" })}
+      >
+        {resetting && (
+          <ResetPinPanel target={resetting} onDone={() => setResetting(null)} />
+        )}
+      </Sheet>
     </>
   );
 }
