@@ -132,12 +132,14 @@ describe("the app boots for every role", () => {
     ["owner setup", "owner", "/owner/setup"],
     ["owner stock", "owner", "/owner/stock"],
     ["owner ledger", "owner", "/owner/ledger"],
+    ["owner reports", "owner", "/owner/reports"],
     ["owner credit", "owner", "/owner/credit"],
     ["owner staff", "owner", "/owner/staff"],
     ["manager shifts", "manager", "/station"],
     ["manager start shift", "manager", "/station/start"],
     ["manager stock", "manager", "/station/stock"],
     ["manager ledger", "manager", "/station/ledger"],
+    ["manager reports", "manager", "/station/reports"],
     ["manager credit", "manager", "/station/credit"],
     ["manager staff", "manager", "/station/staff"],
     ["attendant today", "attendant", "/today"],
@@ -160,6 +162,9 @@ describe("detail routes degrade honestly without data", () => {
     ["empty ledger day", "owner", "/owner/ledger/2026-09-19"],
     ["missing manager shift", "manager", "/station/shift/nope"],
     ["missing attendant shift", "attendant", "/today/shift/nope"],
+    ["missing close target", "owner", "/owner/shifts/nope/close"],
+    ["missing manager close target", "manager", "/station/shift/nope/close"],
+    ["missing attendant close target", "attendant", "/today/shift/nope/close"],
   ];
 
   it.each(cases)("%s (%s at %s)", async (_label, role, route) => {

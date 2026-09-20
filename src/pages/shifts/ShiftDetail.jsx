@@ -78,7 +78,7 @@ export default function ShiftDetail() {
   // Attendants reach a settled shift from their history list; managers and
   // owners from the shifts list. Either way, the back arrow points at the
   // list that led here.
-  const back = link(paths.list ?? paths.history);
+  const back = link(paths.list);
 
   if (stationsLoading || loading) {
     return (

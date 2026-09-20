@@ -16,6 +16,7 @@ import ShiftDetail from "./pages/shifts/ShiftDetail.jsx";
 import CloseShift from "./pages/shifts/CloseShift.jsx";
 import LedgerList from "./pages/ledger/LedgerList.jsx";
 import LedgerDay from "./pages/ledger/LedgerDay.jsx";
+import Reports from "./pages/reports/Reports.jsx";
 import StockList from "./pages/stock/StockList.jsx";
 import TankDetail from "./pages/stock/TankDetail.jsx";
 import CreditList from "./pages/credit/CreditList.jsx";
@@ -174,6 +175,14 @@ export default function App() {
           }
         />
         <Route
+          path="/owner/reports"
+          element={
+            <Protect roles={["owner"]}>
+              <Reports />
+            </Protect>
+          }
+        />
+        <Route
           path="/owner/credit"
           element={
             <Protect roles={["owner"]}>
@@ -260,6 +269,14 @@ export default function App() {
           element={
             <Protect roles={["manager"]}>
               <LedgerDay />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/reports"
+          element={
+            <Protect roles={["manager"]}>
+              <Reports />
             </Protect>
           }
         />

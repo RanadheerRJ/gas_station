@@ -8,6 +8,7 @@ import {
 } from "../../lib/tankMath";
 import { money, num } from "../../lib/format";
 import { FUEL_TYPES } from "../../lib/fuel.js";
+import { useDraft } from "../../state/useDraft.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
@@ -95,7 +96,9 @@ export function AddTankForm({ onSubmit, onCancel, busy, existing }) {
  */
 export function DipForm({ tank, onSubmit }) {
   const { t } = useLanguage();
-  const [form, setForm] = useState({
+  // A dip is read off a wet stick at the tank — draft it per tank so a
+  // failed save or a dead phone doesn't send anyone back out with the stick.
+  const [form, setForm] = useDraft(`dip:${tank.id}`, {
     stockLitres: "",
     temperatureC: "",
     waterCm: "",
@@ -213,7 +216,9 @@ export function DipForm({ tank, onSubmit }) {
 /** Book a tanker in. Ullage is checked before anything is written. */
 export function DeliveryForm({ tank, onSubmit }) {
   const { t } = useLanguage();
-  const [form, setForm] = useState({
+  // Invoice number and arrival temperature come off the tanker's paperwork
+  // — draft them per tank so a failed booking doesn't lose the transcription.
+  const [form, setForm] = useDraft(`delivery:${tank.id}`, {
     litres: "",
     temperatureC: "",
     invoice: "",
