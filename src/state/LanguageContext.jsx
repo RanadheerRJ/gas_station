@@ -22,12 +22,16 @@ import { DICTIONARIES, LANGUAGES, LANGUAGE_NAMES } from "./translations.js";
  */
 
 const LanguageContext = createContext(null);
-const KEY = "pumpmithra.language";
+const KEY = "petrav.language";
+/* Devices upgraded from the pre-rename build keep their saved language
+   under the old key; read it until the new one is written. */
+const LEGACY_KEY = "pumpmithra.language";
 export const DEFAULT_LANGUAGE = "en";
 
 function preferredLanguage() {
   if (typeof window === "undefined") return DEFAULT_LANGUAGE;
-  const saved = window.localStorage?.getItem(KEY);
+  let saved = window.localStorage?.getItem(KEY);
+  if (saved == null) saved = window.localStorage?.getItem(LEGACY_KEY);
   if (LANGUAGES.includes(saved)) return saved;
   // A device already set to Telugu or Hindi should not have to be told twice.
   const browser = String(window.navigator?.language || "").slice(0, 2);

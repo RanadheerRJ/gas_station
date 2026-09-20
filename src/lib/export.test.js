@@ -112,7 +112,7 @@ describe("reportFilename", () => {
         from: "2026-09-01",
         to: "2026-09-19",
       })
-    ).toBe("pumpmithra-shifts-cityctr-2026-09-01_2026-09-19.csv");
+    ).toBe("petrav-shifts-cityctr-2026-09-01_2026-09-19.csv");
   });
 
   it("honours the requested extension", () => {
@@ -124,7 +124,7 @@ describe("reportFilename", () => {
         to: "2026-01-31",
         extension: "pdf",
       })
-    ).toBe("pumpmithra-ledger-riversidefuel-2026-01-01_2026-01-31.pdf");
+    ).toBe("petrav-ledger-riversidefuel-2026-01-01_2026-01-31.pdf");
   });
 
   it("never collides between two stations over the same window", () => {

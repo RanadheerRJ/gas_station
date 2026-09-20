@@ -5,6 +5,7 @@ import { watchConnection } from "../lib/pwa";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import { useRouteTransition } from "./motion.jsx";
+import { PetravLockup } from "./branding.jsx";
 import Sheet from "./Sheet.jsx";
 import AccountPanel from "./AccountPanel.jsx";
 import {
@@ -119,14 +120,7 @@ export default function Layout() {
     >
       {/* Mobile top bar: brand at a glance, account one tap away. */}
       <header className="appbar">
-        <div className="brand-lockup">
-          <img
-            src={`${import.meta.env.BASE_URL}logo.svg`}
-            alt=""
-            className="brand-logo"
-          />
-          <div className="mark">PUMPMITHRA</div>
-        </div>
+        <PetravLockup markSize={26} wordHeight={15} />
         <button
           type="button"
           className="appbar__account"
@@ -140,14 +134,7 @@ export default function Layout() {
       {/* Desktop: the persistent side nav, unchanged in role, changed in icon. */}
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-lockup">
-            <img
-              src={`${import.meta.env.BASE_URL}logo.svg`}
-              alt=""
-              className="brand-logo"
-            />
-            <div className="mark">PUMPMITHRA</div>
-          </div>
+          <PetravLockup markSize={28} wordHeight={16} />
           <div className="who">
             <span className="who__name">{profile.name}</span>
             <span className={`role-pill role-pill--${profile.role}`}>
@@ -369,7 +356,11 @@ function useConnection() {
 function useInstallPrompt() {
   const [deferred, setDeferred] = useState(null);
   const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem("pumpmithra.install.dismissed") === "1"
+    // Reads the PÉTRAV key, falling back to the pre-rename one so an
+    // upgrade does not re-prompt someone who already said no.
+    () =>
+      localStorage.getItem("petrav.install.dismissed") === "1" ||
+      localStorage.getItem("pumpmithra.install.dismissed") === "1"
   );
 
   useEffect(() => {
@@ -395,7 +386,7 @@ function useInstallPrompt() {
       setDeferred(null);
     },
     dismiss: () => {
-      localStorage.setItem("pumpmithra.install.dismissed", "1");
+      localStorage.setItem("petrav.install.dismissed", "1");
       setDismissed(true);
     },
   };

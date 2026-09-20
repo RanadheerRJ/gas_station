@@ -1,13 +1,13 @@
 {
-  "name": "PumpMithra",
-  "short_name": "PumpMithra",
+  "name": "PÉTRAV",
+  "short_name": "PÉTRAV",
   "description": "Daily operations and ledgers for fuel stations.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#F2F4F7",
-  "theme_color": "#0A8A4F",
+  "background_color": "#FFFFFF",
+  "theme_color": "#063B8F",
   "categories": ["business", "productivity"],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
@@ -17,6 +17,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
+    },
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

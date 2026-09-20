@@ -4,6 +4,7 @@ import { readableError } from "../lib/api";
 import { supabaseConfigured } from "../lib/supabase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
+import { PetravMark, PetravWordmark } from "../components/branding.jsx";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 
@@ -87,15 +88,11 @@ export default function Login() {
       <div className="stack" style={{ width: 360, maxWidth: "100%" }}>
         <div className="login-card">
           <div className="head">
-            <div className="brand-lockup brand-lockup--login">
-              <img
-                src={`${import.meta.env.BASE_URL}logo.svg`}
-                alt=""
-                className="brand-logo"
-              />
-              <div className="mark">PUMPMITHRA</div>
+            <div className="login-brand">
+              <PetravMark size={60} label="PÉTRAV" />
+              <PetravWordmark height={27} />
             </div>
-            <p>{t("app.tagline")}</p>
+            <p>{t("app.subtitle")}</p>
           </div>
 
           <div className="login-tabs" role="tablist">

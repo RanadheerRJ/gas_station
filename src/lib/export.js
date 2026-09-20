@@ -25,7 +25,7 @@ import { SHIFT_STATUS, shiftTotals } from "./shiftMath.js";
 import { tankStatus } from "./tankMath.js";
 
 /** Everything this app exports is prefixed so downloads sort together. */
-export const FILE_PREFIX = "pumpmithra";
+export const FILE_PREFIX = "petrav";
 
 const num = (value) => {
   const n = Number(value);
@@ -93,7 +93,7 @@ function isoOrToday(value) {
 }
 
 /**
- * `pumpmithra-shifts-cityctr-2026-09-01_2026-09-19.csv`
+ * `petrav-shifts-cityctr-2026-09-01_2026-09-19.csv`
  *
  * Station and date range are always present, so two downloads taken from
  * different stations or different periods never collide in a downloads folder.
