@@ -33,6 +33,7 @@ export default function TankDetail() {
   const { station, stationId, link, loading: stationsLoading } = useStation();
   const base = stockBase(profile.role);
   const isOwner = profile.role === "owner";
+  const canDeliver = profile.role === "owner" || profile.role === "manager";
 
   const [tanks, setTanks] = useState([]);
   const [dips, setDips] = useState([]);
@@ -111,10 +112,19 @@ export default function TankDetail() {
           <TankVessel tank={tank} size="lg" />
           <div className="tank-hero__figures">
             <div className="tank-hero__stock">
-              <span className="v mono">{money(st.stock)}</span>
-              <span className="k">L {t("stock.stockInGround")}</span>
+              <span className="v mono">{money(tank.physicalStock ?? st.stock)}</span>
+              <span className="k">L {t("stock.physicalStock")}</span>
             </div>
             <div className="row" style={{ gap: 28, flexWrap: "wrap" }}>
+              <Stat label={t("stock.bookStock")} value={`${money(st.stock)} L`} />
+              <Stat
+                label={t("stock.variance")}
+                value={
+                  tank.stockVariance == null
+                    ? "—"
+                    : `${tank.stockVariance > 0 ? "+" : ""}${money(tank.stockVariance)} L`
+                }
+              />
               <Stat label={t("stock.totalCapacity")} value={`${money(st.capacity)} L`} />
               <Stat label={t("stock.spaceForDelivery")} value={`${money(st.ullage)} L`} />
               <Stat
@@ -145,14 +155,16 @@ export default function TankDetail() {
         <section className="card">
           <div className="card__head">
             <h2>{t("stock.logTitle")}</h2>
-            <Segmented
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: "dip", label: t("stock.recordDip") },
-                { value: "delivery", label: t("stock.bookDelivery") },
-              ]}
-            />
+            {canDeliver && (
+              <Segmented
+                value={mode}
+                onChange={setMode}
+                options={[
+                  { value: "dip", label: t("stock.recordDip") },
+                  { value: "delivery", label: t("stock.bookDelivery") },
+                ]}
+              />
+            )}
           </div>
           {mode === "dip" ? (
             <DipForm

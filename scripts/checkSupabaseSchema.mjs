@@ -6,17 +6,21 @@
  * the RBAC boundary is not quietly removed.
  */
 
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const INITIAL = "supabase/migrations/20260919000000_initial_schema.sql";
 const RBAC = "supabase/migrations/20260919010000_tighten_role_visibility.sql";
 
-const initial = await readFile(resolve(INITIAL), "utf8");
 const rbac = await readFile(resolve(RBAC), "utf8");
-// RPCs may be defined in either migration; the later definition wins in the
-// database, so the contract check looks at both.
-const migration = `${initial}\n${rbac}`;
+const migrationFiles = (await readdir(resolve("supabase/migrations")))
+  .filter((name) => name.endsWith(".sql"))
+  .sort();
+// RPCs can be introduced by any forward-only migration.
+const migration = (
+  await Promise.all(
+    migrationFiles.map((name) => readFile(resolve("supabase/migrations", name), "utf8"))
+  )
+).join("\n");
 const api = await readFile(resolve("src/lib/api.js"), "utf8");
 
 const required = [
@@ -61,8 +65,6 @@ const managerOnlyPolicies = [
   "prices_read",
   "customers_read",
   "customer_transactions_read",
-  "tanks_read",
-  "tank_readings_read",
 ];
 
 const missing = required.filter(

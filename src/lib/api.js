@@ -469,7 +469,7 @@ export async function setStationState(stationId, state) {
 
 export async function listTanks(stationId) {
   const client = assertConfigured();
-  const [tanks, dips] = await Promise.all([
+  const [tanks, dips, movements] = await Promise.all([
     query(
       client.from("tanks").select("*").eq("station_id", stationId).order("created_at")
     ),
@@ -479,9 +479,33 @@ export async function listTanks(stationId) {
         .select("*")
         .eq("station_id", stationId)
         .order("recorded_at", { ascending: false })
+        .limit(250)
+    ),
+    query(
+      client
+        .from("stock_movements")
+        .select("*")
+        .eq("station_id", stationId)
+        .order("recorded_at", { ascending: false })
+        .limit(250)
     ),
   ]);
-  return { tanks: tanks.map(camelize), dips: dips.map(camelize) };
+  const readings = dips.map(camelize);
+  const mappedTanks = tanks.map(camelize).map((tank) => {
+    const latest = readings.find(
+      (reading) => reading.tankId === tank.id && reading.kind === "dip"
+    );
+    return {
+      ...tank,
+      bookStock: tank.currentStock,
+      physicalStock: latest?.stockLitres ?? null,
+      stockVariance: latest
+        ? Number(latest.stockLitres) - Number(tank.currentStock)
+        : null,
+      latestDip: latest || null,
+    };
+  });
+  return { tanks: mappedTanks, dips: readings, movements: movements.map(camelize) };
 }
 
 export async function addTank(stationId, tank) {
@@ -527,6 +551,25 @@ export async function recordDip(stationId, tankId, reading) {
       p_temperature_c: reading.temperatureC,
       p_water_cm: reading.waterCm === "" ? null : reading.waterCm,
       p_note: reading.note || "",
+      p_request_id: reading.requestId || crypto.randomUUID(),
+    })
+  );
+}
+
+export async function dailyStockSummary(stationId, date) {
+  const rows = await rpc("daily_stock_summary", {
+    p_station_id: stationId,
+    p_date: date || new Date().toISOString().slice(0, 10),
+  });
+  return camelize(rows || []);
+}
+
+export async function mapNozzleTank(stationId, nozzleId, tankId) {
+  return camelize(
+    await rpc("map_nozzle_tank", {
+      p_station_id: stationId,
+      p_nozzle_id: nozzleId,
+      p_tank_id: tankId,
     })
   );
 }
