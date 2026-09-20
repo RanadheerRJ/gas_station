@@ -379,6 +379,16 @@ function isMissingFunction(error) {
   );
 }
 
+/** PostgREST's code for "that table is not in the schema cache". */
+const MISSING_TABLE = "PGRST205";
+
+function isMissingTable(error) {
+  return (
+    error?.code === MISSING_TABLE ||
+    /could not find the table|relation .* does not exist/i.test(error?.message || "")
+  );
+}
+
 /**
  * Busy nozzle ids for a station, with no operator identity attached.
  *
@@ -536,6 +546,10 @@ export async function listTanks(stationId) {
         .order("recorded_at", { ascending: false })
         .limit(250)
     ),
+    // The stock-movement ledger arrived in a later migration than tanks and
+    // dips. A Pages deploy can land before `supabase db push` has been run,
+    // and a missing ledger must not take the whole Ground Stock screen down:
+    // degrade to an empty history instead of throwing.
     query(
       client
         .from("stock_movements")
@@ -543,7 +557,13 @@ export async function listTanks(stationId) {
         .eq("station_id", stationId)
         .order("recorded_at", { ascending: false })
         .limit(250)
-    ),
+    ).catch((error) => {
+      if (isMissingTable(error)) {
+        console.warn("stock_movements is missing — apply the latest Supabase migration.");
+        return [];
+      }
+      throw error;
+    }),
   ]);
   const readings = dips.map(camelize);
   const mappedTanks = tanks.map(camelize).map((tank) => {
