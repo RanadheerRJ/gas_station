@@ -39,10 +39,14 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
   // thumb-drag on the backdrop scrolls the list out from under the dialog.
   useEffect(() => {
     if (phase === "closed") return undefined;
-    const previous = document.body.style.overflow;
+    const main = document.querySelector(".main");
+    const previousBody = document.body.style.overflow;
+    const previousMain = main?.style.overflow;
     document.body.style.overflow = "hidden";
+    if (main) main.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = previous;
+      document.body.style.overflow = previousBody;
+      if (main) main.style.overflow = previousMain || "";
     };
   }, [phase]);
 

@@ -1,21 +1,21 @@
 import { ScreenHeader } from "../../components/Layout.jsx";
 import AccountPanel from "../../components/AccountPanel.jsx";
+import { LoadingPanels } from "../../components/motion.jsx";
+import { useStation } from "../../state/useStation.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
-/**
- * The attendant's Account tab. Signing out is a frequent act on a shared
- * forecourt device, so it gets a whole calm screen rather than hiding behind
- * a gesture — same content as the account sheet other roles see.
- */
 export default function TodayAccount() {
   const { t } = useLanguage();
+  const { station, loading } = useStation();
   return (
     <>
       <ScreenHeader title={t("nav.account")} />
-      <div className="content">
-        <section className="card">
-          <AccountPanel />
-        </section>
+      <div className="content account-screen">
+        {loading ? (
+          <LoadingPanels count={2} lines={2} label={t("common.loading")} />
+        ) : (
+          <AccountPanel stationName={station?.name || ""} />
+        )}
       </div>
     </>
   );

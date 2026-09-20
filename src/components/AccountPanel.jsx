@@ -1,7 +1,7 @@
 import { useAuth } from "../state/AuthContext";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
-import { LogOutIcon, MoonIcon, SunIcon } from "./icons.jsx";
+import { LogOutIcon, MoonIcon, StationIcon, SunIcon } from "./icons.jsx";
 
 const ROLE_LABEL = {
   admin: "role.admin",
@@ -10,7 +10,6 @@ const ROLE_LABEL = {
   attendant: "role.attendant",
 };
 
-/** Initials for the avatar circle; falls back to the role's first letter. */
 function initials(name) {
   const parts = String(name || "")
     .trim()
@@ -24,45 +23,65 @@ function initials(name) {
     .toUpperCase();
 }
 
-/**
- * Who is signed in, and the device-level preferences that travel with them.
- * Rendered both as the attendant's Account tab and (for roles whose tab bar
- * is full) inside the account sheet behind the avatar button.
- */
-export default function AccountPanel({ onDone }) {
+/** Identity and device preferences, grouped into calm, independent sections. */
+export default function AccountPanel({ onDone, stationName = "" }) {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t } = useLanguage();
 
   return (
     <div className="account-panel">
-      <div className="account-panel__id">
+      <section className="account-profile">
         <div className="avatar" aria-hidden="true">
           {initials(profile.name)}
         </div>
-        <div>
+        <div className="account-profile__copy">
           <div className="account-panel__name">{profile.name}</div>
           <div className="small muted">
-            {profile.username ? (
-              <>
-                <span className="mono">{profile.username}</span> ·{" "}
-              </>
-            ) : null}
             {ROLE_LABEL[profile.role] ? t(ROLE_LABEL[profile.role]) : profile.role}
           </div>
+          {stationName && (
+            <div
+              className="business-name business-name--multiline account-profile__station"
+              title={stationName}
+            >
+              {stationName}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      <LanguageSelect className="account-panel__control" />
+      <section className="account-section" aria-labelledby="preferences-title">
+        <h2 id="preferences-title">{t("account.preferences")}</h2>
+        <div className="account-section__card">
+          <LanguageSelect className="account-panel__control account-panel__language" />
+          <button
+            type="button"
+            className="account-panel__control account-panel__button"
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+            <span>{t("account.appearance")}</span>
+            <span className="account-control__value">
+              {theme === "dark" ? t("chrome.darkMode") : t("chrome.lightMode")}
+            </span>
+          </button>
+        </div>
+      </section>
 
-      <button
-        type="button"
-        className="account-panel__control account-panel__button"
-        onClick={toggleTheme}
-      >
-        {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-        {theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
-      </button>
+      {stationName && (
+        <section className="account-section" aria-labelledby="station-title">
+          <h2 id="station-title">{t("common.station")}</h2>
+          <div className="account-section__card">
+            <div className="account-panel__control account-panel__station-row">
+              <StationIcon size={18} />
+              <span className="business-name" title={stationName}>
+                {stationName}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
 
       <button
         type="button"
@@ -72,7 +91,7 @@ export default function AccountPanel({ onDone }) {
           logout();
         }}
       >
-        <LogOutIcon size={16} />
+        <LogOutIcon size={18} />
         {t("chrome.signOut")}
       </button>
     </div>

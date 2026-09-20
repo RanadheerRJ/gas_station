@@ -107,7 +107,9 @@ export default function Layout() {
   if (!profile) return null;
 
   return (
-    <div className={`shell${tabs.length > 0 ? " shell--tabs" : ""}`}>
+    <div
+      className={`shell shell--${profile.role}${tabs.length > 0 ? " shell--tabs" : ""}`}
+    >
       {/* Mobile top bar: brand at a glance, account one tap away. */}
       <header className="appbar">
         <div className="brand-lockup">
