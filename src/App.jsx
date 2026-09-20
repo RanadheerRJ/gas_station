@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import AdminInviteOwner from "./pages/AdminInviteOwner";
 import OwnerHome from "./pages/OwnerHome";
 import OwnerStaff from "./pages/OwnerStaff";
+import ManagerStaff from "./pages/ManagerStaff";
 import StationSetup from "./pages/StationSetup";
 import TodayHome from "./pages/today/TodayHome.jsx";
 import StartShift from "./pages/today/StartShift.jsx";
@@ -275,6 +276,14 @@ export default function App() {
           element={
             <Protect roles={["manager"]}>
               <CustomerDetail />
+            </Protect>
+          }
+        />
+        <Route
+          path="/station/staff"
+          element={
+            <Protect roles={["manager"]}>
+              <ManagerStaff />
             </Protect>
           }
         />

@@ -108,6 +108,7 @@ const IDS = {
   manager: "00000000-0000-0000-0000-0000000000c1",
   att1: "00000000-0000-0000-0000-0000000000d1",
   att2: "00000000-0000-0000-0000-0000000000d2",
+  att3: "00000000-0000-0000-0000-0000000000d3",
   station: "00000000-0000-0000-0000-0000000000e1",
   station2: "00000000-0000-0000-0000-0000000000e2",
 };
@@ -152,6 +153,7 @@ async function seed() {
     [IDS.manager, "manager@example.com"],
     [IDS.att1, "att1@example.com"],
     [IDS.att2, "att2@example.com"],
+    [IDS.att3, "att3@example.com"],
   ]) {
     await client.query("insert into auth.users (id, email) values ($1, $2)", [id, email]);
   }
@@ -167,8 +169,19 @@ async function seed() {
        ($3, 'Oscar Owner', 'owner', $3, null, 'oscar'),
        ($4, 'Mia Manager', 'manager', $2, $6, 'mia'),
        ($5, 'Amy Attendant', 'attendant', $2, $6, 'amy'),
-       ($7, 'Ben Attendant', 'attendant', $2, $6, 'ben')`,
-    [IDS.admin, IDS.owner, IDS.owner2, IDS.manager, IDS.att1, IDS.station, IDS.att2]
+       ($7, 'Ben Attendant', 'attendant', $2, $6, 'ben'),
+       ($8, 'Chet Attendant', 'attendant', $3, $9, 'chet')`,
+    [
+      IDS.admin,
+      IDS.owner,
+      IDS.owner2,
+      IDS.manager,
+      IDS.att1,
+      IDS.station,
+      IDS.att2,
+      IDS.att3,
+      IDS.station2,
+    ]
   );
   await client.query(
     `insert into public.stations (id, name, address, owner_id) values
@@ -231,6 +244,15 @@ async function main() {
   if (WITH_RBAC) {
     await sqlFile(
       resolve(REPO, "supabase/migrations/20260919010000_tighten_role_visibility.sql")
+    );
+    // Access-control follow-ups that this contract covers. The meter/stock
+    // migration (20260920000000) is deliberately not applied here: it
+    // postdates the matrix being pinned and changes attendant dip semantics.
+    await sqlFile(
+      resolve(
+        REPO,
+        "supabase/migrations/20260920120000_admin_registry_and_manager_staff.sql"
+      )
     );
   } else {
     console.log("\n!! negative control: follow-up RBAC migration NOT applied\n");
@@ -468,6 +490,71 @@ async function main() {
   ]) {
     const r = await asUser(IDS.manager, sql, params);
     check(`manager can ${label}`, !r.error, r.error?.message);
+  }
+
+  console.log("\n== the manager can support their own station's staff ==");
+  const mgrTeam = await asUser(IDS.manager, "select id, role from public.profiles");
+  check(
+    "manager sees the manager and attendant roster at their station",
+    mgrTeam.rows?.length === 3 &&
+      mgrTeam.rows?.every((r) => [IDS.manager, IDS.att1, IDS.att2].includes(r.id)),
+    `saw ${mgrTeam.rows?.length}: ${JSON.stringify(mgrTeam.rows?.map((r) => r.role))}`
+  );
+  const mgrForeign = await asUser(
+    IDS.manager,
+    "select id from public.profiles where station_id = $1",
+    [IDS.station2]
+  );
+  check(
+    "manager sees no staff from another station",
+    mgrForeign.rows?.length === 0,
+    `saw ${mgrForeign.rows?.length}`
+  );
+  const mgrOwner = await asUser(
+    IDS.manager,
+    "select id from public.profiles where role = 'owner'"
+  );
+  check(
+    "manager cannot enumerate owners or their logins",
+    mgrOwner.rows?.length === 0,
+    `saw ${mgrOwner.rows?.length}`
+  );
+  const foreignAtt = await asUser(IDS.att3, "select id from public.profiles");
+  check(
+    "an attendant still sees only their own profile",
+    foreignAtt.rows?.length === 1 && foreignAtt.rows[0].id === IDS.att3,
+    `saw ${foreignAtt.rows?.length}`
+  );
+
+  console.log("\n== the developer portal station registry ==");
+  const registry = await asUser(
+    IDS.admin,
+    "select * from public.admin_station_registry()"
+  );
+  check(
+    "registry RPC lists every station with its owner",
+    registry.rows?.length === 2 &&
+      registry.rows?.every((r) => r.name && r.owner_name && r.address),
+    registry.error?.message || JSON.stringify(registry.rows)
+  );
+  const registryLeak = await asUser(IDS.admin, "select * from public.stations");
+  check(
+    "the stations table itself still returns nothing to a developer",
+    registryLeak.rows?.length === 0,
+    `saw ${registryLeak.rows?.length}`
+  );
+  for (const [label, uid] of [
+    ["owner", IDS.owner],
+    ["manager", IDS.manager],
+    ["attendant", IDS.att1],
+    ["anonymous caller", null],
+  ]) {
+    const r = await asUser(uid, "select * from public.admin_station_registry()");
+    check(
+      `registry RPC refuses a ${label}`,
+      !!r.error,
+      r.error?.message || "no error raised"
+    );
   }
 
   console.log("\n== owner sees their own stations only ==");

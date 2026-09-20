@@ -1,6 +1,7 @@
 import { useAuth } from "../state/AuthContext";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
+import ChangePinPanel from "./ChangePinPanel.jsx";
 import { LogOutIcon, MoonIcon, StationIcon, SunIcon } from "./icons.jsx";
 
 const ROLE_LABEL = {
@@ -68,6 +69,17 @@ export default function AccountPanel({ onDone, stationName = "" }) {
           </button>
         </div>
       </section>
+
+      {/* PIN accounts can change their own PIN; the developer signs in with a
+          Supabase Auth password instead, so they get no section here. */}
+      {profile.username && (
+        <section className="account-section" aria-labelledby="security-title">
+          <h2 id="security-title">{t("account.security")}</h2>
+          <div className="account-section__card">
+            <ChangePinPanel />
+          </div>
+        </section>
+      )}
 
       {stationName && (
         <section className="account-section" aria-labelledby="station-title">

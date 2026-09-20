@@ -17,6 +17,9 @@ have been removed. The source of truth is now:
 - `supabase/migrations/20260919010000_tighten_role_visibility.sql` — the role
   matrix: self-only attendant reads, owner/manager-only financial and stock
   reads, anonymous nozzle occupancy, and the attendant write guards.
+- `supabase/migrations/20260920120000_admin_registry_and_manager_staff.sql` —
+  the admin-only station registry RPC behind the developer portal's station
+  counts, and manager visibility of their own station's staff.
 - `supabase/functions/accounts/index.ts` — privileged account provisioning and
   PIN reset Edge Function.
 - `src/lib/supabase.js` — browser client initialization.
@@ -94,9 +97,33 @@ are, so a hand-written PostgREST or RPC call is refused exactly like a click is.
 | Fuel-price history | ❌ | ✅ | ✅ | ❌ |
 | Tanks & tank readings | ❌ | ✅ | ✅ | ❌ |
 | Review/approve shifts | ❌ | ✅ | ✅ | ❌ |
+| Station registry (names & counts) | ✅ admin-only RPC | own stations | own station | own station |
+| Reset someone's PIN | ✅ any PIN account | own staff | own station's staff, not self | ❌ |
+| Reset own PIN | — (signs in with a password) | ✅ with current PIN | ✅ with current PIN | ✅ with current PIN |
 
 A developer account provisions accounts and nothing else: it cannot read any
-station, shift, price, tank, or credit row.
+station, shift, price, tank, or credit row. The one deliberate carve-out is
+`admin_station_registry()`, an admin-only RPC that returns the station
+*registry* — id, name, address, state, and owner — so the developer portal can
+show how many stations each owner has. It carries no operational, financial,
+or stock data, and `select * from stations` still returns nothing to a
+developer.
+
+### PIN reset authority
+
+The `accounts` Edge Function is the only code that can change a password, and
+it re-checks authority on every call:
+
+| Caller | May reset |
+| --- | --- |
+| Developer | any owner, manager, or attendant PIN |
+| Owner | the managers and attendants they issued logins to |
+| Manager | the managers and attendants posted to their station, never their own |
+| Anyone with a PIN | their own, after proving the current PIN (checked through a real Auth sign-in) |
+
+A manager's roster comes from the profiles policy: a manager sees exactly the
+manager and attendant profiles posted to their station — no other station's
+staff, no owner accounts, and attendants still see only themselves.
 
 An attendant can see the stations, pumps, and nozzles needed to start a shift,
 and calls `list_nozzle_occupancy(p_station_id)` for availability. That RPC
@@ -236,7 +263,7 @@ To confirm those assertions are not vacuous, run them against the initial
 schema alone:
 
 ```bash
-npm run test:rbac -- --without-rbac    # 31 failures: the exposure the follow-up migration closes
+npm run test:rbac -- --without-rbac    # 34 failures: the exposure the follow-up migrations close
 ```
 
 See `scripts/rbac/README.md` for the full coverage list.
@@ -256,10 +283,13 @@ and before every Pages deployment.
 ## Deployment checklist
 
 1. `supabase db push` — applies any migration the hosted project has not seen,
-   including `20260919010000_tighten_role_visibility.sql`. Apply it **before**
-   publishing the matching frontend. The follow-up migration is idempotent and
-   safe to re-run; never edit the already-applied initial migration to change
-   production RBAC.
+   including `20260919010000_tighten_role_visibility.sql` and
+   `20260920120000_admin_registry_and_manager_staff.sql`. Apply them **before**
+   publishing the matching frontend: without the registry RPC the developer
+   portal shows an em dash instead of station counts, and without the profiles
+   policy a manager cannot open their team page. The follow-up migrations are
+   idempotent and safe to re-run; never edit the already-applied initial
+   migration to change production RBAC.
 2. `supabase functions deploy accounts`
 3. Create the first developer profile via SQL.
 4. Disable Auth self-sign-up.

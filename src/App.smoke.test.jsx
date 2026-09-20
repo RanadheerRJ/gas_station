@@ -47,7 +47,14 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const PROFILES = {
   admin: { uid: "u-admin", role: "admin", name: "Admin", username: "admin" },
   owner: { uid: "u-owner", role: "owner", name: "Owner", username: "owner" },
-  manager: { uid: "u-manager", role: "manager", name: "Manager", username: "manager" },
+  manager: {
+    uid: "u-manager",
+    role: "manager",
+    name: "Manager",
+    username: "manager",
+    stationId: "s1",
+    stationIds: ["s1"],
+  },
   attendant: {
     uid: "u-attendant",
     role: "attendant",
@@ -132,6 +139,7 @@ describe("the app boots for every role", () => {
     ["manager stock", "manager", "/station/stock"],
     ["manager ledger", "manager", "/station/ledger"],
     ["manager credit", "manager", "/station/credit"],
+    ["manager staff", "manager", "/station/staff"],
     ["attendant today", "attendant", "/today"],
     ["attendant start shift", "attendant", "/today/start"],
     ["attendant history", "attendant", "/today/history"],
