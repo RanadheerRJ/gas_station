@@ -9,6 +9,7 @@ import Sheet from "./Sheet.jsx";
 import AccountPanel from "./AccountPanel.jsx";
 import {
   BackIcon,
+  ChartIcon,
   ChevronIcon,
   CreditIcon,
   HistoryIcon,
@@ -58,6 +59,7 @@ function destinationsFor(role) {
           { to: "/owner/setup", label: "nav.pumpsRates", Icon: RateIcon },
           { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
           { to: "/owner/staff", label: "nav.staffAccess", Icon: PeopleIcon },
+          { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon },
         ],
       };
     case "manager":
@@ -68,7 +70,10 @@ function destinationsFor(role) {
           { to: "/station/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
           { to: "/station/credit", label: "nav.creditCustomers", Icon: CreditIcon },
         ],
-        more: [{ to: "/station/staff", label: "nav.staffAccess", Icon: PeopleIcon }],
+        more: [
+          { to: "/station/staff", label: "nav.staffAccess", Icon: PeopleIcon },
+          { to: "/station/reports", label: "nav.reports", Icon: ChartIcon },
+        ],
       };
     case "attendant":
       return {
