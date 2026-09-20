@@ -75,11 +75,15 @@ export default function ShiftDetail() {
   const [run, busy, error] = useRunner(load);
 
   const shift = shifts.find((s) => s.id === id);
+  // Attendants reach a settled shift from their history list; managers and
+  // owners from the shifts list. Either way, the back arrow points at the
+  // list that led here.
+  const back = link(paths.list ?? paths.history);
 
   if (stationsLoading || loading) {
     return (
       <>
-        <ScreenHeader title={t("shifts.title")} back={link(paths.list)} />
+        <ScreenHeader title={t("shifts.title")} back={back} />
         <div className="content">
           <LoadingPanels count={2} lines={3} label={t("common.loading")} />
         </div>
@@ -90,7 +94,7 @@ export default function ShiftDetail() {
   if (loadError) {
     return (
       <>
-        <ScreenHeader title={t("shifts.title")} back={link(paths.list)} />
+        <ScreenHeader title={t("shifts.title")} back={back} />
         <div className="content">
           <Notice kind="error">{loadError}</Notice>
         </div>
@@ -101,7 +105,7 @@ export default function ShiftDetail() {
   if (!shift) {
     return (
       <>
-        <ScreenHeader title={t("shifts.title")} back={link(paths.list)} />
+        <ScreenHeader title={t("shifts.title")} back={back} />
         <div className="content">
           <div className="empty-card">
             <h2>{t("shifts.notFound")}</h2>
@@ -120,7 +124,7 @@ export default function ShiftDetail() {
           "shifts.nozzle",
           "shifts.nozzles"
         )}${station ? ` · ${station.name}` : ""}`}
-        back={link(paths.list)}
+        back={back}
       />
       <div className="content stack">
         {error && <Notice kind="error">{error}</Notice>}
