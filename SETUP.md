@@ -16,8 +16,8 @@ Re-run `supabase functions deploy accounts` after every change to
 "Unknown account action.", the hosted function is older than the app — deploy
 it again. The `deploy-supabase` GitHub workflow does this automatically on
 every push to `main` that touches `supabase/functions/**`; to enable it, add
-a `SUPABASE_ACCESS_TOKEN` secret and a `SUPABASE_PROJECT_ID` variable under
-**Settings → Secrets and variables → Actions**.
+a `SUPABASE_ACCESS_TOKEN` secret and a `SUPABASE_PROJECT_ID` variable or
+secret under **Settings → Secrets and variables → Actions**.
 
 ## Browser environment
 

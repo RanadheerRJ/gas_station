@@ -1,5 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/*
+ * Bumped on every change. Included in the unknown-action error so a stale
+ * hosted function is identifiable straight from the browser message — the
+ * exact symptom of a deploy that predates a newly shipped action.
+ */
+const FUNCTION_VERSION = "2026-09-20.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -194,7 +201,7 @@ Deno.serve(async (req) => {
     }
 
     if (action !== "create_owner" && action !== "create_staff") {
-      return fail("Unknown account action.");
+      return fail(`Unknown account action. (accounts function ${FUNCTION_VERSION})`);
     }
 
     if (action === "create_owner" && actor.role !== "admin") {
