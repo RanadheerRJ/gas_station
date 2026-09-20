@@ -112,7 +112,7 @@ export default function ShiftsList() {
             <button
               type="button"
               className="tool-btn tool-btn--primary"
-              onClick={() => navigate(`${paths.list}/start`)}
+              onClick={() => navigate(paths.start)}
             >
               <PlusIcon size={16} />
               {t("shifts.startShift")}

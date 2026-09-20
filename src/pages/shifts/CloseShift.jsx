@@ -19,6 +19,7 @@ import {
 import { fuelClass } from "../../lib/fuel.js";
 import { paymentLabel } from "./parts.jsx";
 import { shiftPaths } from "./paths.js";
+import { useDraft } from "../../state/useDraft.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
@@ -46,17 +47,24 @@ export default function CloseShift() {
 
   const canEnterCredit = profile.role !== "attendant";
 
-  const [closings, setClosings] = useState({});
-  const [creditSales, setCreditSales] = useState([]);
-  const [payments, setPayments] = useState({
+  // Everything typed here was read off a meter or counted at the till —
+  // work that cannot be re-derived if the phone dies or the submit fails.
+  // Drafts mirror it into localStorage, keyed per shift, until the close
+  // goes through (or the shift turns out to be settled already).
+  const [closings, setClosings, clearClosings] = useDraft(`close:${id}:readings`, {});
+  const [creditSales, setCreditSales, clearCredit] = useDraft(`close:${id}:credit`, []);
+  const [payments, setPayments, clearPayments] = useDraft(`close:${id}:payments`, {
     cash: "",
     card: "",
     upi: "",
     credit: "",
     other: "",
   });
-  const [testing, setTesting] = useState({ MS: "", HSD: "" });
-  const [note, setNote] = useState("");
+  const [testing, setTesting, clearTesting] = useDraft(`close:${id}:testing`, {
+    MS: "",
+    HSD: "",
+  });
+  const [note, setNote, clearNote] = useDraft(`close:${id}:note`, "");
   const [problems, setProblems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -85,6 +93,27 @@ export default function CloseShift() {
       cancelled = true;
     };
   }, [stationId, id, canEnterCredit]);
+
+  // A shift that is positively known to be settled has no draft worth
+  // keeping — someone else closed it, or an earlier submit landed after
+  // all. A shift that merely FAILED to load is different: the drafts stay,
+  // because the readings may still be needed once the network returns.
+  useEffect(() => {
+    if (loading || !shift || shift.status === SHIFT_STATUS.OPEN) return;
+    clearClosings();
+    clearCredit();
+    clearPayments();
+    clearTesting();
+    clearNote();
+  }, [
+    loading,
+    shift,
+    clearClosings,
+    clearCredit,
+    clearPayments,
+    clearTesting,
+    clearNote,
+  ]);
 
   const withClosings = useMemo(
     () =>
@@ -120,7 +149,9 @@ export default function CloseShift() {
       ...current,
       credit: creditTotal ? String(creditTotal) : "",
     }));
-  }, [creditTotal]);
+    // setPayments is a stable useState setter under the hood; listed only to
+    // satisfy exhaustive-deps now that it comes from useDraft.
+  }, [creditTotal, setPayments]);
 
   const visibleModes = useMemo(
     () =>
@@ -149,6 +180,13 @@ export default function CloseShift() {
         testing,
         note,
       });
+      // The figures are safely in the database — the drafts must go NOW,
+      // before navigation, or they would greet the next visit to this URL.
+      clearClosings();
+      clearCredit();
+      clearPayments();
+      clearTesting();
+      clearNote();
       // Home, with the shift now sitting in history / the review queue.
       navigate(paths.home, { replace: true });
     } catch (err) {
@@ -480,7 +518,14 @@ export default function CloseShift() {
         )}
 
         <ActionBar>
-          <button type="button" disabled={busy} onClick={() => navigate(-1)}>
+          {/* Same explicit target as the back arrow: from a deep link or a
+              refresh there is no in-app history, and navigate(-1) would walk
+              straight out of the app. */}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => navigate(backTarget(paths, id))}
+          >
             {t("common.cancel")}
           </button>
           <button type="button" className="cta" disabled={busy} onClick={submit}>
