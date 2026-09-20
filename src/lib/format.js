@@ -8,6 +8,12 @@ export function money(value) {
   });
 }
 
+/** A consistent Indian-rupee display with the sign before the currency mark. */
+export function currency(value) {
+  const n = Number(value) || 0;
+  return `${n < 0 ? "−" : ""}₹${money(Math.abs(n))}`;
+}
+
 export function litres(value) {
   const n = Number(value) || 0;
   return n.toLocaleString("en-IN", {

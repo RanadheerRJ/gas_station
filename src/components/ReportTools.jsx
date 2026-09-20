@@ -55,6 +55,21 @@ export default function ReportTools({
 
   return (
     <div className="report-tools">
+      <div className="report-summary">
+        <div>
+          <span className="report-summary__label">{t("report.readyTitle")}</span>
+          <strong>{title || report}</strong>
+          {stationName && (
+            <span className="business-name" title={stationName}>
+              {stationName}
+            </span>
+          )}
+        </div>
+        <span className="report-summary__count">
+          {empty ? t("report.noRowsShort") : t("report.rowCount", { count: rowCount })}
+        </span>
+      </div>
+
       <div className="report-tools__dates">
         <label className="field">
           <span>{t("report.from")}</span>
