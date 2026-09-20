@@ -159,6 +159,9 @@ export default function Login() {
                 {busy ? t("login.checking") : t("login.signIn")}
               </button>
               <p className="small muted" style={{ margin: 0 }}>
+                {t("login.forgotPin")}
+              </p>
+              <p className="small muted" style={{ margin: 0 }}>
                 {t("login.noSelfSignup")}
               </p>
             </form>

@@ -8,6 +8,7 @@ import ResetPinPanel from "../components/ResetPinPanel";
 import Sheet from "../components/Sheet.jsx";
 import { PlusIcon } from "../components/icons.jsx";
 import { createStaff, listStaff, readableError } from "../lib/api";
+import { phoneProblem } from "../lib/validate.js";
 import { formatStamp } from "../lib/format";
 import { LoadingPanels } from "../components/motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -60,6 +61,14 @@ export default function OwnerStaff() {
   }, [stations, form.stationId]);
 
   const stationName = (id) => stations.find((s) => s.id === id)?.name || "—";
+
+  const phoneKey = form.phone.trim() ? phoneProblem(form.phone.trim()) : null;
+  const complete =
+    form.name.trim() &&
+    form.phone.trim() &&
+    !phoneKey &&
+    form.stationId &&
+    pinReady(form.pin, form.confirmPin);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -178,25 +187,36 @@ export default function OwnerStaff() {
               {t("staff.inviteNote")}
             </p>
             <div className="form-grid">
-              <Field label={t("common.name")}>
+              <Field label={t("common.name")} required>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  required
+                  maxLength={120}
                   placeholder="Suresh Babu"
                 />
               </Field>
-              <Field label={t("common.phone")}>
+              <Field label={t("common.phone")} required>
                 <input
                   className="mono"
                   inputMode="tel"
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  required
+                  maxLength={24}
+                  aria-invalid={phoneKey ? true : undefined}
                   placeholder="+91 98765 44556"
                 />
+                {phoneKey && (
+                  <span className="small" style={{ color: "var(--rust)" }}>
+                    {t(phoneKey)}
+                  </span>
+                )}
               </Field>
-              <Field label={t("common.station")}>
+              <Field label={t("common.station")} required>
                 <select
                   value={form.stationId}
+                  required
                   onChange={(e) => setForm((f) => ({ ...f, stationId: e.target.value }))}
                 >
                   {stations.map((s) => (
@@ -206,9 +226,10 @@ export default function OwnerStaff() {
                   ))}
                 </select>
               </Field>
-              <Field label={t("staff.role")}>
+              <Field label={t("staff.role")} required>
                 <select
                   value={form.role}
+                  required
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                 >
                   <option value="attendant">{t("role.attendant")}</option>
@@ -224,17 +245,7 @@ export default function OwnerStaff() {
               />
             </div>
             {error && <Notice kind="error">{error}</Notice>}
-            <button
-              className="cta"
-              type="submit"
-              disabled={
-                busy ||
-                !form.name.trim() ||
-                !form.phone.trim() ||
-                !form.stationId ||
-                !pinReady(form.pin, form.confirmPin)
-              }
-            >
+            <button className="cta" type="submit" disabled={busy || !complete}>
               {busy ? t("staff.creating") : t("staff.createLogin")}
             </button>
           </form>

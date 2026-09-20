@@ -37,8 +37,9 @@ const ROLE_LABEL = {
  * Each role's destinations, split into bottom-tab entries and overflow.
  *
  * Tabs are capped at five: four real destinations plus "More" once a role has
- * more sections than tabs (the owner). The developer's screen is a single
- * page, so it gets no tab bar at all — one tab is a label, not a menu.
+ * more sections than tabs (the owner and the manager). The developer's screen
+ * is a single page, so it gets no tab bar at all — one tab is a label, not a
+ * menu.
  *
  * The same list drives the desktop sidebar (where everything is shown flat —
  * there is room) and the mobile tab bar, so the two never drift apart.
@@ -67,7 +68,7 @@ function destinationsFor(role) {
           { to: "/station/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
           { to: "/station/credit", label: "nav.creditCustomers", Icon: CreditIcon },
         ],
-        more: [],
+        more: [{ to: "/station/staff", label: "nav.staffAccess", Icon: PeopleIcon }],
       };
     case "attendant":
       return {

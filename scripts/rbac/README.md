@@ -31,21 +31,31 @@ the `anon` / `authenticated` / `service_role` roles.
 
 | Role | Asserted |
 | --- | --- |
-| Developer/admin | Reads no station, shift, price, tank, or credit data; cannot record stock movements; can still list profiles to provision accounts |
+| Developer/admin | Reads no station, shift, price, tank, or credit data; cannot record stock movements; can still list profiles to provision accounts; the admin-only `admin_station_registry()` RPC returns the station registry (id, name, address, state, owner) while the stations table itself still returns nothing |
 | Owner | Full access to their own stations; no visibility of another owner's stations |
-| Manager | Operational and financial data for their station; can review shifts, move balances, record stock |
-| Attendant | Own shift records only; sees stations/pumps/nozzles and anonymous nozzle occupancy; no co-worker identities, no credit, prices, tanks, or tank readings; cannot write to another operator's shift or to restricted tables |
-| Anonymous | Granted nothing |
+| Manager | Operational and financial data for their station; can review shifts, move balances, record stock; sees the manager and attendant roster posted to their own station — and no staff, owner, or profile from anywhere else |
+| Attendant | Own shift records only; sees stations/pumps/nozzles and anonymous nozzle occupancy; no co-worker identities (including their own profile only), no credit, prices, tanks, or tank readings; cannot write to another operator's shift or to restricted tables |
+| Anonymous | Granted nothing, including the registry RPC |
 | Exports | Every report read is scoped by the server: an attendant's export request returns only their own shifts and cannot name a co-worker even when the shift id is supplied directly; owner and manager exports keep their existing reach |
+
+The harness applies `20260919000000_initial_schema.sql`,
+`20260919010000_tighten_role_visibility.sql`, and
+`20260920120000_admin_registry_and_manager_staff.sql`. The meter/stock
+migration (`20260920000000`) is deliberately left out: it postdates the
+role-matrix contract this suite pins and intentionally changes attendant dip
+semantics.
 
 ## Negative control
 
 The assertions are only meaningful if they fail without the follow-up
-migration. To confirm that:
+migrations. To confirm that:
 
 ```bash
 npm run test:rbac -- --without-rbac
 ```
 
-Against the initial schema alone this reports **31 failures** — the exact
-exposure that `20260919010000_tighten_role_visibility.sql` closes.
+Against the initial schema alone this reports **34 failures** — the exact
+exposure that `20260919010000_tighten_role_visibility.sql` (32 checks of
+role-matrix tightening) and
+`20260920120000_admin_registry_and_manager_staff.sql` (the manager roster and
+the admin-only station registry) close.

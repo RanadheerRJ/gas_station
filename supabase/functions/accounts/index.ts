@@ -68,6 +68,16 @@ function validatePin(value: unknown) {
   return pin;
 }
 
+/** A reachable phone number: required, and 10–15 digits once decoration goes. */
+function validatePhone(value: unknown) {
+  const text = required(value, "phone", 24);
+  const digits = text.replace(/\D/g, "");
+  if (digits.length < 10 || digits.length > 15) {
+    throw new Error("Enter a valid phone number (10-15 digits).");
+  }
+  return text;
+}
+
 function slugify(name: string) {
   return (
     name
@@ -113,7 +123,7 @@ Deno.serve(async (req) => {
     const actorId = authData.user.id;
     const { data: actor, error: actorError } = await admin
       .from("profiles")
-      .select("id, role")
+      .select("id, role, station_id, username")
       .eq("id", actorId)
       .single();
     if (actorError || !actor) return fail("Your account is not provisioned.", 403);
@@ -121,21 +131,59 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = body?.action;
 
+    if (action === "reset_own_pin") {
+      const currentPin = String(body?.currentPin ?? "");
+      const pin = validatePin(body?.pin);
+      if (!actor.username) {
+        return fail("This account does not sign in with a PIN.", 400);
+      }
+      if (!/^\d{4}$/.test(currentPin)) {
+        return fail("Enter your current 4-digit PIN.", 400);
+      }
+      // Prove the caller knows the current PIN before replacing it. This goes
+      // through Auth exactly like a sign-in: the service key cannot test a
+      // password, so the anon client does the check.
+      const anon = createClient(url, anonKey, { auth: { persistSession: false } });
+      const { error: checkError } = await anon.auth.signInWithPassword({
+        email: loginEmail(actor.username),
+        password: pinPassword(actor.username, currentPin),
+      });
+      if (checkError) return fail("Your current PIN is not correct.", 403);
+      const { error } = await admin.auth.admin.updateUserById(actorId, {
+        password: pinPassword(actor.username, pin),
+      });
+      if (error) throw error;
+      return response({ ok: true });
+    }
+
     if (action === "reset_pin") {
       const targetId = required(body?.uid, "uid");
       const pin = validatePin(body?.pin);
       const { data: target, error: targetError } = await admin
         .from("profiles")
-        .select("id, role, owner_id, username")
+        .select("id, role, owner_id, station_id, username")
         .eq("id", targetId)
         .single();
       if (targetError || !target) return fail("That account does not exist.", 404);
+      if (!target.username) {
+        return fail("That account does not sign in with a PIN.", 400);
+      }
 
+      // Authority matrix, mirroring the role matrix in the README:
+      //   developer : any PIN account (owner, manager, or attendant)
+      //   owner     : the managers and attendants they issued logins to
+      //   manager   : the staff posted to their station, never themselves
+      // Anyone else must use reset_own_pin, which checks the current PIN.
       const permitted =
-        (actor.role === "admin" && target.role === "owner") ||
+        actor.role === "admin" ||
         (actor.role === "owner" &&
-          target.role !== "owner" &&
-          target.owner_id === actorId);
+          target.owner_id === actorId &&
+          (target.role === "manager" || target.role === "attendant")) ||
+        (actor.role === "manager" &&
+          target.id !== actorId &&
+          actor.station_id != null &&
+          target.station_id === actor.station_id &&
+          (target.role === "manager" || target.role === "attendant"));
       if (!permitted) return fail("You cannot reset that account's PIN.", 403);
 
       const { error } = await admin.auth.admin.updateUserById(target.id, {
@@ -160,7 +208,7 @@ Deno.serve(async (req) => {
       action === "create_owner" ? body?.ownerName : body?.name,
       "name"
     );
-    const phone = required(body?.phone, "phone", 24);
+    const phone = validatePhone(body?.phone);
     const pin = validatePin(body?.pin);
     const stationId =
       action === "create_staff" ? required(body?.stationId, "stationId") : null;

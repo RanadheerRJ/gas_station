@@ -23,11 +23,22 @@ export function Panel({ title, actions, children, flush = false, note }) {
   );
 }
 
-export function Field({ label, hint, children }) {
+export function Field({ label, hint, required = false, children }) {
+  const { t } = useLanguage();
   return (
     <label className="field">
       <span>
         {label}
+        {required && (
+          <span
+            className="req"
+            title={t("common.required")}
+            aria-label={t("common.required")}
+          >
+            {" "}
+            *
+          </span>
+        )}
         {hint && <span className="muted small"> · {hint}</span>}
       </span>
       {children}

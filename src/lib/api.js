@@ -214,6 +214,14 @@ export function resetPin(payload) {
   return accountRequest({ action: "reset_pin", ...payload });
 }
 
+export function resetOwnPin(payload) {
+  return accountRequest({
+    action: "reset_own_pin",
+    currentPin: payload.currentPin,
+    pin: payload.newPin,
+  });
+}
+
 export async function addStation(payload) {
   return camelize(
     await rpc("add_station", { p_name: payload.name, p_address: payload.address })
@@ -237,11 +245,33 @@ export async function listOwners() {
 }
 
 export async function listStaff(profile) {
+  const client = assertConfigured();
+  // Owners see the logins they issued; a manager sees the roster posted to
+  // their station — the colleagues whose PINs they may reset.
+  const scoped =
+    profile.role === "manager"
+      ? client
+          .from("profiles")
+          .select("*")
+          .eq("station_id", profile.stationId)
+          .in("role", ["manager", "attendant"])
+          .order("created_at")
+      : client
+          .from("profiles")
+          .select("*")
+          .eq("owner_id", profile.uid)
+          .in("role", ["manager", "attendant"])
+          .order("created_at");
+  return (await query(scoped)).map(mapProfile);
+}
+
+/** The managers and attendants under one owner — the developer's support view. */
+export async function listOwnerStaff(owner) {
   const rows = await query(
     assertConfigured()
       .from("profiles")
       .select("*")
-      .eq("owner_id", profile.uid)
+      .eq("owner_id", owner.uid)
       .in("role", ["manager", "attendant"])
       .order("created_at")
   );
@@ -371,6 +401,31 @@ export async function listNozzleOccupancy(stationId) {
     if (isMissingFunction(error)) {
       console.warn(
         "list_nozzle_occupancy is missing — apply the latest Supabase migration."
+      );
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * The station registry behind the developer portal: one row per station with
+ * its id, name, address, state, and owner. Admin-only RPC, so it is the one
+ * way a developer can count an owner's stations — the stations table itself
+ * stays closed to them.
+ *
+ * Returns null — rather than throwing — when the RPC is not in the database
+ * yet, so a Pages deploy that lands before `supabase db push` degrades to an
+ * em dash instead of taking the console down.
+ */
+export async function adminStationRegistry() {
+  try {
+    const rows = await rpc("admin_station_registry", {});
+    return (rows || []).map(camelize);
+  } catch (error) {
+    if (isMissingFunction(error)) {
+      console.warn(
+        "admin_station_registry is missing — apply the latest Supabase migration."
       );
       return null;
     }

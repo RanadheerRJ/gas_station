@@ -54,6 +54,10 @@ export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }
       <label className="field">
         <span>
           {resolvedLabel}
+          <span className="req" title={t("common.required")} aria-hidden="true">
+            {" "}
+            *
+          </span>
           <span className="muted small"> · {resolvedHint}</span>
         </span>
         <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
@@ -62,6 +66,7 @@ export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }
             inputMode="numeric"
             type={visible ? "text" : "password"}
             maxLength={4}
+            required
             value={pin}
             aria-invalid={rejected || undefined}
             onBlur={() => setTouched(true)}
@@ -81,12 +86,19 @@ export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }
       </label>
 
       <label className="field">
-        <span>{t("cred.confirmPin")}</span>
+        <span>
+          {t("cred.confirmPin")}
+          <span className="req" title={t("common.required")} aria-hidden="true">
+            {" "}
+            *
+          </span>
+        </span>
         <input
           className={`mono ${confirmShake} ${accepted ? "field-accepted" : ""}`.trim()}
           inputMode="numeric"
           type={visible ? "text" : "password"}
           maxLength={4}
+          required
           value={confirm}
           aria-invalid={mismatch || undefined}
           onChange={(e) => onConfirm(e.target.value.replace(/\D/g, ""))}
