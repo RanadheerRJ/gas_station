@@ -172,3 +172,39 @@ describe("detail routes degrade honestly without data", () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe("back buttons leave the screen they are on", () => {
+  const cases = [
+    ["owner shift detail", "owner", "/owner/shifts/nope"],
+    ["owner tank detail", "owner", "/owner/stock/nope"],
+    ["owner ledger day", "owner", "/owner/ledger/2026-09-19"],
+    ["owner customer detail", "owner", "/owner/credit/nope"],
+    ["manager shift detail", "manager", "/station/shift/nope"],
+    ["manager tank detail", "manager", "/station/stock/nope"],
+    ["manager ledger day", "manager", "/station/ledger/2026-09-20"],
+    ["manager customer detail", "manager", "/station/credit/nope"],
+    ["attendant running shift", "attendant", "/today/shift/nope"],
+    ["attendant tank detail", "attendant", "/today/stock/nope"],
+    ["attendant past shift", "attendant", "/today/history/nope"],
+  ];
+
+  it.each(cases)("%s (%s at %s)", async (_label, role, route) => {
+    await boot(route, PROFILES[role]);
+    const back = container.querySelector(".back-link");
+    expect(back, "back button rendered").toBeTruthy();
+    // The failure this guards against is silent: a Link whose `to` resolves
+    // to the current location renders as a back button that goes nowhere,
+    // so its href would be the very route we are already on.
+    expect(back.getAttribute("href"), "back button points elsewhere").not.toBe(route);
+
+    // And it really leaves: tapping it lands on the parent list screen,
+    // which renders a header of its own and no back button.
+    await act(async () => {
+      back.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(container.querySelector(".back-link"), "left the detail").toBeNull();
+    expectScreen();
+  });
+});

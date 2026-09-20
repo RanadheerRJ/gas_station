@@ -494,8 +494,7 @@ export default function CloseShift() {
 
 /** Where the back arrow points: the running shift for an attendant, the list otherwise. */
 function backTarget(paths, id) {
-  if (paths.run) return { to: paths.run(id) };
-  return { to: paths.list };
+  return paths.run ? paths.run(id) : paths.list;
 }
 
 function Verdict({ totals }) {

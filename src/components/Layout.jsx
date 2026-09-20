@@ -293,6 +293,12 @@ function SidebarLink({ item, translate }) {
  * A screen's title block. Screens are single-purpose now, so the header
  * carries the title, an optional one-line context (`sub`), the back link for
  * drill-downs, and the screen's filters/actions — nothing else.
+ *
+ * `back` is a router target — a path string, or the `{ pathname, search }`
+ * object `useStation`'s `link()` builds so the `?station=` filter survives
+ * the round trip. It goes to the Link untouched: a back arrow that resolves
+ * to the screen it is already on (which is what an undefined `to` does,
+ * silently) is a button that does nothing.
  */
 export function ScreenHeader({ title, sub, actions, filter, back }) {
   const { t } = useLanguage();
@@ -300,7 +306,7 @@ export function ScreenHeader({ title, sub, actions, filter, back }) {
     <header className="screen-head">
       <div className="screen-head__row">
         {back && (
-          <Link to={back.to} className="back-link" aria-label={t("common.back")}>
+          <Link to={back} className="back-link" aria-label={t("common.back")}>
             <BackIcon size={19} />
           </Link>
         )}

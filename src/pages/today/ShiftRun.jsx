@@ -59,7 +59,7 @@ export default function ShiftRun() {
   if (stationsLoading || loading) {
     return (
       <>
-        <ScreenHeader title={t("today.yourShift")} back={{ to: "/today" }} />
+        <ScreenHeader title={t("today.yourShift")} back="/today" />
         <div className="content">
           <LoadingPanels count={2} lines={3} label={t("common.loading")} />
         </div>
@@ -70,7 +70,7 @@ export default function ShiftRun() {
   if (error) {
     return (
       <>
-        <ScreenHeader title={t("today.yourShift")} back={{ to: "/today" }} />
+        <ScreenHeader title={t("today.yourShift")} back="/today" />
         <div className="content">
           <Notice kind="error">{error}</Notice>
         </div>
@@ -81,7 +81,7 @@ export default function ShiftRun() {
   if (!shift) {
     return (
       <>
-        <ScreenHeader title={t("today.yourShift")} back={{ to: "/today" }} />
+        <ScreenHeader title={t("today.yourShift")} back="/today" />
         <div className="content">
           <div className="empty-card">
             <h2>{t("shifts.notFound")}</h2>
@@ -98,7 +98,7 @@ export default function ShiftRun() {
         <ScreenHeader
           title={shift.employeeName}
           sub={`${formatDate(shift.date)}${station ? ` · ${station.name}` : ""}`}
-          back={{ to: "/today/history" }}
+          back="/today/history"
         />
         <div className="content stack">
           <SettledShiftDetail shift={shift} customers={[]} canReview={false} />
@@ -116,7 +116,7 @@ export default function ShiftRun() {
         sub={`${t("shifts.started")} ${formatStamp(shift.startTime)}${
           station ? ` · ${station.name}` : ""
         }`}
-        back={{ to: "/today" }}
+        back="/today"
       />
       <div className="content stack">
         {/* What you took, and the meter you started from. */}
