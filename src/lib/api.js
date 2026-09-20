@@ -188,7 +188,18 @@ export async function signOut() {
 
 async function accountRequest(body) {
   const client = assertConfigured();
-  const { data, error } = await client.functions.invoke("accounts", { body });
+  // functions.invoke normally forwards the session, but making the token
+  // explicit avoids a race immediately after login (notably on mobile/PWA
+  // installs) where the function otherwise receives the anon key and replies
+  // "Sign in first" even though the UI has already resolved the profile.
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  if (sessionError) throw sessionError;
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) throw new Error("Sign in first.");
+  const { data, error } = await client.functions.invoke("accounts", {
+    body,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   if (error) {
     // FunctionsHttpError exposes the JSON response through context. Preserve
     // its useful server-side validation message when it is available.
