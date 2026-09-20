@@ -21,7 +21,9 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /** Where this role's stock screens live. */
 export function stockBase(role) {
-  return role === "owner" ? "/owner/stock" : "/station/stock";
+  if (role === "owner") return "/owner/stock";
+  if (role === "attendant") return "/today/stock";
+  return "/station/stock";
 }
 
 /**
@@ -193,10 +195,21 @@ export default function StockList() {
                       </div>
                       <div className="tank-card__fuel">{tank.fuelType}</div>
                       <div className="tank-card__figure">
-                        <NumberRoll value={st.stock} format={money} /> <span>L</span>
+                        <NumberRoll
+                          value={tank.physicalStock ?? st.stock}
+                          format={money}
+                        />{" "}
+                        <span>L</span>
+                        <div className="tank-card__fuel">{t("stock.physicalStock")}</div>
                         <div className="tank-card__fuel">
-                          {t("stock.of")} {money(st.capacity)} L · {money(st.ullage)}{" "}
-                          {t("stock.spaceFor")}
+                          {t("stock.bookStock")} {money(st.stock)} L ·{" "}
+                          {t("stock.variance")}{" "}
+                          {tank.stockVariance == null
+                            ? "—"
+                            : `${tank.stockVariance > 0 ? "+" : ""}${money(tank.stockVariance)} L`}
+                        </div>
+                        <div className="tank-card__fuel">
+                          {t("stock.of")} {money(st.capacity)} L
                         </div>
                       </div>
                       <div className="tank-card__meta">

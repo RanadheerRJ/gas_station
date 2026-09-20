@@ -313,6 +313,22 @@ export default function App() {
           }
         />
         <Route
+          path="/today/stock"
+          element={
+            <Protect roles={["attendant"]}>
+              <StockList />
+            </Protect>
+          }
+        />
+        <Route
+          path="/today/stock/:tankId"
+          element={
+            <Protect roles={["attendant"]}>
+              <TankDetail />
+            </Protect>
+          }
+        />
+        <Route
           path="/today/history"
           element={
             <Protect roles={["attendant"]}>

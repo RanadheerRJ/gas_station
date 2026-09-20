@@ -73,6 +73,7 @@ function destinationsFor(role) {
       return {
         tabs: [
           { to: "/today", label: "nav.today", Icon: HomeIcon, end: true },
+          { to: "/today/stock", label: "nav.groundStock", Icon: TankIcon },
           { to: "/today/history", label: "nav.history", Icon: HistoryIcon },
           { to: "/today/account", label: "nav.account", Icon: UserIcon },
         ],
