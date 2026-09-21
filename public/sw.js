@@ -1,5 +1,5 @@
 /*
- * Service worker for PumpMithra.
+ * Service worker for PÉTRAV.
  *
  * A forecourt office is exactly where the signal drops out, so the shell is
  * cached on install and served from cache first. Data requests are never
@@ -7,7 +7,7 @@
  * because someone would act on it.
  */
 
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 

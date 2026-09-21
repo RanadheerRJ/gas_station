@@ -1,4 +1,4 @@
-# PumpMithra
+# PÉTRAV
 
 A role-scoped fuel-station ledger: username + PIN access for owners, managers,
 and attendants; meter-driven shifts; ground stock; customer credit; and daily
@@ -39,7 +39,7 @@ range and a pair of export buttons (`src/components/ReportTools.jsx`).
   are escaped per RFC 4180; the PDF is a hand-written PDF 1.4 document, which
   avoids a heavyweight dependency for what is a monospaced table.
 - Filenames always carry the station and the window, e.g.
-  `pumpmithra-shifts-cityctr-2026-09-01_2026-09-19.csv`.
+  `petrav-shifts-cityctr-2026-09-01_2026-09-19.csv`.
 - Exports are on demand only. Nothing is written back — there is no
   saved-report table — and `src/lib/export.js` imports no Supabase client: it
   is handed rows that already came through `src/lib/api.js`, so RLS has
@@ -65,6 +65,30 @@ needs key lookup and one placeholder substitution.
   Telugu or Hindi, if a placeholder is dropped in translation, or if a
   component asks for a key that does not exist — so missing-key text cannot
   reach a screen.
+
+## Brand
+
+The app is branded **PÉTRAV** (PET-RAV) — Fuel + ₹ + Time: a blue fuel pump
+with a ₹ display, a fuel drop, a red nozzle, and a clock overlapping the
+lower right. The palette is the Indian fuel-retail blue/red/white family
+(`#063B8F`, `#0B5BC6`, `#E31B23`, white), deliberately not any particular
+marketer's logo.
+
+- `src/components/branding.jsx` — the live artwork used by the app bar,
+  sidebar, login card and boot screen. Inline SVG on a 96-unit grid, themed
+  through CSS custom properties (`--petrav-*` in `styles.css`) so dark mode
+  needs no second asset. The wordmark is monoline geometry, not a font.
+- `src/assets/branding/` — the master files: full logo, horizontal lockup,
+  icon, monochrome icon, maskable icon, and a self-animated loading logo.
+  See `src/assets/branding/README.md` for the usage matrix.
+- `public/` — `favicon.svg` (simplified pump, for the browser tab),
+  `favicon.ico`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`
+  (artwork inside the Android safe zone), `apple-touch-icon.png`, and
+  `logo.svg` (the rounded-square tile referenced by the manifest).
+- `scripts/branding/build-branding.mjs` — regenerates every file above from
+  one geometry table: `node scripts/branding/build-branding.mjs` writes the
+  SVGs; with `npm i --no-save sharp` present it also rasterises the PNGs
+  and rebuilds `favicon.ico`.
 
 ## Security model
 

@@ -24,7 +24,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *     never render, so the storage side must not wait for an effect.
  */
 
-const PREFIX = "pumpmithra.draft.";
+const PREFIX = "petrav.draft.";
+/* Drafts saved by the pre-rename build live under the old prefix. They are
+   adopted on first read — and the legacy key removed — so a half-typed
+   shift survives the upgrade exactly once, never to resurrect after a
+   clear(). */
+const LEGACY_PREFIX = "pumpmithra.draft.";
 
 /** Plain data object — not an array, not null. */
 function isPlainObject(value) {
@@ -46,7 +51,15 @@ function project(stored, initial) {
 
 function read(storageKey, initial) {
   try {
-    const raw = window.localStorage.getItem(storageKey);
+    let raw = window.localStorage.getItem(storageKey);
+    if (raw == null && storageKey.startsWith(PREFIX)) {
+      const legacyKey = LEGACY_PREFIX + storageKey.slice(PREFIX.length);
+      raw = window.localStorage.getItem(legacyKey);
+      if (raw != null) {
+        window.localStorage.setItem(storageKey, raw);
+        window.localStorage.removeItem(legacyKey);
+      }
+    }
     if (raw == null) return initial;
     return project(JSON.parse(raw), initial);
   } catch {

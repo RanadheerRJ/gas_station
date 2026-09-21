@@ -1,10 +1,10 @@
 /* =====================================================================
-   PumpMithra — app-shell visual system
+   PÉTRAV — app-shell visual system
    ---------------------------------------------------------------------
    A consumer-delivery-app look, built for a phone held at a forecourt
-   counter: card-first layouts, one bold figure per card, a confident green
-   accent, a checkout-style primary action that is always in the same place,
-   and sheets for everything secondary.
+   counter: card-first layouts, one bold figure per card, a confident
+   brand-blue accent, a checkout-style primary action that is always in the
+   same place, and sheets for everything secondary.
    Every colour, radius, shadow and motion value is a token so the two
    themes (and any future one) stay in lockstep with the rest of the app.
    ===================================================================== */
@@ -23,18 +23,32 @@
   --hairline: #e5e9ef;
   --hairline-strong: #d6dce5;
 
-  --accent: #0a8a4f;
-  --accent-strong: #067443;
-  --accent-soft: rgba(10, 138, 79, 0.1);
-  --accent-soft-strong: rgba(10, 138, 79, 0.18);
+  --accent: #0b5bc6;
+  --accent-strong: #063b8f;
+  --accent-soft: rgba(11, 91, 198, 0.1);
+  --accent-soft-strong: rgba(11, 91, 198, 0.18);
   --accent-ink: #ffffff;
+
+  /* PÉTRAV brand palette. The logo artwork (src/components/branding.jsx)
+     reads these directly, so the mark re-themes with the app rather than
+     shipping a second dark asset. */
+  --petrav-pump: #063b8f;
+  --petrav-display: #ffffff;
+  --petrav-rupee: #063b8f;
+  --petrav-base: #082b5c;
+  --petrav-nozzle: #e31b23;
+  --petrav-drop: #f5a623;
+  --petrav-clock-face: #ffffff;
+  --petrav-clock-ring: #0b5bc6;
+  --petrav-clock-hour: #063b8f;
+  --petrav-red: #e31b23;
 
   /* The checkout button. Deliberately its own pair of tokens: it must stay
      legible and confident in both themes whatever happens to --accent. */
-  --cta-bg: #067443;
-  --cta-bg-hover: #055e37;
+  --cta-bg: #063b8f;
+  --cta-bg-hover: #052f70;
   --cta-ink: #ffffff;
-  --cta-shadow: 0 8px 20px -8px rgba(6, 116, 67, 0.55);
+  --cta-shadow: 0 8px 20px -8px rgba(6, 59, 143, 0.55);
 
   /* legacy names kept so component code and inline styles do not need to
      change — they resolve to the system's semantic colours. */
@@ -118,16 +132,24 @@
   --hairline: #202b3b;
   --hairline-strong: #2b3850;
 
-  --accent: #35c98b;
-  --accent-strong: #4bd69c;
-  --accent-soft: rgba(53, 201, 139, 0.14);
-  --accent-soft-strong: rgba(53, 201, 139, 0.26);
-  --accent-ink: #06130c;
+  --accent: #4e8ef5;
+  --accent-strong: #74a9f8;
+  --accent-soft: rgba(78, 142, 245, 0.14);
+  --accent-soft-strong: rgba(78, 142, 245, 0.26);
+  --accent-ink: #ffffff;
 
-  --cta-bg: #2fbf82;
-  --cta-bg-hover: #3ecc90;
-  --cta-ink: #04160d;
-  --cta-shadow: 0 8px 22px -8px rgba(47, 191, 130, 0.45);
+  /* Dark-mode brand artwork: the pump brightens so it holds its shape on a
+     dark surface, and the secondary strokes lift with it. Not a simple
+     invert — the white display, ₹ and clock face stay light, the red
+     accents stay red, exactly as on the light theme. */
+  --petrav-pump: #1567d2;
+  --petrav-base: #3e6fbf;
+  --petrav-clock-ring: #5b9bf0;
+
+  --cta-bg: #1e6fd9;
+  --cta-bg-hover: #3480e4;
+  --cta-ink: #ffffff;
+  --cta-shadow: 0 8px 22px -8px rgba(30, 111, 217, 0.5);
 
   --graphite: #0a0e17;
   --petrol: var(--accent);
@@ -236,26 +258,6 @@ th.num {
   gap: 9px;
 }
 
-.appbar .mark {
-  font-size: 14.5px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  color: var(--ink-strong);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.appbar .mark::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
 .appbar__account {
   width: 38px;
   height: 38px;
@@ -271,6 +273,20 @@ th.num {
 
 .appbar__account:hover:not(:disabled) {
   background: var(--accent-soft-strong);
+}
+
+/* The brand lockup — [mark] PÉTRAV — drawn as inline SVG so it themes with
+   the app and costs no request. The wordmark strokes currentColor. */
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-strong);
+}
+
+.brand-lockup svg {
+  display: block;
+  flex: 0 0 auto;
 }
 
 /* Desktop side nav — persistent, flat, icon-led. */
@@ -290,43 +306,6 @@ th.num {
   padding: 2px 18px 18px;
   border-bottom: 1px solid var(--sidebar-border);
   margin-bottom: 6px;
-}
-
-.brand-lockup {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.brand-logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  flex: 0 0 auto;
-}
-
-.brand-lockup--login {
-  justify-content: center;
-}
-
-.sidebar .brand .mark {
-  font-size: 15px;
-  font-weight: 750;
-  letter-spacing: -0.01em;
-  color: var(--sidebar-ink-strong);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sidebar .brand .mark::before {
-  content: "";
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .sidebar .brand .who {
@@ -1130,7 +1109,7 @@ th.num {
 }
 
 :root[data-theme="dark"] .nozzle-row.selected .nozzle-row__check {
-  color: #06130c;
+  color: #0b1f47;
 }
 
 /* ---------------- rows inside detail cards ---------------- */
@@ -2273,24 +2252,18 @@ tr.total td {
   text-align: center;
 }
 
-.login-card .head .mark {
-  font-family: var(--sans);
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  display: inline-flex;
+/* The login lockup stacks the mark over the wordmark — one clean brand
+   moment before the form takes over. */
+.login-brand {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 9px;
+  gap: 14px;
+  color: var(--ink-strong);
 }
 
-.login-card .head .mark::before {
-  content: "";
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+.login-brand svg {
+  display: block;
 }
 
 .login-card .head p {
@@ -2359,6 +2332,156 @@ tr.total td {
 .spin {
   display: inline-block;
   width: 10px;
+}
+
+/* ---------------- boot screen ----------------
+   The first thing anyone sees while the session is checked: the mark draws
+   itself in — pump, then the ₹ lights, the drop settles, the clock starts —
+   and the wordmark fades in behind it, with a small blue/red sweep holding
+   the wait. The whole intro runs about 1.5s and then idles; reduced-motion
+   users get the still logo instantly via the global rule. */
+
+.boot {
+  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  background:
+    radial-gradient(1100px 520px at 15% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, var(--accent-soft), transparent 55%),
+    var(--bg);
+}
+
+.boot__mark {
+  margin-bottom: 10px;
+}
+
+.boot__word {
+  color: var(--ink-strong);
+  animation: boot-fade 0.6s 0.85s ease-out both;
+}
+
+.boot__sub {
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  animation: boot-fade 0.6s 1.05s ease-out both;
+}
+
+.boot__bar {
+  width: 148px;
+  height: 3px;
+  margin-top: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft-strong);
+  overflow: hidden;
+  animation: boot-fade 0.4s 1.2s ease-out both;
+}
+
+.boot__bar::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 42%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--petrav-pump), var(--petrav-red));
+  animation: boot-sweep 1.15s var(--ease-standard) infinite;
+}
+
+.boot__loading {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  animation: boot-fade 0.4s 1.25s ease-out both;
+}
+
+/* Staged intro on the mark's own structure (see branding.jsx for the
+   pm-* classes). The hand rotates about the clock centre, the drop about
+   its own box — transform-box keeps both correct in every browser. */
+.boot .pm-pump {
+  animation: boot-rise 0.5s var(--ease-out) both;
+}
+
+.boot .pm-clock {
+  animation: boot-fade 0.45s 0.18s ease-out both;
+}
+
+.boot .pm-rupee {
+  animation: boot-light 0.45s 0.3s ease-out both;
+}
+
+.boot .pm-drop {
+  animation:
+    boot-fade 0.4s 0.5s ease-out both,
+    boot-pulse 1.7s 1.1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.boot .pm-hand {
+  animation: boot-tick 3.4s linear infinite;
+  transform-box: view-box;
+  transform-origin: 69.5px 70.5px;
+}
+
+@keyframes boot-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes boot-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes boot-light {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes boot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes boot-tick {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes boot-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(262%);
+  }
 }
 
 /* ---------------- motion ----------------

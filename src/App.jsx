@@ -22,7 +22,7 @@ import TankDetail from "./pages/stock/TankDetail.jsx";
 import CreditList from "./pages/credit/CreditList.jsx";
 import CustomerDetail from "./pages/credit/CustomerDetail.jsx";
 import { useAuth } from "./state/AuthContext";
-import { SkeletonLine } from "./components/motion.jsx";
+import { PetravBoot } from "./components/branding.jsx";
 
 /** Where each role lands after sign-in. */
 const HOME = {
@@ -51,20 +51,9 @@ export default function App() {
   const { profile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="login-wrap">
-        {/* Signing in checks a session against the backend; show the shape of
-            the panel that is coming rather than a bare word. */}
-        <div style={{ width: 320 }}>
-          <div className="loading-bar" />
-          <div className="skeleton-panel" style={{ marginTop: 12 }}>
-            <SkeletonLine width="short" />
-            <SkeletonLine width="wide" />
-            <SkeletonLine width="half" />
-          </div>
-        </div>
-      </div>
-    );
+    /* Checking the session takes a moment; the boot screen carries the
+       brand through it instead of bare placeholders. */
+    return <PetravBoot />;
   }
 
   if (!profile) {

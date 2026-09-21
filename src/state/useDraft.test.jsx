@@ -43,7 +43,7 @@ async function unmount() {
   latest = null;
 }
 
-const stored = (key) => window.localStorage.getItem(`pumpmithra.draft.${key}`);
+const stored = (key) => window.localStorage.getItem(`petrav.draft.${key}`);
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -80,7 +80,7 @@ describe("useDraft", () => {
     // A draft written by an older build: `gone` was removed since, `added`
     // did not exist yet.
     window.localStorage.setItem(
-      "pumpmithra.draft.t3",
+      "petrav.draft.t3",
       JSON.stringify({ a: "kept", gone: "stale" })
     );
     await mount("t3", { a: "", added: "x" });
@@ -118,9 +118,27 @@ describe("useDraft", () => {
   });
 
   it("falls back to the initial when the stored draft is corrupt", async () => {
-    window.localStorage.setItem("pumpmithra.draft.t6", "{not json");
+    window.localStorage.setItem("petrav.draft.t6", "{not json");
     await mount("t6", { a: "safe" });
     expect(latest[0]).toEqual({ a: "safe" });
+  });
+
+  it("adopts a pre-rename draft once, without resurrecting it later", async () => {
+    // A draft saved by the PumpMithra-era build, still mid-form at upgrade.
+    window.localStorage.setItem("pumpmithra.draft.t8", JSON.stringify({ a: "legacy" }));
+    await mount("t8", { a: "" });
+    expect(latest[0]).toEqual({ a: "legacy" });
+    // Adopted: the value now lives under the new key, the old one is gone.
+    expect(JSON.parse(stored("t8"))).toEqual({ a: "legacy" });
+    expect(window.localStorage.getItem("pumpmithra.draft.t8")).toBeNull();
+
+    // …so clearing the form cannot bring the legacy draft back on reload.
+    await act(async () => {
+      latest[2]();
+    });
+    await unmount();
+    await mount("t8", { a: "" });
+    expect(latest[0]).toEqual({ a: "" });
   });
 
   it("keeps different keys apart", async () => {

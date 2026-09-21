@@ -32,7 +32,7 @@ export const LANGUAGE_NAMES = {
 
 const en = {
   /* ---- app chrome, navigation, roles ---- */
-  "app.tagline": "Daily operations and accounts for fuel stations",
+  "app.subtitle": "Station Management",
   "nav.inviteOwner": "Invite Owner",
   "nav.allStations": "All stations",
   "nav.shifts": "Shifts",
@@ -61,7 +61,7 @@ const en = {
     "Offline — showing the last data loaded. Anything you save will fail until the connection returns.",
   "chrome.backOnline": "Back online — saving works again.",
   "chrome.installPrompt":
-    "Install PumpMithra on this device for full-screen use and faster starts.",
+    "Install PÉTRAV on this device for full-screen use and faster starts.",
   "chrome.install": "Install",
   "chrome.notNow": "Not now",
 
@@ -596,7 +596,7 @@ const en = {
 };
 
 const te = {
-  "app.tagline": "ఇంధన స్టేషన్ల రోజువారీ కార్యకలాపాలు మరియు ఖాతాలు",
+  "app.subtitle": "స్టేషన్ మేనేజ్‌మెంట్",
   "nav.inviteOwner": "యజమానిని ఆహ్వానించండి",
   "nav.allStations": "అన్ని స్టేషన్లు",
   "nav.shifts": "షిఫ్టులు",
@@ -625,7 +625,7 @@ const te = {
     "ఆఫ్‌లైన్ — చివరిగా లోడ్ అయిన సమాచారం చూపుతోంది. కనెక్షన్ తిరిగి వచ్చే వరకు మీరు సేవ్ చేసేవి విఫలమవుతాయి.",
   "chrome.backOnline": "మళ్ళీ ఆన్‌లైన్ — సేవ్ చేయడం పని చేస్తుంది.",
   "chrome.installPrompt":
-    "పూర్తి స్క్రీన్ వినియోగం మరియు వేగవంతమైన ప్రారంభం కోసం ఈ పరికరంలో PumpMithra ఇన్‌స్టాల్ చేయండి.",
+    "పూర్తి స్క్రీన్ వినియోగం మరియు వేగవంతమైన ప్రారంభం కోసం ఈ పరికరంలో PÉTRAV ఇన్‌స్టాల్ చేయండి.",
   "chrome.install": "ఇన్‌స్టాల్",
   "chrome.notNow": "ఇప్పుడు వద్దు",
 
@@ -1149,7 +1149,7 @@ const te = {
 };
 
 const hi = {
-  "app.tagline": "ईंधन स्टेशनों के लिए दैनिक संचालन और खाते",
+  "app.subtitle": "स्टेशन प्रबंधन",
   "nav.inviteOwner": "मालिक को आमंत्रित करें",
   "nav.allStations": "सभी स्टेशन",
   "nav.shifts": "शिफ्ट",
@@ -1178,7 +1178,7 @@ const hi = {
     "ऑफ़लाइन — अंतिम लोड किया गया डेटा दिखा रहे हैं। कनेक्शन लौटने तक आपका सहेजा गया कुछ भी विफल रहेगा।",
   "chrome.backOnline": "फिर ऑनलाइन — सहेजना दोबारा काम करता है।",
   "chrome.installPrompt":
-    "पूर्ण-स्क्रीन उपयोग और तेज़ शुरुआत के लिए इस डिवाइस पर PumpMithra इंस्टॉल करें।",
+    "पूर्ण-स्क्रीन उपयोग और तेज़ शुरुआत के लिए इस डिवाइस पर PÉTRAV इंस्टॉल करें।",
   "chrome.install": "इंस्टॉल",
   "chrome.notNow": "अभी नहीं",
 

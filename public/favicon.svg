@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="PÉTRAV">
+<title>PÉTRAV</title>
+<rect width="64" height="64" rx="13" fill="#063B8F"/>
+<g fill="#FFFFFF"><rect x="11" y="49" width="42" height="7" rx="3.5"/><rect x="16" y="8" width="32" height="41" rx="6"/></g>
+<rect x="21.5" y="13.5" width="21" height="15" rx="3.5" fill="#063B8F"/>
+<path d="M26.5 16V25.5M26.5 18.3H37.5M26.5 21.3H37.5M27.5 21.3L36.5 25.3" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round"/>
+</svg>
