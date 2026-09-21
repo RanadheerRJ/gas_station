@@ -256,8 +256,6 @@ const en = {
   "shifts.closeNote": "goes to the owner for review once submitted",
   "shifts.closingReadings": "Closing readings",
   "shifts.expensesLogged": "Expenses logged this shift",
-  "shifts.creditByManager":
-    "Credit sales are added by your manager. Hand the docket over at the end of your shift and record the rest of the money below.",
   "shifts.whatCollected": "What you collected",
   "shifts.fromListAbove": "from the list above",
   "shifts.submitting": "Submitting…",
@@ -815,8 +813,6 @@ const te = {
   "shifts.closeNote": "సమర్పించిన తర్వాత యజమాని సమీక్షకు వెళుతుంది",
   "shifts.closingReadings": "ముగింపు రీడింగ్‌లు",
   "shifts.expensesLogged": "ఈ షిఫ్ట్‌లో నమోదైన ఖర్చులు",
-  "shifts.creditByManager":
-    "అరువు అమ్మకాలను మీ మేనేజర్ జోడిస్తారు. షిఫ్ట్ చివరిలో డాకెట్ అప్పగించి, మిగిలిన డబ్బును క్రింద నమోదు చేయండి.",
   "shifts.whatCollected": "మీరు వసూలు చేసినది",
   "shifts.fromListAbove": "పై జాబితా నుండి",
   "shifts.submitting": "సమర్పిస్తోంది…",
@@ -1365,8 +1361,6 @@ const hi = {
   "shifts.closeNote": "जमा करने के बाद मालिक की समीक्षा में जाएगी",
   "shifts.closingReadings": "समापन रीडिंग",
   "shifts.expensesLogged": "इस शिफ्ट में दर्ज खर्च",
-  "shifts.creditByManager":
-    "उधार बिक्री आपके प्रबंधक जोड़ते हैं। शिफ्ट के अंत में पर्ची सौंपें और बाकी पैसा नीचे दर्ज करें।",
   "shifts.whatCollected": "आपने जो वसूला",
   "shifts.fromListAbove": "ऊपर की सूची से",
   "shifts.submitting": "जमा हो रहा है…",

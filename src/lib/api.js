@@ -688,6 +688,38 @@ export async function listCustomers(stationId) {
   return rows.map(mapCustomer);
 }
 
+/**
+ * The balance-free customer directory: id, name, and phone only, served by a
+ * SECURITY DEFINER RPC that any station member may call. The close-shift
+ * screen uses it to attribute a credit sale to an existing account without
+ * granting attendants the credit ledger itself (balances and history stay
+ * owner/manager-only reads).
+ *
+ * Falls back to the full customer list — which RLS already scopes by role —
+ * when the RPC is not in the database yet, so a Pages deploy that lands
+ * before `supabase db push` degrades to the previous behaviour instead of
+ * breaking the close screen.
+ */
+export async function listCustomerDirectory(stationId) {
+  try {
+    const rows = await rpc("list_customer_directory", { p_station_id: stationId });
+    return (rows || []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      phone: row.phone || "",
+    }));
+  } catch (error) {
+    if (isMissingFunction(error)) {
+      console.warn(
+        "list_customer_directory is missing — apply the latest Supabase migration."
+      );
+      const rows = await listCustomers(stationId).catch(() => []);
+      return rows.map((row) => ({ id: row.id, name: row.name, phone: row.phone || "" }));
+    }
+    throw error;
+  }
+}
+
 export async function createCustomer(stationId, payload) {
   return camelize(
     await rpc("create_customer", {

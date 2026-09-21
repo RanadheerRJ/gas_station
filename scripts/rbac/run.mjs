@@ -254,6 +254,11 @@ async function main() {
         "supabase/migrations/20260920120000_admin_registry_and_manager_staff.sql"
       )
     );
+    // Attendant credit at shift close: guard extension + balance-free
+    // customer directory RPC.
+    await sqlFile(
+      resolve(REPO, "supabase/migrations/20260921000000_attendant_credit_at_close.sql")
+    );
   } else {
     console.log("\n!! negative control: follow-up RBAC migration NOT applied\n");
   }
@@ -404,26 +409,97 @@ async function main() {
     check(`attendant cannot ${label}`, !!r.error, r.error?.message || "no error raised");
   }
 
+  console.log("\n== attendant credit at shift close ==");
+  // The one credit door an attendant has: their own shift close. The rows
+  // land in close_shift's single transaction, stamped with recorded_by, and
+  // the shift still goes to pending_review.
+  const directory = await asUser(
+    IDS.att1,
+    "select * from public.list_customer_directory($1)",
+    [IDS.station]
+  );
+  check(
+    "attendant can list the customer directory for attribution",
+    directory.rows?.length === 1 && directory.rows[0].name === "Acme Transport",
+    directory.error?.message || `saw ${directory.rows?.length}`
+  );
+  check(
+    "the directory exposes id, name, and phone only — no balance",
+    directory.rows?.length > 0 &&
+      Object.keys(directory.rows[0]).sort().join(",") === "id,name,phone",
+    Object.keys(directory.rows?.[0] || {}).join(",")
+  );
+
+  const foreignClose = await asUser(
+    IDS.att1,
+    `select public.close_shift($1, $2, $3::jsonb, '{}'::jsonb, '{}'::jsonb, '',
+       '[{"name":"Ghost","phone":"111","amount":"250"}]'::jsonb) as r`,
+    [IDS.station, benShift, JSON.stringify({ [n2]: "2100" })]
+  );
+  check(
+    "attendant cannot close a co-worker's shift (credit rows roll back too)",
+    !!foreignClose.error,
+    foreignClose.error?.message || "no error raised"
+  );
+
   const creditClose = await asUser(
+    IDS.att1,
+    `select public.close_shift($1, $2, $3::jsonb, '{"cash":"10055","credit":"500"}'::jsonb, '{}'::jsonb, '', $4::jsonb) as r`,
+    [
+      IDS.station,
+      amyShift,
+      JSON.stringify({ [n1]: "1100" }),
+      JSON.stringify([
+        { customerId, amount: "250" },
+        { name: "Ghost", phone: "111", amount: "250" },
+      ]),
+    ]
+  );
+  check(
+    "attendant closes their own shift with existing-customer and walk-in credit",
+    !creditClose.error,
+    creditClose.error?.message
+  );
+  const postedCredit = await asUser(
+    IDS.owner,
+    `select c.name, c.outstanding_balance, t.recorded_by
+       from public.credit_customers c
+       join public.customer_transactions t on t.customer_id = c.id
+      where t.shift_id = $1
+      order by c.name`,
+    [amyShift]
+  );
+  check(
+    "both credit rows posted atomically and are attributed to the attendant",
+    postedCredit.rows?.length === 2 &&
+      postedCredit.rows[0].name === "Acme Transport" &&
+      Number(postedCredit.rows[0].outstanding_balance) === 250 &&
+      postedCredit.rows[1].name === "Ghost" &&
+      Number(postedCredit.rows[1].outstanding_balance) === 250 &&
+      postedCredit.rows.every((r) => r.recorded_by === IDS.att1),
+    postedCredit.error?.message || JSON.stringify(postedCredit.rows)
+  );
+  const retryClose = await asUser(
     IDS.att1,
     `select public.close_shift($1, $2, $3::jsonb, '{}'::jsonb, '{}'::jsonb, '',
        '[{"name":"Ghost","phone":"111","amount":"250"}]'::jsonb) as r`,
     [IDS.station, amyShift, JSON.stringify({ [n1]: "1100" })]
   );
   check(
-    "attendant cannot create credit while closing a shift",
-    !!creditClose.error,
-    creditClose.error?.message || "no error raised"
+    "retrying a completed close fails rather than duplicating debt",
+    !!retryClose.error,
+    retryClose.error?.message || "no error raised"
   );
-  const cleanClose = await asUser(
+  const postCloseLedger = await asUser(
     IDS.att1,
-    `select public.close_shift($1, $2, $3::jsonb, '{"cash":"10555"}'::jsonb, '{}'::jsonb, '', '[]'::jsonb) as r`,
-    [IDS.station, amyShift, JSON.stringify({ [n1]: "1100" })]
+    `select (select count(*) from public.credit_customers) cu,
+            (select count(*) from public.customer_transactions) tx`
   );
   check(
-    "attendant can close their own shift without credit",
-    !cleanClose.error,
-    cleanClose.error?.message
+    "the credit ledger itself still returns nothing to an attendant",
+    Number(postCloseLedger.rows?.[0]?.cu) === 0 &&
+      Number(postCloseLedger.rows?.[0]?.tx) === 0,
+    JSON.stringify(postCloseLedger.rows?.[0])
   );
 
   console.log("\n== developer/admin provisions accounts only ==");
@@ -466,7 +542,8 @@ async function main() {
   check(
     "manager sees shifts, customers, tanks, and prices",
     Number(mgr.rows?.[0]?.sh) === 2 &&
-      Number(mgr.rows?.[0]?.cu) === 1 &&
+      // Acme Transport plus the Ghost walk-in opened at Amy's close.
+      Number(mgr.rows?.[0]?.cu) === 2 &&
       Number(mgr.rows?.[0]?.ta) === 1 &&
       Number(mgr.rows?.[0]?.fp) === 2,
     JSON.stringify(mgr.rows?.[0])
@@ -692,7 +769,8 @@ async function main() {
   );
   check(
     "owner export covers their own station's shifts, credit, and stock",
-    Number(ownerExport.rows?.[0]?.sh) === 2 && Number(ownerExport.rows?.[0]?.cu) === 1,
+    // Acme Transport plus the Ghost walk-in opened at Amy's close.
+    Number(ownerExport.rows?.[0]?.sh) === 2 && Number(ownerExport.rows?.[0]?.cu) === 2,
     JSON.stringify(ownerExport.rows?.[0])
   );
 

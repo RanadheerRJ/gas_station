@@ -6,7 +6,12 @@ import { LoadingPanels, NumberRoll } from "../../components/motion.jsx";
 import { CashIcon } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
-import { closeShift, listCustomers, listShifts, readableError } from "../../lib/api";
+import {
+  closeShift,
+  listCustomerDirectory,
+  listShifts,
+  readableError,
+} from "../../lib/api";
 import { formatStamp, money, num } from "../../lib/format";
 import {
   PAYMENT_MODES,
@@ -28,9 +33,10 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
  * figure — ending in one pinned action that submits it all.
  *
  * The same screen serves the attendant closing their own shift and a
- * manager/owner closing anyone's; the only difference is that the attendant
- * cannot attribute credit sales (the directory is not theirs to read, and
- * the RPC refuses those rows anyway).
+ * manager/owner closing anyone's. Everyone can record credit sales —
+ * against an existing customer (picked from the balance-free directory) or
+ * a new walk-in — because they all land inside close_shift's single
+ * transaction and the shift still goes to the owner/manager for review.
  */
 export default function CloseShift() {
   const { t } = useLanguage();
@@ -44,8 +50,6 @@ export default function CloseShift() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-
-  const canEnterCredit = profile.role !== "attendant";
 
   // Everything typed here was read off a meter or counted at the till —
   // work that cannot be re-derived if the phone dies or the submit fails.
@@ -77,7 +81,7 @@ export default function CloseShift() {
       try {
         const [rows, directory] = await Promise.all([
           listShifts(stationId),
-          canEnterCredit ? listCustomers(stationId).catch(() => []) : Promise.resolve([]),
+          listCustomerDirectory(stationId).catch(() => []),
         ]);
         if (cancelled) return;
         setShift(rows.find((s) => s.id === id) || null);
@@ -92,7 +96,7 @@ export default function CloseShift() {
     return () => {
       cancelled = true;
     };
-  }, [stationId, id, canEnterCredit]);
+  }, [stationId, id]);
 
   // A shift that is positively known to be settled has no draft worth
   // keeping — someone else closed it, or an earlier submit landed after
@@ -153,11 +157,7 @@ export default function CloseShift() {
     // satisfy exhaustive-deps now that it comes from useDraft.
   }, [creditTotal, setPayments]);
 
-  const visibleModes = useMemo(
-    () =>
-      canEnterCredit ? PAYMENT_MODES : PAYMENT_MODES.filter((mode) => mode !== "credit"),
-    [canEnterCredit]
-  );
+  const visibleModes = PAYMENT_MODES;
 
   const submit = async () => {
     const found = validateClosing(withClosings);
@@ -173,10 +173,8 @@ export default function CloseShift() {
         closingReadings: Object.fromEntries(
           withClosings.map((nozzle) => [nozzle.nozzleId, nozzle.closingReading])
         ),
-        // Never send credit rows the operator was not allowed to enter; the
-        // database refuses them anyway.
-        creditSales: canEnterCredit ? creditSales : [],
-        payments: canEnterCredit ? payments : { ...payments, credit: "" },
+        creditSales,
+        payments,
         testing,
         note,
       });
@@ -332,99 +330,95 @@ export default function CloseShift() {
         </section>
 
         {/* ---- credit sales ---- */}
-        {canEnterCredit ? (
-          <section className="card">
-            <div className="card__head">
-              <h2>{t("shifts.creditSales")}</h2>
-              <button
-                type="button"
-                className="small"
-                onClick={() =>
-                  setCreditSales((rows) => [
-                    ...rows,
-                    { customerId: "", name: "", phone: "", amount: "" },
-                  ])
-                }
-              >
-                {t("shifts.addCreditSale")}
-              </button>
+        <section className="card">
+          <div className="card__head">
+            <h2>{t("shifts.creditSales")}</h2>
+            <button
+              type="button"
+              className="small"
+              onClick={() =>
+                setCreditSales((rows) => [
+                  ...rows,
+                  { customerId: "", name: "", phone: "", amount: "" },
+                ])
+              }
+            >
+              {t("shifts.addCreditSale")}
+            </button>
+          </div>
+          {creditSales.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>
+              {t("common.none")}
+            </p>
+          ) : (
+            <div className="stack" style={{ gap: 10 }}>
+              {creditSales.map((row, index) => {
+                const known = customers.find((c) => c.id === row.customerId);
+                const patch = (fields) =>
+                  setCreditSales((rows) => {
+                    const next = [...rows];
+                    next[index] = { ...next[index], ...fields };
+                    return next;
+                  });
+                return (
+                  <div key={index} className="credit-row">
+                    <select
+                      value={row.customerId || ""}
+                      onChange={(e) => {
+                        const chosen = customers.find((c) => c.id === e.target.value);
+                        patch({
+                          customerId: e.target.value,
+                          name: chosen ? chosen.name : row.name,
+                          phone: chosen ? chosen.phone || "" : row.phone,
+                        });
+                      }}
+                    >
+                      <option value="">{t("shifts.newWalkIn")}</option>
+                      {customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={row.name || ""}
+                      disabled={!!known}
+                      placeholder={t("shifts.customerName")}
+                      onChange={(e) => patch({ name: e.target.value })}
+                    />
+                    <input
+                      className="mono"
+                      inputMode="tel"
+                      value={row.phone || ""}
+                      disabled={!!known}
+                      placeholder={t("shifts.mobile")}
+                      onChange={(e) => patch({ phone: e.target.value })}
+                    />
+                    <input
+                      className="mono"
+                      inputMode="decimal"
+                      style={{ textAlign: "right" }}
+                      value={row.amount}
+                      placeholder="0.00"
+                      onChange={(e) => patch({ amount: e.target.value })}
+                      aria-label={t("common.amount")}
+                    />
+                    <button
+                      type="button"
+                      className="quiet"
+                      onClick={() =>
+                        setCreditSales((rows) => rows.filter((_, j) => j !== index))
+                      }
+                    >
+                      {t("common.remove")}
+                    </button>
+                  </div>
+                );
+              })}
+              <div className="small muted">{t("shifts.walkInNote")}</div>
             </div>
-            {creditSales.length === 0 ? (
-              <p className="small muted" style={{ margin: 0 }}>
-                {t("common.none")}
-              </p>
-            ) : (
-              <div className="stack" style={{ gap: 10 }}>
-                {creditSales.map((row, index) => {
-                  const known = customers.find((c) => c.id === row.customerId);
-                  const patch = (fields) =>
-                    setCreditSales((rows) => {
-                      const next = [...rows];
-                      next[index] = { ...next[index], ...fields };
-                      return next;
-                    });
-                  return (
-                    <div key={index} className="credit-row">
-                      <select
-                        value={row.customerId || ""}
-                        onChange={(e) => {
-                          const chosen = customers.find((c) => c.id === e.target.value);
-                          patch({
-                            customerId: e.target.value,
-                            name: chosen ? chosen.name : row.name,
-                            phone: chosen ? chosen.phone || "" : row.phone,
-                          });
-                        }}
-                      >
-                        <option value="">{t("shifts.newWalkIn")}</option>
-                        {customers.map((customer) => (
-                          <option key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        value={row.name || ""}
-                        disabled={!!known}
-                        placeholder={t("shifts.customerName")}
-                        onChange={(e) => patch({ name: e.target.value })}
-                      />
-                      <input
-                        className="mono"
-                        inputMode="tel"
-                        value={row.phone || ""}
-                        disabled={!!known}
-                        placeholder={t("shifts.mobile")}
-                        onChange={(e) => patch({ phone: e.target.value })}
-                      />
-                      <input
-                        className="mono"
-                        inputMode="decimal"
-                        style={{ textAlign: "right" }}
-                        value={row.amount}
-                        placeholder="0.00"
-                        onChange={(e) => patch({ amount: e.target.value })}
-                        aria-label={t("common.amount")}
-                      />
-                      <button
-                        type="button"
-                        className="quiet"
-                        onClick={() =>
-                          setCreditSales((rows) => rows.filter((_, j) => j !== index))
-                        }
-                      >
-                        {t("common.remove")}
-                      </button>
-                    </div>
-                  );
-                })}
-                <div className="small muted">{t("shifts.walkInNote")}</div>
-              </div>
-            )}
-          </section>
-        ) : (
-          <Notice>{t("shifts.creditByManager")}</Notice>
-        )}
+          )}
+        </section>
 
         {/* ---- the cash count ---- */}
         <section className="card">
