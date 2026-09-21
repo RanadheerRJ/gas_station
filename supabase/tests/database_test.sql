@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(22);
+select plan(24);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -34,6 +34,19 @@ select results_eq(
        and parameter_mode = 'OUT' $$,
   array[1],
   'list_nozzle_occupancy returns a single column and cannot leak identity'
+);
+
+-- Attendants attribute credit sales at shift close through a balance-free
+-- directory: id, name, phone — never a balance or transaction history.
+select has_function('public', 'list_customer_directory', array['uuid'], 'balance-free customer directory RPC exists');
+select results_eq(
+  $$ select array_agg(parameter_name::text order by ordinal_position)
+     from information_schema.parameters
+     where specific_schema = 'public'
+       and specific_name like 'list_customer_directory%'
+       and parameter_mode = 'OUT' $$,
+  $$ values (array['id', 'name', 'phone']) $$,
+  'list_customer_directory returns id, name, and phone only — no balance'
 );
 
 /* Row-level security on every browser-readable table ------------------ */

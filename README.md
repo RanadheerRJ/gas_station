@@ -117,7 +117,7 @@ are, so a hand-written PostgREST or RPC call is refused exactly like a click is.
 | Station operational data | ❌ | own stations | assigned station | availability only |
 | Shifts | ❌ | all | all | **own only** |
 | Other operators' identities | ❌ | ✅ | ✅ | ❌ shown as “Another operator” |
-| Credit customers & balances | ❌ | ✅ | ✅ | ❌ |
+| Credit customers & balances | ❌ | ✅ | ✅ | ❌ ledger; credit sales at own shift close only, via a balance-free name/phone directory |
 | Fuel-price history | ❌ | ✅ | ✅ | ❌ |
 | Tanks & tank readings | ❌ | ✅ | ✅ | ❌ |
 | Review/approve shifts | ❌ | ✅ | ✅ | ❌ |
@@ -157,7 +157,18 @@ so the forecourt board can show a pump as busy without naming who has it.
 `guard_attendant_writes()` is the backstop. Mutation RPCs are
 `SECURITY DEFINER`, so RLS does not apply inside them, but row triggers still
 fire: an attendant cannot modify another employee's shift, nor touch credit,
-price, or stock rows, even by calling an RPC directly.
+price, or stock rows directly. The trigger admits credit and stock writes only
+when they arrive from inside a trusted `SECURITY DEFINER` RPC (detected by
+`current_user` not being `authenticated`/`anon`), which for credit means
+exactly one attendant path: `close_shift` on their own shift. There the
+attendant may record credit sales — against an existing customer picked from
+`list_customer_directory(p_station_id)` (id, name, phone; deliberately
+balance-free) or as a new walk-in — and every such row is stamped with
+`recorded_by` and lands in a shift that still goes to `pending_review`.
+`create_customer` and `record_customer_transaction` keep asserting
+owner/manager, so an attendant still cannot open accounts, record payments, or
+move balances outside a shift close, and the credit ledger (balances, history)
+remains unreadable to them.
 
 ### Database access
 
