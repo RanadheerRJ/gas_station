@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "./motion.jsx";
 import { CloseIcon } from "./icons.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -17,6 +17,7 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
   const { t } = useLanguage();
   // "closed" | "open" | "closing"
   const [phase, setPhase] = useState(open ? "open" : "closed");
+  const rootRef = useRef(null);
 
   useEffect(() => {
     if (open) {
@@ -59,10 +60,42 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
     return () => window.removeEventListener("keydown", onKey);
   }, [phase, onClose]);
 
+  // In an iOS standalone PWA the on-screen keyboard shrinks only the visual
+  // viewport; the layout viewport that 100dvh and position: fixed size
+  // against stays full-height, so a vh-capped sheet keeps its height and
+  // the keyboard pushes its top rows off-screen. Track the visual viewport
+  // and expose it as CSS custom properties (defaulted in styles.css, so
+  // browsers without visualViewport support keep the old behaviour):
+  // --sheet-viewport-h caps the sheet at the space actually visible, and
+  // --sheet-viewport-offset pads the root up by however much the keyboard
+  // covers at the bottom of the screen.
+  useEffect(() => {
+    if (phase === "closed") return undefined;
+    const viewport = window.visualViewport;
+    const root = rootRef.current;
+    if (!viewport || !root) return undefined;
+    const apply = () => {
+      root.style.setProperty("--sheet-viewport-h", `${Math.round(viewport.height)}px`);
+      root.style.setProperty(
+        "--sheet-viewport-offset",
+        `${Math.round(window.innerHeight - viewport.height - viewport.offsetTop)}px`
+      );
+    };
+    apply();
+    viewport.addEventListener("resize", apply);
+    viewport.addEventListener("scroll", apply);
+    return () => {
+      viewport.removeEventListener("resize", apply);
+      viewport.removeEventListener("scroll", apply);
+      root.style.removeProperty("--sheet-viewport-h");
+      root.style.removeProperty("--sheet-viewport-offset");
+    };
+  }, [phase]);
+
   if (phase === "closed") return null;
 
   return (
-    <div className={`sheet-root${phase === "closing" ? " closing" : ""}`}>
+    <div ref={rootRef} className={`sheet-root${phase === "closing" ? " closing" : ""}`}>
       <div className="backdrop" onClick={onClose} />
       <div
         className={`sheet${wide ? " sheet--wide" : ""}`}

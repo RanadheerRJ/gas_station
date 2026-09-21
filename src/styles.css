@@ -1867,13 +1867,20 @@ button.small {
 
 /* ---------------- bottom sheet ---------------- */
 
+/* Sized against the *visual* viewport while a sheet is open, so an iOS PWA
+   keyboard (which shrinks only the visual viewport) cannot push the sheet
+   off-screen. Sheet.jsx overwrites the two custom properties from
+   window.visualViewport; these defaults cover browsers without it. */
 .sheet-root {
+  --sheet-viewport-h: 100dvh;
+  --sheet-viewport-offset: 0px;
   position: fixed;
   inset: 0;
   z-index: 90;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  padding-bottom: var(--sheet-viewport-offset);
 }
 
 .backdrop {
@@ -1894,7 +1901,8 @@ button.small {
   background: var(--surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-lg);
-  max-height: min(86vh, 760px);
+  min-height: 0;
+  max-height: min(calc(var(--sheet-viewport-h) - 34px), 760px);
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -1924,6 +1932,7 @@ button.small {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 20px 10px;
+  flex: 0 0 auto;
 }
 
 .sheet__head h2 {
@@ -1945,6 +1954,12 @@ button.small {
 .sheet__body {
   padding: 6px 20px 20px;
   overflow-y: auto;
+  /* min-height: 0 lets the body shrink inside its flex column so a tall
+     form scrolls here instead of overflowing the sheet. */
+  min-height: 0;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* The "More" list inside its sheet. */
