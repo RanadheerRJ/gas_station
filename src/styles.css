@@ -4380,3 +4380,38 @@ button:focus-visible {
     background: var(--bg);
   }
 }
+
+.report-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.report-filter-bar fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.report-filter-bar legend,
+.report-filter-bar .field > span {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 650;
+  margin-bottom: 5px;
+}
+.report-filter-bar .field {
+  min-width: 160px;
+}
+.segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.segmented-control button {
+  min-height: 38px;
+}
+.segmented-control button.active {
+  background: var(--ink);
+  color: var(--paper);
+}

@@ -38,8 +38,12 @@ range and a pair of export buttons (`src/components/ReportTools.jsx`).
 - CSV and PDF are generated in the browser by `src/lib/export.js`. CSV fields
   are escaped per RFC 4180; the PDF is a hand-written PDF 1.4 document, which
   avoids a heavyweight dependency for what is a monospaced table.
-- Filenames always carry the station and the window, e.g.
-  `petrav-shifts-cityctr-2026-09-01_2026-09-19.csv`.
+- Owners and managers can additionally scope fuel reports to All fuels, MS,
+  HSD, or CNG. Shifts and Monthly Summary also offer an employee selector;
+  Shifts offers review-status filtering. Attendants retain their RLS-scoped,
+  self-only view and are not offered operator filters.
+- Filenames carry the station, active scopes, and window, e.g.
+  `petrav-shifts-cityctr-ms-ravi-2026-09-01_2026-09-19.csv`.
 - Exports are on demand only. Nothing is written back — there is no
   saved-report table — and `src/lib/export.js` imports no Supabase client: it
   is handed rows that already came through `src/lib/api.js`, so RLS has

@@ -4,6 +4,7 @@ import { Notice, Segmented, Stat } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { ChevronIcon } from "../../components/icons.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
+import ReportSheet from "../../components/ReportSheet.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
 import { money, todayISO } from "../../lib/format";
@@ -11,6 +12,7 @@ import { SHIFT_STATUS, varianceTone } from "../../lib/shiftMath";
 import { changePct, monthOf, monthReport, shiftMonth } from "../../lib/reportMath.js";
 import { fuelClass } from "../../lib/fuel.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
+import { monthlyReport } from "../../lib/export.js";
 
 /**
  * The month on one screen, for owners and managers: a month dial, the
@@ -59,6 +61,19 @@ export default function Reports() {
   }, [load]);
 
   const report = useMemo(() => monthReport(shifts, month), [shifts, month]);
+  const buildReport = useCallback(
+    (range, filters = {}) =>
+      monthlyReport({
+        shifts: shifts.filter(
+          (shift) => shift.date >= range.from && shift.date <= range.to
+        ),
+        month,
+        stationName: station?.name || "",
+        ...filters,
+      }),
+    [shifts, month, station]
+  );
+
   const previous = useMemo(
     () => monthReport(shifts, shiftMonth(month, -1)),
     [shifts, month]
@@ -122,6 +137,14 @@ export default function Reports() {
         }
         filter={
           <StationFilter stations={stations} value={stationId} onChange={setStation} />
+        }
+        actions={
+          <ReportSheet
+            report="monthly"
+            title="Monthly summary"
+            stationName={station?.name || ""}
+            buildReport={buildReport}
+          />
         }
       />
       <div className="content stack">
