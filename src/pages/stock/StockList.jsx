@@ -251,7 +251,7 @@ export default function StockList() {
                 <div className="card__head">
                   <h2>{t("stock.byProduct")}</h2>
                 </div>
-                <table>
+                <table className="responsive-table">
                   <thead>
                     <tr>
                       <th>{t("stock.product")}</th>
@@ -263,15 +263,21 @@ export default function StockList() {
                   <tbody>
                     {Object.entries(byProduct).map(([fuel, value]) => (
                       <tr key={fuel}>
-                        <td>
+                        <td data-label={t("stock.product")}>
                           <span className="row" style={{ gap: 6, alignItems: "center" }}>
                             <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
                             {fuel}
                           </span>
                         </td>
-                        <td className="num mono">{value.tanks}</td>
-                        <td className="num mono">{money(value.stock)}</td>
-                        <td className="num mono">{money(value.ullage)}</td>
+                        <td data-label={t("stock.tanksTitle")} className="num mono">
+                          {value.tanks}
+                        </td>
+                        <td data-label={t("stock.inGround")} className="num mono">
+                          {money(value.stock)}
+                        </td>
+                        <td data-label={t("stock.roomForDelivery")} className="num mono">
+                          {money(value.ullage)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -289,7 +295,7 @@ export default function StockList() {
                   <Empty>{t("stock.noReadings")}</Empty>
                 </div>
               ) : (
-                <table>
+                <table className="responsive-table">
                   <thead>
                     <tr>
                       <th>{t("stock.when")}</th>
@@ -306,9 +312,11 @@ export default function StockList() {
                       const up = num(entry.change) > 0;
                       return (
                         <tr key={entry.id}>
-                          <td className="mono small">{formatStamp(entry.recordedAt)}</td>
-                          <td>{tank?.name || "—"}</td>
-                          <td>
+                          <td data-label={t("stock.when")} className="mono small">
+                            {formatStamp(entry.recordedAt)}
+                          </td>
+                          <td data-label={t("stock.tankCol")}>{tank?.name || "—"}</td>
+                          <td data-label={t("stock.entry")}>
                             {entry.kind === "delivery" ? (
                               <span className="tag green">{t("stock.delivery")}</span>
                             ) : (
@@ -316,6 +324,7 @@ export default function StockList() {
                             )}
                           </td>
                           <td
+                            data-label={t("stock.change")}
                             className="num mono"
                             style={{ color: up ? "var(--green)" : "var(--rust)" }}
                           >
@@ -323,8 +332,12 @@ export default function StockList() {
                               ? "—"
                               : `${up ? "+" : ""}${money(entry.change)}`}
                           </td>
-                          <td className="num mono">{money(entry.stockLitres)}</td>
-                          <td className="small">{entry.recordedByName || "—"}</td>
+                          <td data-label={t("stock.stockAfter")} className="num mono">
+                            {money(entry.stockLitres)}
+                          </td>
+                          <td data-label={t("stock.by")} className="small">
+                            {entry.recordedByName || "—"}
+                          </td>
                         </tr>
                       );
                     })}

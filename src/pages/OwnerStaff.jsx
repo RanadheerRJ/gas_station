@@ -121,7 +121,7 @@ export default function OwnerStaff() {
             <div className="card__head">
               <h2>{t("staff.existing")}</h2>
             </div>
-            <table>
+            <table className="responsive-table">
               <thead>
                 <tr>
                   <th>{t("common.name")}</th>
@@ -137,13 +137,23 @@ export default function OwnerStaff() {
                 {staff.map((member) => (
                   <Fragment key={member.uid}>
                     <tr>
-                      <td style={{ fontWeight: 500 }}>{member.name}</td>
-                      <td className="mono">{member.username}</td>
-                      <td className="mono small">{member.phone}</td>
-                      <td>{t(`role.${member.role}`)}</td>
-                      <td>{stationName((member.stationIds || [])[0])}</td>
-                      <td className="small muted">{formatStamp(member.createdAt)}</td>
-                      <td className="num">
+                      <td data-label={t("common.name")} style={{ fontWeight: 500 }}>
+                        {member.name}
+                      </td>
+                      <td data-label={t("staff.username")} className="mono">
+                        {member.username}
+                      </td>
+                      <td data-label={t("common.phone")} className="mono small">
+                        {member.phone}
+                      </td>
+                      <td data-label={t("staff.role")}>{t(`role.${member.role}`)}</td>
+                      <td data-label={t("common.station")}>
+                        {stationName((member.stationIds || [])[0])}
+                      </td>
+                      <td data-label={t("staff.created")} className="small muted">
+                        {formatStamp(member.createdAt)}
+                      </td>
+                      <td data-label={t("common.actions")} className="num">
                         <button
                           type="button"
                           className="quiet"

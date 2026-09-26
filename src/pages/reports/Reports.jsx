@@ -248,7 +248,7 @@ export default function Reports() {
                   <div className="card__head">
                     <h2>{t("reports.fuelMix")}</h2>
                   </div>
-                  <table>
+                  <table className="responsive-table">
                     <thead>
                       <tr>
                         <th>{t("ledger.fuel")}</th>
@@ -260,7 +260,7 @@ export default function Reports() {
                     <tbody>
                       {fuelRows.map((row) => (
                         <tr key={row.fuel}>
-                          <td>
+                          <td data-label={t("ledger.fuel")}>
                             <span
                               className="row"
                               style={{ gap: 6, alignItems: "center" }}
@@ -271,9 +271,13 @@ export default function Reports() {
                               {row.fuel}
                             </span>
                           </td>
-                          <td className="num mono">{money(row.litres)}</td>
-                          <td className="num mono">{money(row.revenue)}</td>
-                          <td className="num mono">
+                          <td data-label={t("shifts.litres")} className="num mono">
+                            {money(row.litres)}
+                          </td>
+                          <td data-label={t("common.amount")} className="num mono">
+                            {money(row.revenue)}
+                          </td>
+                          <td data-label={t("reports.share")} className="num mono">
                             {report.litres > 0
                               ? `${Math.round((row.litres / report.litres) * 100)}%`
                               : "—"}

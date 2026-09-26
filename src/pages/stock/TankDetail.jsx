@@ -189,7 +189,7 @@ export default function TankDetail() {
             <div className="card__head">
               <h2>{t("stock.logTitle")}</h2>
             </div>
-            <table>
+            <table className="responsive-table">
               <thead>
                 <tr>
                   <th>{t("stock.when")}</th>
@@ -206,8 +206,10 @@ export default function TankDetail() {
                   const up = num(entry.change) > 0;
                   return (
                     <tr key={entry.id}>
-                      <td className="mono small">{formatStamp(entry.recordedAt)}</td>
-                      <td>
+                      <td data-label={t("stock.when")} className="mono small">
+                        {formatStamp(entry.recordedAt)}
+                      </td>
+                      <td data-label={t("stock.entry")}>
                         {entry.kind === "delivery" ? (
                           <span className="tag green">{t("stock.delivery")}</span>
                         ) : (
@@ -216,6 +218,7 @@ export default function TankDetail() {
                         {entry.note && <div className="small muted">{entry.note}</div>}
                       </td>
                       <td
+                        data-label={t("stock.change")}
                         className="num mono"
                         style={{ color: up ? "var(--green)" : "var(--rust)" }}
                       >
@@ -223,16 +226,20 @@ export default function TankDetail() {
                           ? "—"
                           : `${up ? "+" : ""}${money(entry.change)}`}
                       </td>
-                      <td className="num mono">{money(entry.stockLitres)}</td>
-                      <td className="num mono">
+                      <td data-label={t("stock.stockAfter")} className="num mono">
+                        {money(entry.stockLitres)}
+                      </td>
+                      <td data-label={t("stock.temp")} className="num mono">
                         {entry.temperatureC == null
                           ? "—"
                           : `${num(entry.temperatureC).toFixed(1)}°`}
                       </td>
-                      <td className="num mono">
+                      <td data-label={t("stock.water")} className="num mono">
                         {entry.waterCm == null ? "—" : `${num(entry.waterCm).toFixed(1)}`}
                       </td>
-                      <td className="small">{entry.recordedByName || "—"}</td>
+                      <td data-label={t("stock.by")} className="small">
+                        {entry.recordedByName || "—"}
+                      </td>
                     </tr>
                   );
                 })}
