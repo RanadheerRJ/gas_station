@@ -21,7 +21,7 @@
  */
 
 import { formatDate, formatStamp } from "./format.js";
-import { SHIFT_STATUS, shiftTotals } from "./shiftMath.js";
+import { classifyFuel, SHIFT_STATUS, shiftTotals } from "./shiftMath.js";
 import { tankStatus } from "./tankMath.js";
 
 /** Everything this app exports is prefixed so downloads sort together. */
@@ -104,12 +104,17 @@ export function reportFilename({
   from,
   to,
   extension = "csv",
+  fuelGroup = "",
+  employeeName = "",
 } = {}) {
   const slug = stationSlug(stationName);
   const start = isoOrToday(from);
   const end = isoOrToday(to);
+  const scope = [fuelGroup, employeeName]
+    .filter(Boolean)
+    .map((value) => stationSlug(value, 24));
   const kind = String(report || "report").replace(/[^a-z0-9]+/gi, "-");
-  return `${FILE_PREFIX}-${kind}-${slug}-${start}_${end}.${extension}`;
+  return `${FILE_PREFIX}-${kind}-${slug}${scope.length ? `-${scope.join("-")}` : ""}-${start}_${end}.${extension}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -206,7 +211,19 @@ export function dayReviewStatus(shifts = []) {
  * Daily ledger: one row per trading day.
  * date · station · total sales · total expenses · cash variance · shifts · status
  */
-export function ledgerReport({ days = [], stationName = "" } = {}) {
+export function ledgerReport({ days = [], stationName = "", fuelGroup = "ALL" } = {}) {
+  const scopedDays = days.map((day) => {
+    if (fuelGroup === "ALL") return day;
+    const fuels = Object.entries(day.fuels || {}).filter(
+      ([fuel]) => classifyFuel(fuel) === fuelGroup
+    );
+    const litres = fuels.reduce((sum, [, value]) => sum + num(value.litres), 0);
+    const sales = fuels.reduce(
+      (sum, [, value]) => sum + num(value.revenue ?? value.amount),
+      0
+    );
+    return { ...day, litres, sales, fuels: Object.fromEntries(fuels) };
+  });
   return {
     columns: [
       "Date",
@@ -220,7 +237,7 @@ export function ledgerReport({ days = [], stationName = "" } = {}) {
       "Shift count",
       "Review status",
     ],
-    rows: days.map((day) => [
+    rows: scopedDays.map((day) => [
       day.date,
       stationName,
       decimal(day.litres),
@@ -258,7 +275,29 @@ function fuelBreakdown(fuels = {}) {
  * Shifts: one row per handed-in shift.
  * date · employee · nozzles · readings · sales by fuel · expenses · variance · status
  */
-export function shiftsReport({ shifts = [], stationName = "" } = {}) {
+export function shiftsReport({
+  shifts = [],
+  stationName = "",
+  fuelGroup = "ALL",
+  employeeId = "",
+  status = "ALL",
+} = {}) {
+  const selected = shifts
+    .filter(
+      (shift) =>
+        !employeeId || shift.employeeId === employeeId || shift.userId === employeeId
+    )
+    .filter((shift) => status === "ALL" || shift.status === status)
+    .map((shift) => {
+      if (fuelGroup === "ALL") return shift;
+      return {
+        ...shift,
+        nozzles: (shift.nozzles || []).filter(
+          (line) => classifyFuel(line.fuelType) === fuelGroup
+        ),
+      };
+    })
+    .filter((shift) => fuelGroup === "ALL" || (shift.nozzles || []).length > 0);
   return {
     columns: [
       "Date",
@@ -278,7 +317,7 @@ export function shiftsReport({ shifts = [], stationName = "" } = {}) {
       "Variance",
       "Status",
     ],
-    rows: shifts.map((shift) => {
+    rows: selected.map((shift) => {
       const totals = shiftTotals(shift);
       return [
         shift.date || isoDay(shift.startTime),
@@ -382,8 +421,17 @@ export function stockReport({
   entries = [],
   range = {},
   stationName = "",
+  fuelGroup = "ALL",
 } = {}) {
-  const inWindow = filterByRange(entries, range, (entry) => entry.recordedAt);
+  const allowedTanks = tanks.filter(
+    (tank) => fuelGroup === "ALL" || classifyFuel(tank.fuelType) === fuelGroup
+  );
+  const allowedIds = new Set(allowedTanks.map((tank) => tank.id));
+  const inWindow = filterByRange(
+    entries.filter((entry) => allowedIds.has(entry.tankId)),
+    range,
+    (entry) => entry.recordedAt
+  );
   const byTank = new Map();
   inWindow.forEach((entry) => {
     const list = byTank.get(entry.tankId) || [];
@@ -392,7 +440,7 @@ export function stockReport({
   });
 
   const rows = [];
-  tanks.forEach((tank) => {
+  allowedTanks.forEach((tank) => {
     const status = tankStatus(tank);
     const readings = (byTank.get(tank.id) || [])
       .slice()
@@ -451,6 +499,58 @@ export function stockReport({
       "Recorded by",
     ],
     rows: rows.map((row) => row.map((cell) => (cell == null ? "" : cell))),
+    meta: { station: stationName },
+  };
+}
+
+/** Build a monthly summary from the same settled shifts as the dashboard. */
+export function monthlyReport({
+  shifts = [],
+  month,
+  stationName = "",
+  fuelGroup = "ALL",
+  employeeId = "",
+} = {}) {
+  const selected = shiftsReport({
+    shifts: shifts.filter((s) => String(s.date || "").startsWith(month)),
+    stationName,
+    fuelGroup,
+    employeeId,
+  });
+  const totals = selected.rows.reduce(
+    (out, row) => {
+      out.shifts += 1;
+      out.litres += num(row[6]);
+      out.sales += num(row[8]);
+      out.expenses += num(row[10]);
+      out.variance += num(row[14]);
+      return out;
+    },
+    { shifts: 0, litres: 0, sales: 0, expenses: 0, variance: 0 }
+  );
+  return {
+    columns: [
+      "Month",
+      "Station",
+      "Shift count",
+      "Litres sold",
+      "Gross sales",
+      "Expenses",
+      "Cash variance",
+    ],
+    rows: totals.shifts
+      ? [
+          [
+            month,
+            stationName,
+            totals.shifts,
+            decimal(totals.litres),
+            decimal(totals.sales),
+            decimal(totals.expenses),
+            decimal(totals.variance),
+          ],
+        ]
+      : [],
     meta: { station: stationName },
   };
 }

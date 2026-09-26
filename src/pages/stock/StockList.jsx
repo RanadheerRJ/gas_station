@@ -94,12 +94,13 @@ export default function StockList() {
   const wet = active.filter((tank) => num(tank.waterCm) > WATER_LIMIT_CM);
 
   const buildReport = useCallback(
-    (range) =>
+    (range, filters = {}) =>
       stockReport({
         tanks: active,
         entries: dips,
         range,
         stationName: station?.name || "",
+        ...filters,
       }),
     [active, dips, station]
   );

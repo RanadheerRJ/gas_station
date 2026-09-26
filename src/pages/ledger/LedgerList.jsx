@@ -106,10 +106,11 @@ export default function LedgerList() {
   );
 
   const buildReport = useCallback(
-    (range) =>
+    (range, filters = {}) =>
       ledgerReport({
         days: filterByRange(days, range),
         stationName: station?.name || "",
+        ...filters,
       }),
     [days, station]
   );

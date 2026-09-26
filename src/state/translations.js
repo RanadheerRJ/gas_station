@@ -99,6 +99,12 @@ const en = {
 
   /* ---- reporting / export ---- */
   "report.title": "Report & export",
+  "report.fuel": "Fuel",
+  "report.allFuels": "All fuels",
+  "report.employee": "Employee",
+  "report.allEmployees": "All employees",
+  "report.status": "Status",
+  "report.allStatuses": "All statuses",
   "report.from": "From date",
   "report.to": "To date",
   "report.dateRange": "Date range",
@@ -689,6 +695,12 @@ const te = {
   "common.phoneProblem": "సరైన ఫోన్ నంబర్ నమోదు చేయండి — 10 నుండి 15 అంకెలు.",
 
   "report.title": "నివేదిక & ఎగుమతి",
+  "report.fuel": "ఇంధనం",
+  "report.allFuels": "అన్ని ఇంధనాలు",
+  "report.employee": "ఉద్యోగి",
+  "report.allEmployees": "అందరు ఉద్యోగులు",
+  "report.status": "స్థితి",
+  "report.allStatuses": "అన్ని స్థితులు",
   "report.from": "ప్రారంభ తేదీ",
   "report.to": "ముగింపు తేదీ",
   "report.dateRange": "తేదీ పరిధి",
@@ -1269,6 +1281,12 @@ const hi = {
   "common.phoneProblem": "सही फ़ोन नंबर दर्ज करें — 10 से 15 अंक।",
 
   "report.title": "रिपोर्ट और निर्यात",
+  "report.fuel": "ईंधन",
+  "report.allFuels": "सभी ईंधन",
+  "report.employee": "कर्मचारी",
+  "report.allEmployees": "सभी कर्मचारी",
+  "report.status": "स्थिति",
+  "report.allStatuses": "सभी स्थितियाँ",
   "report.from": "प्रारंभ तिथि",
   "report.to": "अंतिम तिथि",
   "report.dateRange": "तिथि सीमा",

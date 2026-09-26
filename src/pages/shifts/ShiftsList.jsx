@@ -74,10 +74,11 @@ export default function ShiftsList() {
   }, [settled, t]);
 
   const buildReport = useCallback(
-    (range) =>
+    (range, filters = {}) =>
       shiftsReport({
         shifts: filterByRange(settled, range),
         stationName: station?.name || "",
+        ...filters,
       }),
     [settled, station]
   );

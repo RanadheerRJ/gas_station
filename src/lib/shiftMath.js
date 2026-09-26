@@ -40,18 +40,20 @@ export const SHIFT_STATUS = {
 
 /** Fuel groups used for the daily testing deduction. */
 export const TESTING_GROUPS = { MS: "MS", HSD: "HSD" };
+export const FUEL_GROUPS = ["MS", "HSD", "CNG", "OTHER"];
 
 /** Petrol family is MS, diesel family is HSD. */
 export function classifyFuel(fuelType) {
   const f = String(fuelType || "").toLowerCase();
   if (f.includes("petrol") || f === "ms") return "MS";
   if (f.includes("diesel") || f.includes("hsd")) return "HSD";
+  if (f.includes("cng")) return "CNG";
   return "OTHER";
 }
 
 /** Litres sold per MS / HSD / OTHER group, for reporting. */
 export function litresByGroup(lines = []) {
-  const out = { MS: 0, HSD: 0, OTHER: 0 };
+  const out = { MS: 0, HSD: 0, CNG: 0, OTHER: 0 };
   lines.forEach((l) => {
     out[classifyFuel(l.fuelType)] += num(l.litresSold);
   });

@@ -192,7 +192,7 @@ describe("classifyFuel", () => {
     ["MS", "MS"],
     ["Diesel", "HSD"],
     ["HSD", "HSD"],
-    ["CNG", "OTHER"],
+    ["CNG", "CNG"],
   ])("maps %s to %s", (fuel, group) => {
     expect(classifyFuel(fuel)).toBe(group);
   });
