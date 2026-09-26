@@ -90,6 +90,20 @@ marketer's logo.
   SVGs; with `npm i --no-save sharp` present it also rasterises the PNGs
   and rebuilds `favicon.ico`.
 
+## Responsive shell
+
+The application intentionally uses the touch-first top bar and bottom tab bar
+at widths up to and including `860px`. That means an iPad in portrait at
+`768px` uses the tab-bar shell; there is not enough width to keep the full
+`236px` sidebar while preserving useful space for forms and labelled table
+rows. At `861px` and above—including iPad landscape—the existing persistent
+sidebar is unchanged.
+
+Data-heavy tables opt into `responsive-table`: they remain ordinary tables on
+desktop, then become labelled card rows at the phone/tablet breakpoint. The
+supported responsive review widths are `320px`, `360px`, `375px`, `414px`, and
+`768px` in portrait.
+
 ## Security model
 
 ### Auth and roles

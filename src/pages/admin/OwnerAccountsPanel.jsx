@@ -22,7 +22,7 @@ export default function OwnerAccountsPanel({
       ) : owners.length === 0 ? (
         <Empty>{t("admin.noOwners")}</Empty>
       ) : (
-        <table>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>{t("admin.owner")}</th>

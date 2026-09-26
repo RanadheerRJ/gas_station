@@ -28,10 +28,16 @@ export default function OwnerRow({
   return (
     <Fragment>
       <tr>
-        <td style={{ fontWeight: 500 }}>{owner.name}</td>
-        <td className="mono">{owner.username}</td>
-        <td className="mono small">{owner.phone}</td>
-        <td>
+        <td data-label={t("admin.owner")} style={{ fontWeight: 500 }}>
+          {owner.name}
+        </td>
+        <td data-label={t("staff.username")} className="mono">
+          {owner.username}
+        </td>
+        <td data-label={t("common.phone")} className="mono small">
+          {owner.phone}
+        </td>
+        <td data-label={t("admin.stations")}>
           {owned === null ? (
             <span className="muted">—</span>
           ) : (
@@ -45,7 +51,7 @@ export default function OwnerRow({
             </>
           )}
         </td>
-        <td className="num">
+        <td data-label={t("common.actions")} className="num">
           <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
             <button type="button" className="quiet" onClick={() => onToggleStaff(owner)}>
               {expanded ? t("admin.hideStaff") : t("admin.showStaff")}
@@ -57,15 +63,19 @@ export default function OwnerRow({
         </td>
       </tr>
       {expanded && (
-        <tr>
-          <td colSpan={5} style={{ background: "var(--surface-sunken)" }}>
+        <tr className="responsive-table__detail-row">
+          <td
+            className="responsive-table__detail-cell"
+            colSpan={5}
+            style={{ background: "var(--surface-sunken)" }}
+          >
             <div className="nested-panel stack" style={{ gap: 16 }}>
               {owned && owned.length > 0 && (
                 <div>
                   <div className="small muted" style={SECTION_LABEL}>
                     {t("admin.stations")}
                   </div>
-                  <table>
+                  <table className="responsive-table">
                     <thead>
                       <tr>
                         <th>{t("common.station")}</th>
@@ -77,9 +87,16 @@ export default function OwnerRow({
                     <tbody>
                       {owned.map((s) => (
                         <tr key={s.stationId}>
-                          <td style={{ fontWeight: 500 }}>{s.name}</td>
-                          <td className="small muted">{s.address}</td>
-                          <td>
+                          <td
+                            data-label={t("common.station")}
+                            style={{ fontWeight: 500 }}
+                          >
+                            {s.name}
+                          </td>
+                          <td data-label={t("owner.address")} className="small muted">
+                            {s.address}
+                          </td>
+                          <td data-label={t("common.status")}>
                             <span
                               className={`tag ${s.state === "active" ? "green" : ""}`}
                             >
@@ -88,7 +105,7 @@ export default function OwnerRow({
                                 : t("owner.archived")}
                             </span>
                           </td>
-                          <td className="num">
+                          <td data-label={t("common.actions")} className="num">
                             <button
                               type="button"
                               className="quiet danger"
@@ -117,7 +134,7 @@ export default function OwnerRow({
                 ) : entry.rows.length === 0 ? (
                   <Empty>{t("admin.noStaff")}</Empty>
                 ) : (
-                  <table>
+                  <table className="responsive-table">
                     <thead>
                       <tr>
                         <th>{t("common.name")}</th>
@@ -130,15 +147,19 @@ export default function OwnerRow({
                     <tbody>
                       {entry.rows.map((member) => (
                         <tr key={member.uid}>
-                          <td style={{ fontWeight: 500 }}>{member.name}</td>
-                          <td className="mono">{member.username}</td>
-                          <td>{t(`role.${member.role}`)}</td>
-                          <td className="small muted">
+                          <td data-label={t("common.name")} style={{ fontWeight: 500 }}>
+                            {member.name}
+                          </td>
+                          <td data-label={t("staff.username")} className="mono">
+                            {member.username}
+                          </td>
+                          <td data-label={t("staff.role")}>{t(`role.${member.role}`)}</td>
+                          <td data-label={t("common.station")} className="small muted">
                             {stationsFor(owner.uid)?.find(
                               (s) => s.stationId === member.stationIds[0]
                             )?.name || "—"}
                           </td>
-                          <td className="num">
+                          <td data-label={t("common.actions")} className="num">
                             <button
                               type="button"
                               className="quiet"

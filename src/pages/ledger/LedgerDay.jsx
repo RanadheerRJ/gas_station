@@ -153,7 +153,7 @@ export default function LedgerDay() {
               <div className="card__head">
                 <h2>{t("ledger.byFuel")}</h2>
               </div>
-              <table>
+              <table className="responsive-table">
                 <thead>
                   <tr>
                     <th>{t("ledger.fuel")}</th>
@@ -164,22 +164,30 @@ export default function LedgerDay() {
                 <tbody>
                   {Object.entries(day.fuels).map(([fuel, value]) => (
                     <tr key={fuel}>
-                      <td>
+                      <td data-label={t("ledger.fuel")}>
                         <span className="row" style={{ gap: 6, alignItems: "center" }}>
                           <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
                           {fuel}
                         </span>
                       </td>
-                      <td className="num mono">{money(value.litres)}</td>
-                      <td className="num mono">{money(value.amount)}</td>
+                      <td data-label={t("shifts.litres")} className="num mono">
+                        {money(value.litres)}
+                      </td>
+                      <td data-label={t("common.amount")} className="num mono">
+                        {money(value.amount)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td>{t("common.total")}</td>
-                    <td className="num mono">{money(day.litres)}</td>
-                    <td className="num mono">{money(day.sales)}</td>
+                    <td data-label={t("ledger.fuel")}>{t("common.total")}</td>
+                    <td data-label={t("shifts.litres")} className="num mono">
+                      {money(day.litres)}
+                    </td>
+                    <td data-label={t("common.amount")} className="num mono">
+                      {money(day.sales)}
+                    </td>
                   </tr>
                 </tfoot>
               </table>

@@ -197,7 +197,7 @@ export default function CustomerDetail() {
           {transactions.length === 0 ? (
             <div className="card__pad muted small">{t("credit.noTransactions")}</div>
           ) : (
-            <table>
+            <table className="responsive-table">
               <thead>
                 <tr>
                   <th>{t("common.date")}</th>
@@ -214,8 +214,10 @@ export default function CustomerDetail() {
                     running += row.type === "credit" ? num(row.amount) : -num(row.amount);
                     return (
                       <tr key={index}>
-                        <td className="mono small">{formatDate(row.date)}</td>
-                        <td>
+                        <td data-label={t("common.date")} className="mono small">
+                          {formatDate(row.date)}
+                        </td>
+                        <td data-label={t("common.type")}>
                           <span
                             className={`tag ${row.type === "credit" ? "rust" : "green"}`}
                           >
@@ -224,9 +226,15 @@ export default function CustomerDetail() {
                               : t("credit.paymentReceived")}
                           </span>
                         </td>
-                        <td className="small">{row.note || "—"}</td>
-                        <td className="num mono">{money(row.amount)}</td>
-                        <td className="num mono">{money(running)}</td>
+                        <td data-label={t("common.note")} className="small">
+                          {row.note || "—"}
+                        </td>
+                        <td data-label={t("common.amount")} className="num mono">
+                          {money(row.amount)}
+                        </td>
+                        <td data-label={t("credit.running")} className="num mono">
+                          {money(running)}
+                        </td>
                       </tr>
                     );
                   });
