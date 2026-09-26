@@ -367,6 +367,14 @@ export default function App() {
             </Protect>
           }
         />
+        <Route
+          path="/today/credit"
+          element={
+            <Protect roles={["attendant"]}>
+              <CreditList />
+            </Protect>
+          }
+        />
       </Route>
       <Route
         path="*"

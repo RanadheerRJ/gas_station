@@ -84,7 +84,7 @@ function destinationsFor(role) {
           { to: "/today/history", label: "nav.history", Icon: HistoryIcon },
           { to: "/today/account", label: "nav.account", Icon: UserIcon },
         ],
-        more: [],
+        more: [{ to: "/today/credit", label: "nav.creditCustomers", Icon: CreditIcon }],
       };
     default:
       return { tabs: [], more: [] };

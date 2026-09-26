@@ -340,6 +340,8 @@ const en = {
   "credit.customerName": "Customer name",
   "credit.balances": "Customer balances",
   "credit.empty": "No credit customers at this station.",
+  "credit.attendantDirectory":
+    "Add and find customer names here. Balances and account history are available to managers.",
   "credit.customer": "Customer",
   "credit.creditGiven": "Credit given",
   "credit.payments": "Payments",
@@ -912,6 +914,8 @@ const te = {
   "credit.customerName": "కస్టమర్ పేరు",
   "credit.balances": "కస్టమర్ బ్యాలెన్స్‌లు",
   "credit.empty": "ఈ స్టేషన్‌లో అరువు కస్టమర్లు లేరు.",
+  "credit.attendantDirectory":
+    "కస్టమర్ పేర్లను ఇక్కడ జోడించి చూడండి. బ్యాలెన్స్‌లు మరియు ఖాతా చరిత్ర మేనేజర్లకు అందుబాటులో ఉంటాయి.",
   "credit.customer": "కస్టమర్",
   "credit.creditGiven": "ఇచ్చిన అరువు",
   "credit.payments": "చెల్లింపులు",
@@ -1476,6 +1480,8 @@ const hi = {
   "credit.customerName": "ग्राहक का नाम",
   "credit.balances": "ग्राहक शेष",
   "credit.empty": "इस स्टेशन पर कोई उधार ग्राहक नहीं।",
+  "credit.attendantDirectory":
+    "ग्राहक के नाम यहां जोड़ें और खोजें। शेष राशि और खाता इतिहास केवल प्रबंधकों के लिए उपलब्ध हैं।",
   "credit.customer": "ग्राहक",
   "credit.creditGiven": "दिया गया उधार",
   "credit.payments": "भुगतान",

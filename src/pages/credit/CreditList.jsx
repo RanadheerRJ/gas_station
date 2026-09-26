@@ -10,7 +10,12 @@ import Sheet from "../../components/Sheet.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { useRunner } from "../../state/useRunner.js";
-import { createCustomer, listCustomers, readableError } from "../../lib/api";
+import {
+  createCustomer,
+  listCustomerDirectory,
+  listCustomers,
+  readableError,
+} from "../../lib/api";
 import { money } from "../../lib/format";
 import { creditReport } from "../../lib/export.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -37,6 +42,7 @@ export default function CreditList() {
     loading: stationsLoading,
   } = useStation();
   const base = creditBase(profile.role);
+  const attendant = profile.role === "attendant";
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,10 +54,14 @@ export default function CreditList() {
     if (!stationId) return;
     setLoading(true);
     try {
-      const rows = await listCustomers(stationId);
-      rows.sort(
-        (a, b) => Number(b.outstandingBalance || 0) - Number(a.outstandingBalance || 0)
-      );
+      const rows = attendant
+        ? await listCustomerDirectory(stationId)
+        : await listCustomers(stationId);
+      if (!attendant) {
+        rows.sort(
+          (a, b) => Number(b.outstandingBalance || 0) - Number(a.outstandingBalance || 0)
+        );
+      }
       setCustomers(rows);
       setError("");
     } catch (err) {
@@ -59,7 +69,7 @@ export default function CreditList() {
     } finally {
       setLoading(false);
     }
-  }, [stationId]);
+  }, [attendant, stationId]);
 
   useEffect(() => {
     load();
@@ -118,12 +128,14 @@ export default function CreditList() {
         }
         actions={
           <>
-            <ReportSheet
-              report="credit"
-              title="Credit customers"
-              stationName={station?.name || ""}
-              buildReport={buildReport}
-            />
+            {!attendant && (
+              <ReportSheet
+                report="credit"
+                title="Credit customers"
+                stationName={station?.name || ""}
+                buildReport={buildReport}
+              />
+            )}
             <button
               type="button"
               className="tool-btn tool-btn--primary"
@@ -147,36 +159,36 @@ export default function CreditList() {
           </div>
         ) : (
           <>
-            <section className="card stat-strip">
-              <Stat
-                label={t("credit.totalOutstanding")}
-                amount={totalOutstanding}
-                format={money}
-                prefix="₹ "
-                tone={totalOutstanding > 0 ? "neg" : "pos"}
-              />
-              <Stat
-                label={t("credit.customers")}
-                amount={customers.length}
-                format={(n) => String(Math.round(n))}
-              />
-              <Stat
-                label={t("credit.fullySettled")}
-                amount={settled}
-                format={(n) => String(Math.round(n))}
-                tone="pos"
-              />
-            </section>
+            {!attendant ? (
+              <section className="card stat-strip">
+                <Stat
+                  label={t("credit.totalOutstanding")}
+                  amount={totalOutstanding}
+                  format={money}
+                  prefix="₹ "
+                  tone={totalOutstanding > 0 ? "neg" : "pos"}
+                />
+                <Stat
+                  label={t("credit.customers")}
+                  amount={customers.length}
+                  format={(n) => String(Math.round(n))}
+                />
+                <Stat
+                  label={t("credit.fullySettled")}
+                  amount={settled}
+                  format={(n) => String(Math.round(n))}
+                  tone="pos"
+                />
+              </section>
+            ) : (
+              <Notice>{t("credit.attendantDirectory")}</Notice>
+            )}
 
             <div className="list-stack">
               {customerRows.map(({ item: customer, exiting }) => {
                 const balance = Number(customer.outstandingBalance || 0);
-                return (
-                  <Link
-                    key={customer.id}
-                    to={link(`${base}/${customer.id}`)}
-                    className={`list-card${exiting ? " row-exit" : " row-enter"}`}
-                  >
+                const content = (
+                  <>
                     <div className="list-card__row">
                       <span className="list-card__title">
                         {customer.name}
@@ -184,23 +196,42 @@ export default function CreditList() {
                           {customer.phone || "—"}
                         </span>
                       </span>
-                      {balance > 0 ? (
-                        <span className="tag rust">{t("credit.outstanding")}</span>
-                      ) : (
-                        <span className="tag green">{t("credit.settled")}</span>
-                      )}
+                      {!attendant &&
+                        (balance > 0 ? (
+                          <span className="tag rust">{t("credit.outstanding")}</span>
+                        ) : (
+                          <span className="tag green">{t("credit.settled")}</span>
+                        ))}
                     </div>
-                    <div className="list-card__row list-card__row--figures">
-                      <span className="list-card__figure">
-                        <span className="k">{t("credit.balance")}</span>
-                        <span className={`v mono ${balance > 0 ? "neg" : "pos"}`}>
-                          ₹ <NumberRoll value={balance} format={money} />
+                    {!attendant && (
+                      <div className="list-card__row list-card__row--figures">
+                        <span className="list-card__figure">
+                          <span className="k">{t("credit.balance")}</span>
+                          <span className={`v mono ${balance > 0 ? "neg" : "pos"}`}>
+                            ₹ <NumberRoll value={balance} format={money} />
+                          </span>
                         </span>
-                      </span>
-                      <span className="list-card__chev">
-                        <ChevronIcon size={17} />
-                      </span>
-                    </div>
+                        <span className="list-card__chev">
+                          <ChevronIcon size={17} />
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
+                return attendant ? (
+                  <div
+                    key={customer.id}
+                    className={`list-card${exiting ? " row-exit" : " row-enter"}`}
+                  >
+                    {content}
+                  </div>
+                ) : (
+                  <Link
+                    key={customer.id}
+                    to={link(`${base}/${customer.id}`)}
+                    className={`list-card${exiting ? " row-exit" : " row-enter"}`}
+                  >
+                    {content}
                   </Link>
                 );
               })}
