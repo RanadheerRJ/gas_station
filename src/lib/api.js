@@ -114,22 +114,69 @@ export function onAuthProfile(callback) {
 
   let active = true;
   let version = 0;
+  let settled = false;
+
+  const emit = (value) => {
+    if (!active) return;
+    settled = true;
+    callback(value);
+  };
+
+  // A cold start behind a slow network must never leave the boot screen
+  // spinning forever: the profile query is raced against a deadline, and a
+  // separate safety timer releases the shell even if nothing has answered.
+  const withTimeout = (promise, ms) =>
+    new Promise((resolvePromise, rejectPromise) => {
+      const timer = setTimeout(
+        () => rejectPromise(new Error("Profile lookup timed out")),
+        ms
+      );
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolvePromise(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          rejectPromise(error);
+        }
+      );
+    });
+
   const resolve = async (user) => {
     const requestVersion = ++version;
     if (!user) {
-      if (active) callback(null);
+      emit(null);
       return;
     }
     try {
-      const row = await query(
-        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+      const row = await withTimeout(
+        query(supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()),
+        5000
       );
-      if (active && requestVersion === version) callback(mapProfile(row));
+      if (active && requestVersion === version) emit(mapProfile(row));
     } catch (error) {
       console.error("Failed to resolve Supabase profile", error);
-      if (active && requestVersion === version) callback(null);
+      if (active && requestVersion === version) emit(null);
     }
   };
+
+  // Do not wait for the first onAuthStateChange tick: ask for the stored
+  // session immediately so a returning user paints the app without a round
+  // trip's worth of blank screen.
+  supabase.auth
+    .getSession()
+    .then(({ data: sessionData }) => {
+      if (!active || version > 0) return;
+      resolve(sessionData?.session?.user || null);
+    })
+    .catch(() => {
+      if (active && !settled) emit(null);
+    });
+
+  const fallbackTimer = setTimeout(() => {
+    if (active && !settled) emit(null);
+  }, 3500);
 
   const { data } = supabase.auth.onAuthStateChange((_event, session) => {
     // Do not issue a PostgREST request inside the Auth callback itself; the
@@ -139,6 +186,7 @@ export function onAuthProfile(callback) {
 
   return () => {
     active = false;
+    clearTimeout(fallbackTimer);
     data.subscription.unsubscribe();
   };
 }
