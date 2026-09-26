@@ -12,6 +12,10 @@
  * `run(id)`, the live shift screen; managers and owners deliberately have
  * none (they review shifts, they don't run them), and anything that wants
  * the running screen falls back to `list` when `run` is absent.
+ *
+ * A sent-back shift also has a correction URL: the attendant's own, and the
+ * owner's — an owner can reopen any closed shift for correction, while
+ * managers only send shifts back for their operator to fix.
  */
 export const SHIFT_PATHS = {
   attendant: {
@@ -37,6 +41,9 @@ export const SHIFT_PATHS = {
     start: "/owner/shifts/start",
     list: "/owner/shifts",
     detail: (id) => `/owner/shifts/${id}`,
+    // An owner can reopen a closed shift — approved included — and correct it
+    // end to end, so the owner prefix carries a correction URL of its own.
+    correct: (id) => `/owner/shifts/${id}/edit`,
     close: (id) => `/owner/shifts/${id}/close`,
   },
 };

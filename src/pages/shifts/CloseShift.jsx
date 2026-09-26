@@ -38,6 +38,10 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
  * against an existing customer (picked from the balance-free directory) or
  * a new walk-in — because they all land inside close_shift's single
  * transaction and the shift still goes to the owner/manager for review.
+ *
+ * A sent-back shift reuses this screen for its correction: once by its own
+ * attendant, and again by an owner who has reopened the shift — both walk
+ * the same pre-filled form and resubmit through the reconciling RPC.
  */
 export default function CloseShift() {
   const { t } = useLanguage();
@@ -81,10 +85,13 @@ export default function CloseShift() {
   const [problems, setProblems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // A sent-back shift is corrected by its own attendant — or, when an owner
+  // has reopened it, by that owner. Both get the same pre-filled form and
+  // both resubmit through the one RPC that reconciles the whole shift.
   const isCorrection =
     shift?.status === SHIFT_STATUS.REJECTED &&
-    profile.role === "attendant" &&
-    shift.userId === profile.uid;
+    ((profile.role === "attendant" && shift.userId === profile.uid) ||
+      profile.role === "owner");
 
   useEffect(() => {
     let cancelled = false;
@@ -142,8 +149,9 @@ export default function CloseShift() {
     clearEditedExpenses,
   ]);
 
-  // Start a correction with the submitted values, so the attendant fixes the
-  // one item the reviewer flagged rather than re-entering the whole shift.
+  // Start a correction with the submitted values, so whoever is correcting
+  // — the attendant, or an owner who reopened the shift — fixes the flagged
+  // items rather than re-entering the whole shift.
   useEffect(() => {
     if (!isCorrection || correctionSeededFor.current === id) return;
     correctionSeededFor.current = id;
@@ -298,8 +306,10 @@ export default function CloseShift() {
     );
   }
 
-  // A sent-back shift is the one closed state its own attendant may reopen
-  // for correction. Every other settled state stays immutable here.
+  // A sent-back shift is the one closed state its own attendant — or the
+  // owner who reopened it — may correct here. Every other settled state
+  // stays immutable: an owner reopens such a shift from its detail screen
+  // first, which never re-runs it or reclaims a nozzle.
   if (!shift || (shift.status !== SHIFT_STATUS.OPEN && !isCorrection)) {
     return <Navigate to={paths.home} replace />;
   }

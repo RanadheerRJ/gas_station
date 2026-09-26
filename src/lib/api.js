@@ -603,6 +603,23 @@ export async function resubmitRejectedShift(stationId, shiftId, payload) {
   );
 }
 
+/**
+ * An owner's escape hatch for a closed shift that is wrong beyond an expense
+ * tweak — including one that was already approved. The shift moves back into
+ * the sent-back correction state, where the full-shift correction form takes
+ * over. It stays a closed record: no nozzles are reclaimed, and the database
+ * records who reopened it and why.
+ */
+export async function reopenShiftForCorrection(stationId, shiftId, reason = "") {
+  return camelize(
+    await rpc("reopen_shift_for_correction", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_reason: reason,
+    })
+  );
+}
+
 export async function setStationState(stationId, state) {
   return camelize(
     await rpc("set_station_state", { p_station_id: stationId, p_state: state })
