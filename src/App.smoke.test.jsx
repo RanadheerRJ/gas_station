@@ -85,12 +85,17 @@ async function boot(route, profile) {
       </MemoryRouter>
     );
   });
-  // Let in-flight loads fail and their error/empty states render. A crashed
-  // screen unmounts the tree, so the marker assertion below is the verdict.
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  // Lazy route modules resolve asynchronously. Wait for the route marker
+  // rather than relying on a fixed number of microtasks, so this remains a
+  // useful smoke test if the split chunks or test runner get slower.
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (container.querySelector(".login-card, .screen-head h1, .screen-head h2")) {
+      return;
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
 }
 
 function expectScreen() {

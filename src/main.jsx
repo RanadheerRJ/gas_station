@@ -7,6 +7,7 @@ import { ThemeProvider } from "./state/ThemeContext";
 import { LanguageProvider } from "./state/LanguageContext.jsx";
 import "./styles.css";
 import { registerServiceWorker } from "./lib/pwa";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -17,7 +18,9 @@ createRoot(document.getElementById("root")).render(
       <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>

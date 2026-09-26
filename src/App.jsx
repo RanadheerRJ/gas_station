@@ -1,26 +1,27 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
-import Login from "./pages/Login";
-import AdminInviteOwner from "./pages/AdminInviteOwner";
-import OwnerHome from "./pages/OwnerHome";
-import OwnerStaff from "./pages/OwnerStaff";
-import ManagerStaff from "./pages/ManagerStaff";
-import StationSetup from "./pages/StationSetup";
-import TodayHome from "./pages/today/TodayHome.jsx";
-import StartShift from "./pages/today/StartShift.jsx";
-import ShiftRun from "./pages/today/ShiftRun.jsx";
-import TodayHistory from "./pages/today/TodayHistory.jsx";
-import TodayAccount from "./pages/today/TodayAccount.jsx";
-import ShiftsList from "./pages/shifts/ShiftsList.jsx";
-import ShiftDetail from "./pages/shifts/ShiftDetail.jsx";
-import CloseShift from "./pages/shifts/CloseShift.jsx";
-import LedgerList from "./pages/ledger/LedgerList.jsx";
-import LedgerDay from "./pages/ledger/LedgerDay.jsx";
-import Reports from "./pages/reports/Reports.jsx";
-import StockList from "./pages/stock/StockList.jsx";
-import TankDetail from "./pages/stock/TankDetail.jsx";
-import CreditList from "./pages/credit/CreditList.jsx";
-import CustomerDetail from "./pages/credit/CustomerDetail.jsx";
+const Login = lazy(() => import("./pages/Login"));
+const AdminInviteOwner = lazy(() => import("./pages/AdminInviteOwner"));
+const OwnerHome = lazy(() => import("./pages/OwnerHome"));
+const OwnerStaff = lazy(() => import("./pages/OwnerStaff"));
+const ManagerStaff = lazy(() => import("./pages/ManagerStaff"));
+const StationSetup = lazy(() => import("./pages/StationSetup"));
+const TodayHome = lazy(() => import("./pages/today/TodayHome.jsx"));
+const StartShift = lazy(() => import("./pages/today/StartShift.jsx"));
+const ShiftRun = lazy(() => import("./pages/today/ShiftRun.jsx"));
+const TodayHistory = lazy(() => import("./pages/today/TodayHistory.jsx"));
+const TodayAccount = lazy(() => import("./pages/today/TodayAccount.jsx"));
+const ShiftsList = lazy(() => import("./pages/shifts/ShiftsList.jsx"));
+const ShiftDetail = lazy(() => import("./pages/shifts/ShiftDetail.jsx"));
+const CloseShift = lazy(() => import("./pages/shifts/CloseShift.jsx"));
+const LedgerList = lazy(() => import("./pages/ledger/LedgerList.jsx"));
+const LedgerDay = lazy(() => import("./pages/ledger/LedgerDay.jsx"));
+const Reports = lazy(() => import("./pages/reports/Reports.jsx"));
+const StockList = lazy(() => import("./pages/stock/StockList.jsx"));
+const TankDetail = lazy(() => import("./pages/stock/TankDetail.jsx"));
+const CreditList = lazy(() => import("./pages/credit/CreditList.jsx"));
+const CustomerDetail = lazy(() => import("./pages/credit/CustomerDetail.jsx"));
 import { useAuth } from "./state/AuthContext";
 import { PetravBoot } from "./components/branding.jsx";
 
@@ -31,6 +32,66 @@ const HOME = {
   manager: "/station",
   attendant: "/today",
 };
+
+const ROLE_ROUTES = [
+  {
+    prefix: "/owner",
+    roles: ["owner"],
+    routes: [
+      { path: "", element: <OwnerHome /> },
+      { path: "/shifts", element: <ShiftsList /> },
+      { path: "/shifts/start", element: <StartShift /> },
+      { path: "/shifts/:id", element: <ShiftDetail /> },
+      { path: "/shifts/:id/close", element: <CloseShift /> },
+      // An owner who reopens a closed shift corrects it here, end to end.
+      { path: "/shifts/:id/edit", element: <CloseShift /> },
+      { path: "/setup", element: <StationSetup /> },
+      { path: "/stock", element: <StockList /> },
+      { path: "/stock/:tankId", element: <TankDetail /> },
+      { path: "/ledger", element: <LedgerList /> },
+      { path: "/ledger/:date", element: <LedgerDay /> },
+      { path: "/reports", element: <Reports /> },
+      { path: "/credit", element: <CreditList /> },
+      { path: "/credit/:customerId", element: <CustomerDetail /> },
+      { path: "/staff", element: <OwnerStaff /> },
+    ],
+  },
+  {
+    prefix: "/station",
+    roles: ["manager"],
+    routes: [
+      { path: "", element: <ShiftsList /> },
+      { path: "/start", element: <StartShift /> },
+      { path: "/shift/:id", element: <ShiftDetail /> },
+      { path: "/shift/:id/close", element: <CloseShift /> },
+      { path: "/stock", element: <StockList /> },
+      { path: "/stock/:tankId", element: <TankDetail /> },
+      { path: "/ledger", element: <LedgerList /> },
+      { path: "/ledger/:date", element: <LedgerDay /> },
+      { path: "/reports", element: <Reports /> },
+      { path: "/credit", element: <CreditList /> },
+      { path: "/credit/:customerId", element: <CustomerDetail /> },
+      { path: "/staff", element: <ManagerStaff /> },
+    ],
+  },
+  {
+    prefix: "/today",
+    roles: ["attendant"],
+    routes: [
+      { path: "", element: <TodayHome /> },
+      { path: "/start", element: <StartShift /> },
+      { path: "/shift/:id", element: <ShiftRun /> },
+      { path: "/shift/:id/close", element: <CloseShift /> },
+      { path: "/stock", element: <StockList /> },
+      { path: "/stock/:tankId", element: <TankDetail /> },
+      { path: "/history", element: <TodayHistory /> },
+      { path: "/history/:id", element: <ShiftDetail /> },
+      { path: "/history/:id/edit", element: <CloseShift /> },
+      { path: "/account", element: <TodayAccount /> },
+      { path: "/credit", element: <CreditList /> },
+    ],
+  },
+];
 
 function Protect({ roles, children }) {
   const { profile } = useAuth();
@@ -58,345 +119,48 @@ export default function App() {
 
   if (!profile) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Suspense fallback={<PetravBoot />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={<Navigate to={HOME[profile.role] || "/"} replace />}
-      />
-      <Route element={<Layout />}>
-        {/* ---- developer ---- */}
+    <Suspense fallback={<PetravBoot />}>
+      <Routes>
         <Route
-          path="/admin"
-          element={
-            <Protect roles={["admin"]}>
-              <AdminInviteOwner />
-            </Protect>
-          }
+          path="/login"
+          element={<Navigate to={HOME[profile.role] || "/"} replace />}
         />
+        <Route element={<Layout />}>
+          {/* ---- developer ---- */}
+          <Route
+            path="/admin"
+            element={
+              <Protect roles={["admin"]}>
+                <AdminInviteOwner />
+              </Protect>
+            }
+          />
 
-        {/* ---- owner ---- */}
+          {ROLE_ROUTES.flatMap(({ prefix, roles, routes }) =>
+            routes.map(({ path, element }) => (
+              <Route
+                key={`${prefix}${path}`}
+                path={`${prefix}${path}`}
+                element={<Protect roles={roles}>{element}</Protect>}
+              />
+            ))
+          )}
+        </Route>
         <Route
-          path="/owner"
-          element={
-            <Protect roles={["owner"]}>
-              <OwnerHome />
-            </Protect>
-          }
+          path="*"
+          element={<Navigate to={HOME[profile.role] || "/login"} replace />}
         />
-        <Route
-          path="/owner/shifts"
-          element={
-            <Protect roles={["owner"]}>
-              <ShiftsList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts/start"
-          element={
-            <Protect roles={["owner"]}>
-              <StartShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts/:id"
-          element={
-            <Protect roles={["owner"]}>
-              <ShiftDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts/:id/close"
-          element={
-            <Protect roles={["owner"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        {/* An owner who reopens a closed shift corrects it here, end to end. */}
-        <Route
-          path="/owner/shifts/:id/edit"
-          element={
-            <Protect roles={["owner"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/setup"
-          element={
-            <Protect roles={["owner"]}>
-              <StationSetup />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/stock"
-          element={
-            <Protect roles={["owner"]}>
-              <StockList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/stock/:tankId"
-          element={
-            <Protect roles={["owner"]}>
-              <TankDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/ledger"
-          element={
-            <Protect roles={["owner"]}>
-              <LedgerList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/ledger/:date"
-          element={
-            <Protect roles={["owner"]}>
-              <LedgerDay />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/reports"
-          element={
-            <Protect roles={["owner"]}>
-              <Reports />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/credit"
-          element={
-            <Protect roles={["owner"]}>
-              <CreditList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/credit/:customerId"
-          element={
-            <Protect roles={["owner"]}>
-              <CustomerDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/staff"
-          element={
-            <Protect roles={["owner"]}>
-              <OwnerStaff />
-            </Protect>
-          }
-        />
-
-        {/* ---- manager ---- */}
-        <Route
-          path="/station"
-          element={
-            <Protect roles={["manager"]}>
-              <ShiftsList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/start"
-          element={
-            <Protect roles={["manager"]}>
-              <StartShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/shift/:id"
-          element={
-            <Protect roles={["manager"]}>
-              <ShiftDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/shift/:id/close"
-          element={
-            <Protect roles={["manager"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/stock"
-          element={
-            <Protect roles={["manager"]}>
-              <StockList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/stock/:tankId"
-          element={
-            <Protect roles={["manager"]}>
-              <TankDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/ledger"
-          element={
-            <Protect roles={["manager"]}>
-              <LedgerList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/ledger/:date"
-          element={
-            <Protect roles={["manager"]}>
-              <LedgerDay />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/reports"
-          element={
-            <Protect roles={["manager"]}>
-              <Reports />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/credit"
-          element={
-            <Protect roles={["manager"]}>
-              <CreditList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/credit/:customerId"
-          element={
-            <Protect roles={["manager"]}>
-              <CustomerDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/staff"
-          element={
-            <Protect roles={["manager"]}>
-              <ManagerStaff />
-            </Protect>
-          }
-        />
-
-        {/* ---- attendant: a real multi-screen flow under /today ---- */}
-        <Route
-          path="/today"
-          element={
-            <Protect roles={["attendant"]}>
-              <TodayHome />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/start"
-          element={
-            <Protect roles={["attendant"]}>
-              <StartShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/shift/:id"
-          element={
-            <Protect roles={["attendant"]}>
-              <ShiftRun />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/shift/:id/close"
-          element={
-            <Protect roles={["attendant"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/stock"
-          element={
-            <Protect roles={["attendant"]}>
-              <StockList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/stock/:tankId"
-          element={
-            <Protect roles={["attendant"]}>
-              <TankDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/history"
-          element={
-            <Protect roles={["attendant"]}>
-              <TodayHistory />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/history/:id"
-          element={
-            <Protect roles={["attendant"]}>
-              <ShiftDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/history/:id/edit"
-          element={
-            <Protect roles={["attendant"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/account"
-          element={
-            <Protect roles={["attendant"]}>
-              <TodayAccount />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/credit"
-          element={
-            <Protect roles={["attendant"]}>
-              <CreditList />
-            </Protect>
-          }
-        />
-      </Route>
-      <Route
-        path="*"
-        element={<Navigate to={HOME[profile.role] || "/login"} replace />}
-      />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
