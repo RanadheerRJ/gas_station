@@ -18,6 +18,8 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
   // "closed" | "open" | "closing"
   const [phase, setPhase] = useState(open ? "open" : "closed");
   const rootRef = useRef(null);
+  const previousFocusRef = useRef(null);
+  const hadOpenRef = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -52,9 +54,53 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
   }, [phase]);
 
   useEffect(() => {
-    if (phase === "closed") return undefined;
+    if (phase !== "open") return undefined;
+    if (!hadOpenRef.current) {
+      previousFocusRef.current = document.activeElement;
+      hadOpenRef.current = true;
+    }
+    rootRef.current?.focus();
+    return undefined;
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "closed" || !hadOpenRef.current) return undefined;
+    const element = previousFocusRef.current;
+    previousFocusRef.current = null;
+    hadOpenRef.current = false;
+    if (element && document.contains(element) && typeof element.focus === "function") {
+      element.focus();
+    }
+    return undefined;
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "open") return undefined;
     const onKey = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        rootRef.current?.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      );
+      if (!focusable.length) {
+        event.preventDefault();
+        rootRef.current?.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -95,7 +141,11 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
   if (phase === "closed") return null;
 
   return (
-    <div ref={rootRef} className={`sheet-root${phase === "closing" ? " closing" : ""}`}>
+    <div
+      ref={rootRef}
+      className={`sheet-root${phase === "closing" ? " closing" : ""}`}
+      tabIndex={-1}
+    >
       <div className="backdrop" onClick={onClose} />
       <div
         className={`sheet${wide ? " sheet--wide" : ""}`}
