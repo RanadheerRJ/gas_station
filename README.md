@@ -297,6 +297,7 @@ settings, set **Pages → Source** to **GitHub Actions**.
 ```bash
 npm test                 # unit tests: shift/tank maths, exports, translations, credentials
 npm run check:schema     # migration contract guard used by CI
+npm run check:sw-version # service worker cache version bumped with the built assets
 npm run test:rbac        # role matrix enforced against a real PostgreSQL instance
 npm run lint
 npm run format:check
@@ -359,3 +360,13 @@ and before every Pages deployment.
 - Service worker caching is shell-only. Supabase Auth, REST, and Function
   traffic always stays on the network; fuel prices and balances are never
   cached as offline data.
+- Navigations are network-first. The cached shell names content-hashed
+  bundles, so it is only correct for the deploy it came from; it answers a
+  navigation only when the network request actually fails, and every
+  successful load refreshes it.
+- **Bump `const VERSION` in `public/sw.js` whenever `src/styles.css` or any
+  `src/pages/**/*.jsx` changes.** Those files change the content hashes of the
+  built bundles, and the version string is what renames — and therefore
+  purges — the caches holding the previous deploy. `npm run check:sw-version`
+  enforces the rule locally, CI runs it on every pull request, and the pull
+  request template repeats it.

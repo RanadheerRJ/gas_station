@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The service worker check diffs this branch against its base, so it
+          # needs more than the default single-commit clone.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -22,6 +26,14 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
+
+      # A change to src/styles.css or to a screen under src/pages/ renames the
+      # content-hashed bundles the cached shell points at, so public/sw.js must
+      # bump its cache version in the same pull request. Skipping that leaves
+      # an already-installed phone serving the previous deploy.
+      - name: Service worker cache version bumped with built assets
+        if: github.event_name == 'pull_request'
+        run: npm run check:sw-version -- --strict --base "origin/${{ github.base_ref }}"
 
       # This catches accidentally removing an RPC or weakening the migration's
       # RLS/RPC boundary without requiring Docker or a hosted Supabase project.

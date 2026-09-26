@@ -3388,21 +3388,39 @@ button:focus-visible {
     max-width: 100%;
   }
 
+  /*
+   * Screen header — the single set of `.screen-head*` rules for this
+   * breakpoint. They used to be split across two `@media (max-width: 860px)`
+   * blocks in this file, where the later one silently won and reading either
+   * block gave the wrong answer. Everything for the phone/tablet width now
+   * lives here, in cascade order; the narrower ≤390px overrides live in the
+   * `@media (max-width: 390px)` block at the end of the file.
+   */
   .screen-head {
-    padding: 14px 0 4px;
+    padding: 12px var(--content-gutter) 3px;
   }
 
   .screen-head h1 {
     font-size: 19.5px;
   }
 
+  /* The actions wrap onto their own line when the title needs the width. */
+  .screen-head__row {
+    flex-wrap: wrap;
+  }
+
+  /*
+   * Down to 391px the actions stay sized to their content at the trailing
+   * edge, as on desktop. They only take the whole row below that, where a
+   * labelled button would otherwise be squeezed.
+   */
   .screen-head__actions {
-    margin-left: 0;
-    width: 100%;
+    width: auto;
+    margin-left: auto;
   }
 
   .screen-head__actions > * {
-    flex: 1;
+    flex: 0 0 auto;
   }
 
   .action-bar {
@@ -4194,22 +4212,9 @@ button:focus-visible {
     padding: 10px var(--content-gutter) 20px;
   }
 
-  .screen-head {
-    padding: 12px var(--content-gutter) 3px;
-  }
-
-  .screen-head__row {
-    flex-wrap: wrap;
-  }
-
-  .screen-head__actions {
-    width: auto;
-    margin-left: auto;
-  }
-
-  .screen-head__actions > * {
-    flex: 0 0 auto;
-  }
+  /* Screen header rules for this breakpoint live in the earlier
+   * `@media (max-width: 860px)` block, next to the rest of the phone shell.
+   * Do not reintroduce a second copy here. */
 
   .action-bar {
     padding-inline: var(--content-gutter);
@@ -4318,6 +4323,13 @@ button:focus-visible {
     padding-inline: 10px;
   }
 
+  /*
+   * Screen header — the single set of `.screen-head*` rules for this
+   * breakpoint, overriding the ≤860px block above. On a 375px or 390px
+   * handset the header actions take the full row underneath the title, so a
+   * labelled button such as "Create login" on Staff & access is never pushed
+   * off the edge or clipped by the title.
+   */
   .screen-head__actions {
     width: 100%;
     margin-left: 0;
@@ -4329,6 +4341,8 @@ button:focus-visible {
     max-width: 100%;
   }
 
+  /* A long label wraps inside the pill rather than overflowing it; the 40px
+   * min-height on .tool-btn keeps the tap target intact when it does. */
   .screen-head__actions .tool-btn {
     white-space: normal;
   }

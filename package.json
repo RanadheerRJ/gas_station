@@ -14,8 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:rbac": "node scripts/rbac/run.mjs",
-    "check": "npm run lint && npm run format:check && npm test && npm run build",
-    "check:schema": "node scripts/checkSupabaseSchema.mjs"
+    "check": "npm run lint && npm run format:check && npm test && npm run check:sw-version && npm run build",
+    "check:schema": "node scripts/checkSupabaseSchema.mjs",
+    "check:sw-version": "node scripts/checkSwVersion.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
