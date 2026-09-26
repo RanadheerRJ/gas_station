@@ -32,6 +32,66 @@ const HOME = {
   attendant: "/today",
 };
 
+const ROLE_ROUTES = [
+  {
+    prefix: "/owner",
+    roles: ["owner"],
+    routes: [
+      { path: "", element: <OwnerHome /> },
+      { path: "/shifts", element: <ShiftsList /> },
+      { path: "/shifts/start", element: <StartShift /> },
+      { path: "/shifts/:id", element: <ShiftDetail /> },
+      { path: "/shifts/:id/close", element: <CloseShift /> },
+      // An owner who reopens a closed shift corrects it here, end to end.
+      { path: "/shifts/:id/edit", element: <CloseShift /> },
+      { path: "/setup", element: <StationSetup /> },
+      { path: "/stock", element: <StockList /> },
+      { path: "/stock/:tankId", element: <TankDetail /> },
+      { path: "/ledger", element: <LedgerList /> },
+      { path: "/ledger/:date", element: <LedgerDay /> },
+      { path: "/reports", element: <Reports /> },
+      { path: "/credit", element: <CreditList /> },
+      { path: "/credit/:customerId", element: <CustomerDetail /> },
+      { path: "/staff", element: <OwnerStaff /> },
+    ],
+  },
+  {
+    prefix: "/station",
+    roles: ["manager"],
+    routes: [
+      { path: "", element: <ShiftsList /> },
+      { path: "/start", element: <StartShift /> },
+      { path: "/shift/:id", element: <ShiftDetail /> },
+      { path: "/shift/:id/close", element: <CloseShift /> },
+      { path: "/stock", element: <StockList /> },
+      { path: "/stock/:tankId", element: <TankDetail /> },
+      { path: "/ledger", element: <LedgerList /> },
+      { path: "/ledger/:date", element: <LedgerDay /> },
+      { path: "/reports", element: <Reports /> },
+      { path: "/credit", element: <CreditList /> },
+      { path: "/credit/:customerId", element: <CustomerDetail /> },
+      { path: "/staff", element: <ManagerStaff /> },
+    ],
+  },
+  {
+    prefix: "/today",
+    roles: ["attendant"],
+    routes: [
+      { path: "", element: <TodayHome /> },
+      { path: "/start", element: <StartShift /> },
+      { path: "/shift/:id", element: <ShiftRun /> },
+      { path: "/shift/:id/close", element: <CloseShift /> },
+      { path: "/stock", element: <StockList /> },
+      { path: "/stock/:tankId", element: <TankDetail /> },
+      { path: "/history", element: <TodayHistory /> },
+      { path: "/history/:id", element: <ShiftDetail /> },
+      { path: "/history/:id/edit", element: <CloseShift /> },
+      { path: "/account", element: <TodayAccount /> },
+      { path: "/credit", element: <CreditList /> },
+    ],
+  },
+];
+
 function Protect({ roles, children }) {
   const { profile } = useAuth();
   if (!profile) return <Navigate to="/login" replace />;
@@ -82,316 +142,15 @@ export default function App() {
           }
         />
 
-        {/* ---- owner ---- */}
-        <Route
-          path="/owner"
-          element={
-            <Protect roles={["owner"]}>
-              <OwnerHome />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts"
-          element={
-            <Protect roles={["owner"]}>
-              <ShiftsList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts/start"
-          element={
-            <Protect roles={["owner"]}>
-              <StartShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts/:id"
-          element={
-            <Protect roles={["owner"]}>
-              <ShiftDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/shifts/:id/close"
-          element={
-            <Protect roles={["owner"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        {/* An owner who reopens a closed shift corrects it here, end to end. */}
-        <Route
-          path="/owner/shifts/:id/edit"
-          element={
-            <Protect roles={["owner"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/setup"
-          element={
-            <Protect roles={["owner"]}>
-              <StationSetup />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/stock"
-          element={
-            <Protect roles={["owner"]}>
-              <StockList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/stock/:tankId"
-          element={
-            <Protect roles={["owner"]}>
-              <TankDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/ledger"
-          element={
-            <Protect roles={["owner"]}>
-              <LedgerList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/ledger/:date"
-          element={
-            <Protect roles={["owner"]}>
-              <LedgerDay />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/reports"
-          element={
-            <Protect roles={["owner"]}>
-              <Reports />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/credit"
-          element={
-            <Protect roles={["owner"]}>
-              <CreditList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/credit/:customerId"
-          element={
-            <Protect roles={["owner"]}>
-              <CustomerDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/owner/staff"
-          element={
-            <Protect roles={["owner"]}>
-              <OwnerStaff />
-            </Protect>
-          }
-        />
-
-        {/* ---- manager ---- */}
-        <Route
-          path="/station"
-          element={
-            <Protect roles={["manager"]}>
-              <ShiftsList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/start"
-          element={
-            <Protect roles={["manager"]}>
-              <StartShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/shift/:id"
-          element={
-            <Protect roles={["manager"]}>
-              <ShiftDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/shift/:id/close"
-          element={
-            <Protect roles={["manager"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/stock"
-          element={
-            <Protect roles={["manager"]}>
-              <StockList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/stock/:tankId"
-          element={
-            <Protect roles={["manager"]}>
-              <TankDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/ledger"
-          element={
-            <Protect roles={["manager"]}>
-              <LedgerList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/ledger/:date"
-          element={
-            <Protect roles={["manager"]}>
-              <LedgerDay />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/reports"
-          element={
-            <Protect roles={["manager"]}>
-              <Reports />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/credit"
-          element={
-            <Protect roles={["manager"]}>
-              <CreditList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/credit/:customerId"
-          element={
-            <Protect roles={["manager"]}>
-              <CustomerDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/station/staff"
-          element={
-            <Protect roles={["manager"]}>
-              <ManagerStaff />
-            </Protect>
-          }
-        />
-
-        {/* ---- attendant: a real multi-screen flow under /today ---- */}
-        <Route
-          path="/today"
-          element={
-            <Protect roles={["attendant"]}>
-              <TodayHome />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/start"
-          element={
-            <Protect roles={["attendant"]}>
-              <StartShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/shift/:id"
-          element={
-            <Protect roles={["attendant"]}>
-              <ShiftRun />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/shift/:id/close"
-          element={
-            <Protect roles={["attendant"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/stock"
-          element={
-            <Protect roles={["attendant"]}>
-              <StockList />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/stock/:tankId"
-          element={
-            <Protect roles={["attendant"]}>
-              <TankDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/history"
-          element={
-            <Protect roles={["attendant"]}>
-              <TodayHistory />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/history/:id"
-          element={
-            <Protect roles={["attendant"]}>
-              <ShiftDetail />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/history/:id/edit"
-          element={
-            <Protect roles={["attendant"]}>
-              <CloseShift />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/account"
-          element={
-            <Protect roles={["attendant"]}>
-              <TodayAccount />
-            </Protect>
-          }
-        />
-        <Route
-          path="/today/credit"
-          element={
-            <Protect roles={["attendant"]}>
-              <CreditList />
-            </Protect>
-          }
-        />
+        {ROLE_ROUTES.flatMap(({ prefix, roles, routes }) =>
+          routes.map(({ path, element }) => (
+            <Route
+              key={`${prefix}${path}`}
+              path={`${prefix}${path}`}
+              element={<Protect roles={roles}>{element}</Protect>}
+            />
+          ))
+        )}
       </Route>
       <Route
         path="*"
