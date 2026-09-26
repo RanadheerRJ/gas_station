@@ -3,6 +3,7 @@ import { ScreenHeader } from "../components/Layout.jsx";
 import { CredentialPanel, Empty, Field, Notice, Panel, Stat } from "../components/ui";
 import PinField, { pinReady } from "../components/PinField";
 import ResetPinPanel from "../components/ResetPinPanel";
+import ResetStationSheet from "../components/ResetStationSheet.jsx";
 import Sheet from "../components/Sheet.jsx";
 import { phoneProblem } from "../lib/validate.js";
 import {
@@ -38,6 +39,7 @@ export default function AdminInviteOwner() {
   const [staffOpen, setStaffOpen] = useState(null);
   const [staff, setStaff] = useState({});
   const [resetting, setResetting] = useState(null);
+  const [resettingStation, setResettingStation] = useState(null);
 
   const loadOwners = useCallback(async () => {
     setLoadingOwners(true);
@@ -297,51 +299,123 @@ export default function AdminInviteOwner() {
                       {expanded && (
                         <tr>
                           <td colSpan={5} style={{ background: "var(--surface-sunken)" }}>
-                            <div className="nested-panel">
-                              {!entry ? (
-                                <div className="small muted">
-                                  {t("admin.loadingStaff")}
-                                </div>
-                              ) : entry.error ? (
-                                <Notice kind="error">{entry.error}</Notice>
-                              ) : entry.rows.length === 0 ? (
-                                <Empty>{t("admin.noStaff")}</Empty>
-                              ) : (
-                                <table>
-                                  <thead>
-                                    <tr>
-                                      <th>{t("common.name")}</th>
-                                      <th>{t("staff.username")}</th>
-                                      <th>{t("staff.role")}</th>
-                                      <th>{t("common.station")}</th>
-                                      <th />
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {entry.rows.map((member) => (
-                                      <tr key={member.uid}>
-                                        <td style={{ fontWeight: 500 }}>{member.name}</td>
-                                        <td className="mono">{member.username}</td>
-                                        <td>{t(`role.${member.role}`)}</td>
-                                        <td className="small muted">
-                                          {stationsFor(o.uid)?.find(
-                                            (s) => s.stationId === member.stationIds[0]
-                                          )?.name || "—"}
-                                        </td>
-                                        <td className="num">
-                                          <button
-                                            type="button"
-                                            className="quiet"
-                                            onClick={() => setResetting(member)}
-                                          >
-                                            {t("staff.resetPin")}
-                                          </button>
-                                        </td>
+                            <div className="nested-panel stack" style={{ gap: 16 }}>
+                              {owned && owned.length > 0 && (
+                                <div>
+                                  <div
+                                    className="small muted"
+                                    style={{
+                                      fontWeight: 600,
+                                      marginBottom: 6,
+                                      textTransform: "uppercase",
+                                      letterSpacing: "0.04em",
+                                    }}
+                                  >
+                                    {t("admin.stations")}
+                                  </div>
+                                  <table>
+                                    <thead>
+                                      <tr>
+                                        <th>{t("common.station")}</th>
+                                        <th>{t("owner.address")}</th>
+                                        <th>{t("common.status")}</th>
+                                        <th />
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                    </thead>
+                                    <tbody>
+                                      {owned.map((s) => (
+                                        <tr key={s.stationId}>
+                                          <td style={{ fontWeight: 500 }}>{s.name}</td>
+                                          <td className="small muted">{s.address}</td>
+                                          <td>
+                                            <span
+                                              className={`tag ${s.state === "active" ? "green" : ""}`}
+                                            >
+                                              {s.state === "active"
+                                                ? t("setup.active")
+                                                : t("owner.archived")}
+                                            </span>
+                                          </td>
+                                          <td className="num">
+                                            <button
+                                              type="button"
+                                              className="quiet danger"
+                                              onClick={() =>
+                                                setResettingStation({
+                                                  id: s.stationId,
+                                                  name: s.name,
+                                                })
+                                              }
+                                            >
+                                              {t("station.resetShort")}
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
                               )}
+
+                              <div>
+                                <div
+                                  className="small muted"
+                                  style={{
+                                    fontWeight: 600,
+                                    marginBottom: 6,
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.04em",
+                                  }}
+                                >
+                                  {t("admin.showStaff")}
+                                </div>
+                                {!entry ? (
+                                  <div className="small muted">
+                                    {t("admin.loadingStaff")}
+                                  </div>
+                                ) : entry.error ? (
+                                  <Notice kind="error">{entry.error}</Notice>
+                                ) : entry.rows.length === 0 ? (
+                                  <Empty>{t("admin.noStaff")}</Empty>
+                                ) : (
+                                  <table>
+                                    <thead>
+                                      <tr>
+                                        <th>{t("common.name")}</th>
+                                        <th>{t("staff.username")}</th>
+                                        <th>{t("staff.role")}</th>
+                                        <th>{t("common.station")}</th>
+                                        <th />
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {entry.rows.map((member) => (
+                                        <tr key={member.uid}>
+                                          <td style={{ fontWeight: 500 }}>
+                                            {member.name}
+                                          </td>
+                                          <td className="mono">{member.username}</td>
+                                          <td>{t(`role.${member.role}`)}</td>
+                                          <td className="small muted">
+                                            {stationsFor(o.uid)?.find(
+                                              (s) => s.stationId === member.stationIds[0]
+                                            )?.name || "—"}
+                                          </td>
+                                          <td className="num">
+                                            <button
+                                              type="button"
+                                              className="quiet"
+                                              onClick={() => setResetting(member)}
+                                            >
+                                              {t("staff.resetPin")}
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -349,6 +423,51 @@ export default function AdminInviteOwner() {
                     </Fragment>
                   );
                 })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+
+        <Panel title={t("admin.stationsList")} flush>
+          {registry === null ? (
+            <Notice>{t("admin.registryMissing")}</Notice>
+          ) : registry.length === 0 ? (
+            <Empty>{t("owner.noStations")}</Empty>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("common.station")}</th>
+                  <th>{t("admin.owner")}</th>
+                  <th>{t("owner.address")}</th>
+                  <th>{t("common.status")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {registry.map((st) => (
+                  <tr key={st.stationId}>
+                    <td style={{ fontWeight: 500 }}>{st.name}</td>
+                    <td>{st.ownerName}</td>
+                    <td className="small muted">{st.address}</td>
+                    <td>
+                      <span className={`tag ${st.state === "active" ? "green" : ""}`}>
+                        {st.state === "active" ? t("setup.active") : t("owner.archived")}
+                      </span>
+                    </td>
+                    <td className="num">
+                      <button
+                        type="button"
+                        className="quiet danger"
+                        onClick={() =>
+                          setResettingStation({ id: st.stationId, name: st.name })
+                        }
+                      >
+                        {t("station.resetShort")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
@@ -390,6 +509,14 @@ export default function AdminInviteOwner() {
           <ResetPinPanel target={resetting} onDone={() => setResetting(null)} />
         )}
       </Sheet>
+
+      {/* ---- reset station data confirmation ---- */}
+      <ResetStationSheet
+        open={!!resettingStation}
+        station={resettingStation}
+        onClose={() => setResettingStation(null)}
+        onDone={() => loadOwners()}
+      />
     </>
   );
 }

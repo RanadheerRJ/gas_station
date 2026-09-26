@@ -2,7 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { ScreenHeader } from "../components/Layout.jsx";
 import { Empty, Field, Notice, Panel } from "../components/ui";
 import StationFilter from "../components/StationFilter";
-import { NozzleIcon, PumpIcon, RateIcon, GaugeIcon } from "../components/icons";
+import {
+  NozzleIcon,
+  PumpIcon,
+  RateIcon,
+  GaugeIcon,
+  TrashIcon,
+} from "../components/icons";
+import ResetStationSheet from "../components/ResetStationSheet.jsx";
 import { useAuth } from "../state/AuthContext";
 import { useStation } from "../state/useStation";
 import {
@@ -52,6 +59,7 @@ export default function StationSetup() {
     openingReading: "",
   });
   const [rateDraft, setRateDraft] = useState({});
+  const [resetting, setResetting] = useState(null);
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -548,7 +556,50 @@ export default function StationSetup() {
             </li>
           </ul>
         </Panel>
+
+        {/* ---------------- danger zone: reset station data ---------------- */}
+        <Panel
+          title={
+            <span
+              className="row"
+              style={{ gap: 7, alignItems: "center", color: "var(--rust)" }}
+            >
+              <TrashIcon size={16} /> {t("station.resetDangerZone")}
+            </span>
+          }
+          note={t("station.resetDangerNote")}
+        >
+          <div
+            className="row"
+            style={{
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 500 }}>{t("station.resetData")}</div>
+              <div className="small muted">{t("station.resetWarningShort")}</div>
+            </div>
+            <button
+              type="button"
+              className="danger"
+              disabled={busy || !station}
+              onClick={() => setResetting(station)}
+            >
+              {t("station.resetData")}
+            </button>
+          </div>
+        </Panel>
       </div>
+
+      <ResetStationSheet
+        open={!!resetting}
+        station={resetting}
+        onClose={() => setResetting(null)}
+        onDone={() => load()}
+      />
     </>
   );
 }

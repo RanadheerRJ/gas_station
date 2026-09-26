@@ -539,6 +539,10 @@ export async function setStationState(stationId, state) {
   );
 }
 
+export async function resetStationData(stationId) {
+  return rpc("reset_station_data", { p_station_id: stationId });
+}
+
 /* ------------------------------------------------------------------ */
 /* Tanks & ground stock                                                 */
 /* ------------------------------------------------------------------ */

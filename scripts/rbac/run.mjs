@@ -259,6 +259,9 @@ async function main() {
     await sqlFile(
       resolve(REPO, "supabase/migrations/20260921000000_attendant_credit_at_close.sql")
     );
+    await sqlFile(
+      resolve(REPO, "supabase/migrations/20260922000000_reset_station_data.sql")
+    );
   } else {
     console.log("\n!! negative control: follow-up RBAC migration NOT applied\n");
   }
@@ -793,6 +796,79 @@ async function main() {
     "anonymous callers cannot call list_nozzle_occupancy",
     !!anon.error,
     anon.error?.message || "no error raised"
+  );
+
+  console.log("\n== reset station data permissions ==");
+  const attReset = await asUser(IDS.att1, "select public.reset_station_data($1)", [
+    IDS.station,
+  ]);
+  check(
+    "attendant cannot reset station data",
+    Boolean(attReset.error),
+    attReset.error?.message
+  );
+
+  const mgrReset = await asUser(IDS.manager, "select public.reset_station_data($1)", [
+    IDS.station,
+  ]);
+  check(
+    "manager cannot reset station data",
+    Boolean(mgrReset.error),
+    mgrReset.error?.message
+  );
+
+  const anonReset = await asUser(null, "select public.reset_station_data($1)", [
+    IDS.station,
+  ]);
+  check(
+    "anonymous cannot reset station data",
+    Boolean(anonReset.error),
+    anonReset.error?.message
+  );
+
+  const otherOwnerReset = await asUser(
+    IDS.owner2,
+    "select public.reset_station_data($1)",
+    [IDS.station]
+  );
+  check(
+    "owner cannot reset another owner's station",
+    Boolean(otherOwnerReset.error),
+    otherOwnerReset.error?.message
+  );
+
+  const devReset = await asUser(IDS.admin, "select public.reset_station_data($1)", [
+    IDS.station2,
+  ]);
+  check("developer can reset station data", !devReset.error, devReset.error?.message);
+
+  const ownerReset = await asUser(IDS.owner, "select public.reset_station_data($1)", [
+    IDS.station,
+  ]);
+  check(
+    "owner can reset their own station data",
+    !ownerReset.error,
+    ownerReset.error?.message
+  );
+
+  const pumpsLeft = await asOwner(
+    "select count(*)::int as c from public.pumps where station_id = $1",
+    [IDS.station]
+  );
+  check(
+    "station pumps were wiped by reset",
+    Number(pumpsLeft?.c) === 0,
+    `saw ${pumpsLeft?.c}`
+  );
+
+  const shiftsLeft = await asOwner(
+    "select count(*)::int as c from public.shifts where station_id = $1",
+    [IDS.station]
+  );
+  check(
+    "station shifts were wiped by reset",
+    Number(shiftsLeft?.c) === 0,
+    `saw ${shiftsLeft?.c}`
   );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);

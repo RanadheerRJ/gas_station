@@ -40,8 +40,9 @@ the `anon` / `authenticated` / `service_role` roles.
 
 The harness applies `20260919000000_initial_schema.sql`,
 `20260919010000_tighten_role_visibility.sql`,
-`20260920120000_admin_registry_and_manager_staff.sql`, and
-`20260921000000_attendant_credit_at_close.sql`. The meter/stock
+`20260920120000_admin_registry_and_manager_staff.sql`,
+`20260921000000_attendant_credit_at_close.sql`, and
+`20260922000000_reset_station_data.sql`. The meter/stock
 migration (`20260920000000`) is deliberately left out: it postdates the
 role-matrix contract this suite pins and intentionally changes attendant dip
 semantics.

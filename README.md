@@ -124,6 +124,7 @@ are, so a hand-written PostgREST or RPC call is refused exactly like a click is.
 | Station registry (names & counts) | ✅ admin-only RPC | own stations | own station | own station |
 | Reset someone's PIN | ✅ any PIN account | own staff | own station's staff, not self | ❌ |
 | Reset own PIN | — (signs in with a password) | ✅ with current PIN | ✅ with current PIN | ✅ with current PIN |
+| Reset station data | ✅ any station | own stations | ❌ | ❌ |
 
 A developer account provisions accounts and nothing else: it cannot read any
 station, shift, price, tank, or credit row. The one deliberate carve-out is

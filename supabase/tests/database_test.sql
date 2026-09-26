@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(24);
+select plan(25);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -15,6 +15,7 @@ select has_table('public', 'customer_transactions', 'customer balance changes ar
 select has_function('public', 'open_shift', array['uuid', 'uuid[]', 'text'], 'open_shift RPC exists');
 select has_function('public', 'close_shift', array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text', 'jsonb'], 'close_shift RPC exists');
 select has_function('public', 'record_customer_transaction', array['uuid', 'uuid', 'text', 'numeric', 'text', 'date'], 'balance RPC exists');
+select has_function('public', 'reset_station_data', array['uuid'], 'reset_station_data RPC exists');
 select has_index('public', 'shift_nozzles', 'shift_nozzles_one_open_shift', 'one active shift per nozzle is enforced');
 select row_security_active('public', 'credit_customers', 'credit balances are protected by RLS');
 
