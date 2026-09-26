@@ -360,6 +360,14 @@ export default function App() {
           }
         />
         <Route
+          path="/today/history/:id/edit"
+          element={
+            <Protect roles={["attendant"]}>
+              <CloseShift />
+            </Protect>
+          }
+        />
+        <Route
           path="/today/account"
           element={
             <Protect roles={["attendant"]}>

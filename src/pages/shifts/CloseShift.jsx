@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import { ActionBar, Field, Notice } from "../../components/ui.jsx";
@@ -11,6 +11,7 @@ import {
   listCustomerDirectory,
   listShifts,
   readableError,
+  resubmitRejectedShift,
 } from "../../lib/api";
 import { formatStamp, money, num } from "../../lib/format";
 import {
@@ -53,8 +54,8 @@ export default function CloseShift() {
 
   // Everything typed here was read off a meter or counted at the till —
   // work that cannot be re-derived if the phone dies or the submit fails.
-  // Drafts mirror it into localStorage, keyed per shift, until the close
-  // goes through (or the shift turns out to be settled already).
+  // Drafts mirror it into localStorage, keyed per shift, until the close or
+  // correction resubmission goes through.
   const [closings, setClosings, clearClosings] = useDraft(`close:${id}:readings`, {});
   const [creditSales, setCreditSales, clearCredit] = useDraft(`close:${id}:credit`, []);
   const [payments, setPayments, clearPayments] = useDraft(`close:${id}:payments`, {
@@ -69,9 +70,21 @@ export default function CloseShift() {
     HSD: "",
   });
   const [note, setNote, clearNote] = useDraft(`close:${id}:note`, "");
+  const [editedExpenses, setEditedExpenses, clearEditedExpenses] = useDraft(
+    `close:${id}:expenses`,
+    []
+  );
+  // `useDraft` deliberately keeps partially corrected data on a refresh. This
+  // ref only seeds fields from the rejected shift once, when no such draft is
+  // present, rather than overwriting work the attendant has already typed.
+  const correctionSeededFor = useRef("");
   const [problems, setProblems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const isCorrection =
+    shift?.status === SHIFT_STATUS.REJECTED &&
+    profile.role === "attendant" &&
+    shift.userId === profile.uid;
 
   useEffect(() => {
     let cancelled = false;
@@ -100,15 +113,24 @@ export default function CloseShift() {
 
   // A shift that is positively known to be settled has no draft worth
   // keeping — someone else closed it, or an earlier submit landed after
-  // all. A shift that merely FAILED to load is different: the drafts stay,
-  // because the readings may still be needed once the network returns.
+  // all. A rejected shift is the exception: it is deliberately reopened for
+  // its attendant to correct, so its locally saved corrections must survive.
+  // A shift that merely FAILED to load is different: drafts stay because the
+  // readings may still be needed once the network returns.
   useEffect(() => {
-    if (loading || !shift || shift.status === SHIFT_STATUS.OPEN) return;
+    if (
+      loading ||
+      !shift ||
+      shift.status === SHIFT_STATUS.OPEN ||
+      shift.status === SHIFT_STATUS.REJECTED
+    )
+      return;
     clearClosings();
     clearCredit();
     clearPayments();
     clearTesting();
     clearNote();
+    clearEditedExpenses();
   }, [
     loading,
     shift,
@@ -117,6 +139,53 @@ export default function CloseShift() {
     clearPayments,
     clearTesting,
     clearNote,
+    clearEditedExpenses,
+  ]);
+
+  // Start a correction with the submitted values, so the attendant fixes the
+  // one item the reviewer flagged rather than re-entering the whole shift.
+  useEffect(() => {
+    if (!isCorrection || correctionSeededFor.current === id) return;
+    correctionSeededFor.current = id;
+
+    setClosings((current) =>
+      Object.keys(current).length > 0
+        ? current
+        : Object.fromEntries(
+            shift.nozzles.map((nozzle) => [nozzle.nozzleId, nozzle.closingReading ?? ""])
+          )
+    );
+    setCreditSales((current) =>
+      current.length > 0
+        ? current
+        : (shift.creditSales || []).map((sale) => ({ ...sale }))
+    );
+    setPayments((current) =>
+      Object.values(current).some((value) => value !== "")
+        ? current
+        : { cash: "", card: "", upi: "", credit: "", other: "", ...shift.payments }
+    );
+    setTesting((current) =>
+      Object.values(current).some((value) => value !== "")
+        ? current
+        : { MS: "", HSD: "", ...shift.testing }
+    );
+    setNote((current) => (current !== "" ? current : shift.note || ""));
+    setEditedExpenses((current) =>
+      current.length > 0
+        ? current
+        : (shift.expenses || []).map((expense) => ({ ...expense }))
+    );
+  }, [
+    id,
+    isCorrection,
+    setClosings,
+    setCreditSales,
+    setPayments,
+    setTesting,
+    setNote,
+    setEditedExpenses,
+    shift,
   ]);
 
   const withClosings = useMemo(
@@ -130,8 +199,13 @@ export default function CloseShift() {
     [shift, closings]
   );
 
-  // Expenses were logged during the shift and are not re-entered here.
-  const expenses = useMemo(() => shift?.expenses || [], [shift]);
+  // Ordinary closes show the expenses recorded while the shift was open. A
+  // sent-back shift lets its own attendant correct that list before it goes
+  // back to review.
+  const expenses = useMemo(
+    () => (isCorrection ? editedExpenses : shift?.expenses || []),
+    [isCorrection, editedExpenses, shift]
+  );
 
   const preview = useMemo(
     () =>
@@ -169,7 +243,7 @@ export default function CloseShift() {
     setBusy(true);
     setError("");
     try {
-      await closeShift(stationId, shift.id, {
+      const payload = {
         closingReadings: Object.fromEntries(
           withClosings.map((nozzle) => [nozzle.nozzleId, nozzle.closingReading])
         ),
@@ -177,7 +251,13 @@ export default function CloseShift() {
         payments,
         testing,
         note,
-      });
+        expenses,
+      };
+      if (isCorrection) {
+        await resubmitRejectedShift(stationId, shift.id, payload);
+      } else {
+        await closeShift(stationId, shift.id, payload);
+      }
       // The figures are safely in the database — the drafts must go NOW,
       // before navigation, or they would greet the next visit to this URL.
       clearClosings();
@@ -185,8 +265,11 @@ export default function CloseShift() {
       clearPayments();
       clearTesting();
       clearNote();
-      // Home, with the shift now sitting in history / the review queue.
-      navigate(paths.home, { replace: true });
+      clearEditedExpenses();
+      // A corrected shift returns to its detail so the attendant can confirm
+      // that it is back in the review queue. A newly closed shift still goes
+      // home, where it sits in history.
+      navigate(isCorrection ? paths.detail(shift.id) : paths.home, { replace: true });
     } catch (err) {
       setError(readableError(err));
       setBusy(false);
@@ -215,21 +298,40 @@ export default function CloseShift() {
     );
   }
 
-  // Already closed, or never ours to close — nothing to do here.
-  if (!shift || shift.status !== SHIFT_STATUS.OPEN) {
+  // A sent-back shift is the one closed state its own attendant may reopen
+  // for correction. Every other settled state stays immutable here.
+  if (!shift || (shift.status !== SHIFT_STATUS.OPEN && !isCorrection)) {
     return <Navigate to={paths.home} replace />;
   }
+
+  const back = isCorrection ? paths.detail(id) : backTarget(paths, id);
 
   return (
     <>
       <ScreenHeader
-        title={t("shifts.closeTitle", { name: shift.employeeName })}
-        sub={`${t("shifts.started")} ${formatStamp(shift.startTime)} · ${t(
-          "shifts.closeNote"
-        )}`}
-        back={backTarget(paths, id)}
+        title={
+          isCorrection
+            ? t("shifts.correctTitle", { name: shift.employeeName })
+            : t("shifts.closeTitle", { name: shift.employeeName })
+        }
+        sub={
+          isCorrection
+            ? t("shifts.correctionHelp")
+            : `${t("shifts.started")} ${formatStamp(shift.startTime)} · ${t(
+                "shifts.closeNote"
+              )}`
+        }
+        back={back}
       />
       <div className="content stack">
+        {isCorrection && (
+          <Notice kind="error">
+            {t("shifts.sentBackBy", {
+              who: shift.rejectedByName || t("shifts.theOwner"),
+            })}
+            {shift.rejectionReason ? `: ${shift.rejectionReason}` : ""}
+          </Notice>
+        )}
         {error && <Notice kind="error">{error}</Notice>}
 
         {/* ---- closing readings ---- */}
@@ -279,21 +381,74 @@ export default function CloseShift() {
           </div>
         </section>
 
-        {/* ---- expenses already logged ---- */}
-        {expenses.length > 0 && (
+        {/* ---- expenses logged during the shift ---- */}
+        {(isCorrection || expenses.length > 0) && (
           <section className="card card--flush">
             <div className="card__head">
               <h2>{t("shifts.expensesLogged")}</h2>
               <span className="small muted mono">−₹ {money(preview.expensesTotal)}</span>
             </div>
-            <div>
-              {expenses.map((expense, index) => (
-                <div key={index} className="closing-row closing-row--flat">
-                  <span className="closing-row__label">{expense.label}</span>
-                  <span className="closing-row__out mono">₹ {money(expense.amount)}</span>
-                </div>
-              ))}
-            </div>
+            {isCorrection ? (
+              <div className="stack" style={{ gap: 10, padding: 14 }}>
+                {expenses.map((expense, index) => {
+                  const patch = (fields) =>
+                    setEditedExpenses((rows) => {
+                      const next = [...rows];
+                      next[index] = { ...next[index], ...fields };
+                      return next;
+                    });
+                  return (
+                    <div key={index} className="credit-row">
+                      <input
+                        value={expense.label || ""}
+                        placeholder={t("shifts.whatPaidFor")}
+                        onChange={(e) => patch({ label: e.target.value })}
+                      />
+                      <input
+                        className="mono"
+                        inputMode="decimal"
+                        style={{ textAlign: "right" }}
+                        value={expense.amount ?? ""}
+                        placeholder="0.00"
+                        aria-label={t("common.amount")}
+                        onChange={(e) => patch({ amount: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className="quiet"
+                        onClick={() =>
+                          setEditedExpenses((rows) =>
+                            rows.filter((_, item) => item !== index)
+                          )
+                        }
+                      >
+                        {t("common.remove")}
+                      </button>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="small"
+                  onClick={() =>
+                    setEditedExpenses((rows) => [...rows, { label: "", amount: "" }])
+                  }
+                >
+                  {t("shifts.addExpense")}
+                </button>
+              </div>
+            ) : (
+              <div>
+                {expenses.map((expense, index) => (
+                  <div key={index} className="closing-row closing-row--flat">
+                    <span className="closing-row__label">{expense.label}</span>
+                    <span className="closing-row__out mono">
+                      ₹ {money(expense.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -515,15 +670,13 @@ export default function CloseShift() {
           {/* Same explicit target as the back arrow: from a deep link or a
               refresh there is no in-app history, and navigate(-1) would walk
               straight out of the app. */}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => navigate(backTarget(paths, id))}
-          >
+          <button type="button" disabled={busy} onClick={() => navigate(back)}>
             {t("common.cancel")}
           </button>
           <button type="button" className="cta" disabled={busy} onClick={submit}>
-            {busy ? t("shifts.submitting") : t("shifts.closeAndSend")}
+            {busy
+              ? t(isCorrection ? "shifts.resubmitting" : "shifts.submitting")
+              : t(isCorrection ? "shifts.resubmitForReview" : "shifts.closeAndSend")}
           </button>
         </ActionBar>
       </div>

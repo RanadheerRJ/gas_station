@@ -48,6 +48,7 @@ describe("the URLs match the routes App.jsx mounts", () => {
     expect(p.start).toBe("/today/start");
     expect(p.list).toBe("/today/history");
     expect(p.detail("s1")).toBe("/today/history/s1");
+    expect(p.correct("s1")).toBe("/today/history/s1/edit");
     expect(p.run("s1")).toBe("/today/shift/s1");
     expect(p.close("s1")).toBe("/today/shift/s1/close");
   });

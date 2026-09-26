@@ -19,6 +19,9 @@ export const SHIFT_PATHS = {
     start: "/today/start",
     list: "/today/history",
     detail: (id) => `/today/history/${id}`,
+    // A sent-back shift is closed, not running. Its correction form therefore
+    // lives under history rather than pretending it can be closed again.
+    correct: (id) => `/today/history/${id}/edit`,
     run: (id) => `/today/shift/${id}`,
     close: (id) => `/today/shift/${id}/close`,
   },

@@ -162,6 +162,7 @@ describe("detail routes degrade honestly without data", () => {
     ["empty ledger day", "owner", "/owner/ledger/2026-09-19"],
     ["missing manager shift", "manager", "/station/shift/nope"],
     ["missing attendant shift", "attendant", "/today/shift/nope"],
+    ["missing sent-back correction target", "attendant", "/today/history/nope/edit"],
     ["missing close target", "owner", "/owner/shifts/nope/close"],
     ["missing manager close target", "manager", "/station/shift/nope/close"],
     ["missing attendant close target", "attendant", "/today/shift/nope/close"],
