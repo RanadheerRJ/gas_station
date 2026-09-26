@@ -14,14 +14,11 @@ createRoot(document.getElementById("root")).render(
     {/* On GitHub Pages the app lives under /<repo>/, so the router has to be
         told where its root is or every route would resolve one level too high.
         BASE_URL is "/" in development and for a root deployment. */}
-    {/* The v7 behaviours are opted into here while still on v6 so the
-        eventual major upgrade is a version bump rather than a behaviour
-        change: state updates wrap in React.startTransition, and relative
-        paths inside splat routes resolve against the splat's own path. */}
-    <BrowserRouter
-      basename={import.meta.env.BASE_URL}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    {/* Router v7 makes both of the behaviours this app opted into on v6
+        (state updates wrapped in React.startTransition, splat-relative path
+        resolution) the default, so the future flags are gone rather than
+        turned off. */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>

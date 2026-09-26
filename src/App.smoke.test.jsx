@@ -76,10 +76,7 @@ async function boot(route, profile) {
   await act(async () => {
     root = createRoot(container);
     root.render(
-      <MemoryRouter
-        initialEntries={[route]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={[route]}>
         <ThemeProvider>
           <LanguageProvider>
             <App />
