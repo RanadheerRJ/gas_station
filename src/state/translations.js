@@ -525,7 +525,23 @@ const en = {
     "New logins are issued by your owner. If a colleague forgets their PIN, you can reset it from here.",
   "admin.owner": "Owner",
   "admin.stations": "Stations",
+  "admin.stationsList": "Stations",
   "admin.howItWorks": "How this works",
+
+  /* ---- station reset ---- */
+  "station.resetData": "Reset station data",
+  "station.resetShort": "reset data",
+  "station.resetTitle": "Reset {name} data",
+  "station.resetWarning":
+    "This permanently deletes all shifts, sales, meter readings, stock movements, tank dips, credit customers, and equipment for this station. This action cannot be undone.",
+  "station.resetWarningShort":
+    "Permanently deletes all shifts, sales, stock, and equipment for this station.",
+  "station.resetConfirmPrompt": 'Type the station name "{name}" to confirm:',
+  "station.resetAction": "Reset all station data",
+  "station.resetting": "Resetting station data…",
+  "station.resetDangerZone": "Danger zone",
+  "station.resetDangerNote":
+    "Clear all operational records, readings, prices, and equipment to start fresh.",
 
   /* ---- pumps & rates ---- */
   "setup.title": "Pumps, nozzles & rates",
@@ -1078,7 +1094,23 @@ const te = {
     "కొత్త లాగిన్‌లను యజమాని జారీ చేస్తారు. సహోద్యోగి పిన్ మర్చిపోతే ఇక్కడ నుంచి మీరు రీసెట్ చేయవచ్చు.",
   "admin.owner": "యజమాని",
   "admin.stations": "స్టేషన్లు",
+  "admin.stationsList": "స్టేషన్లు",
   "admin.howItWorks": "ఇది ఎలా పనిచేస్తుంది",
+
+  /* ---- station reset ---- */
+  "station.resetData": "స్టేషన్ డేటాను రీసెట్ చేయి",
+  "station.resetShort": "డేటా రీసెట్",
+  "station.resetTitle": "{name} డేటాను రీసెట్ చేయి",
+  "station.resetWarning":
+    "ఇది ఈ స్టేషన్‌కు సంబంధించిన అన్ని షిఫ్ట్‌లు, అమ్మకాలు, మీటర్ రీడింగ్‌లు, స్టాక్ కదలికలు, ట్యాంక్ డిప్‌లు, అరువు కస్టమర్లు మరియు పరికరాలను శాశ్వతంగా తొలగిస్తుంది. ఈ చర్యను రద్దు చేయడం సాధ్యం కాదు.",
+  "station.resetWarningShort":
+    "ఈ స్టేషన్‌కు సంబంధించిన అన్ని షిఫ్ట్‌లు, అమ్మకాలు, స్టాక్ మరియు పరికరాలను శాశ్వతంగా తొలగిస్తుంది.",
+  "station.resetConfirmPrompt": 'నిర్ధారించడానికి స్టేషన్ పేరు "{name}" టైప్ చేయండి:',
+  "station.resetAction": "అన్ని స్టేషన్ డేటాను రీసెట్ చేయి",
+  "station.resetting": "స్టేషన్ డేటా రీసెట్ అవుతోంది…",
+  "station.resetDangerZone": "ప్రమాదకర ప్రాంతం",
+  "station.resetDangerNote":
+    "మళ్లీ కొత్తగా ప్రారంభించడానికి అన్ని కార్యాచరణ రికార్డులు, రీడింగ్‌లు, ధరలు మరియు పరికరాలను క్లియర్ చేయండి.",
 
   "setup.title": "పంపులు, నాజిల్స్ & ధరలు",
   "setup.shortTitle": "పంపులు & ధరలు",
@@ -1624,7 +1656,23 @@ const hi = {
     "नए लॉगिन मालिक जारी करते हैं। कोई सहकर्मी अपना पिन भूल जाए तो आप उसे यहीं से रीसेट कर सकते हैं।",
   "admin.owner": "मालिक",
   "admin.stations": "स्टेशन",
+  "admin.stationsList": "स्टेशन",
   "admin.howItWorks": "यह कैसे काम करता है",
+
+  /* ---- station reset ---- */
+  "station.resetData": "स्टेशन डेटा रीसेट करें",
+  "station.resetShort": "डेटा रीसेट",
+  "station.resetTitle": "{name} डेटा रीसेट करें",
+  "station.resetWarning":
+    "यह इस स्टेशन के सभी शिफ्ट, बिक्री, मीटर रीडिंग, स्टॉक संचलन, टैंक डिप, उधार ग्राहक और उपकरण स्थायी रूप से हटा देता है। इस क्रिया को वापस नहीं लाया जा सकता।",
+  "station.resetWarningShort":
+    "इस स्टेशन के सभी शिफ्ट, बिक्री, स्टॉक और उपकरण स्थायी रूप से हटा देता है।",
+  "station.resetConfirmPrompt": 'पुष्टि करने के लिए स्टेशन का नाम "{name}" टाइप करें:',
+  "station.resetAction": "सभी स्टेशन डेटा रीसेट करें",
+  "station.resetting": "स्टेशन डेटा रीसेट हो रहा है…",
+  "station.resetDangerZone": "खतरे का क्षेत्र",
+  "station.resetDangerNote":
+    "नए सिरे से शुरुआत करने के लिए सभी परिचालन रिकॉर्ड, रीडिंग, दरें और उपकरण साफ़ करें।",
 
   "setup.title": "पंप, नोज़ल और दरें",
   "setup.shortTitle": "पंप और दरें",

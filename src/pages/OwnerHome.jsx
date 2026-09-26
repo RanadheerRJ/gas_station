@@ -5,6 +5,7 @@ import { Notice, Stat } from "../components/ui.jsx";
 import { LoadingPanels } from "../components/motion.jsx";
 import { ChevronIcon, PlusIcon } from "../components/icons.jsx";
 import Sheet from "../components/Sheet.jsx";
+import ResetStationSheet from "../components/ResetStationSheet.jsx";
 import { useStations } from "../state/useStations.js";
 import { useRunner } from "../state/useRunner.js";
 import { addStation, listCustomers, listShifts, setStationState } from "../lib/api";
@@ -26,6 +27,7 @@ export default function OwnerHome() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: "", address: "" });
   const [archiving, setArchiving] = useState(null);
+  const [resettingStation, setResettingStation] = useState(null);
 
   // Per-station roll-up: today's sales, cash, open shifts, review queue.
   useEffect(() => {
@@ -253,6 +255,13 @@ export default function OwnerHome() {
                           {t("owner.archive")}
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="quiet small danger"
+                        onClick={() => setResettingStation(stationRef)}
+                      >
+                        {t("station.resetShort")}
+                      </button>
                     </div>
                   </div>
                 );
@@ -320,6 +329,14 @@ export default function OwnerHome() {
           </div>
         </div>
       </Sheet>
+
+      {/* ---- reset station data confirmation ---- */}
+      <ResetStationSheet
+        open={!!resettingStation}
+        station={resettingStation}
+        onClose={() => setResettingStation(null)}
+        onDone={() => reload()}
+      />
     </>
   );
 }
