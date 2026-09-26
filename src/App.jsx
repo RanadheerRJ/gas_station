@@ -1,26 +1,27 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
-import Login from "./pages/Login";
-import AdminInviteOwner from "./pages/AdminInviteOwner";
-import OwnerHome from "./pages/OwnerHome";
-import OwnerStaff from "./pages/OwnerStaff";
-import ManagerStaff from "./pages/ManagerStaff";
-import StationSetup from "./pages/StationSetup";
-import TodayHome from "./pages/today/TodayHome.jsx";
-import StartShift from "./pages/today/StartShift.jsx";
-import ShiftRun from "./pages/today/ShiftRun.jsx";
-import TodayHistory from "./pages/today/TodayHistory.jsx";
-import TodayAccount from "./pages/today/TodayAccount.jsx";
-import ShiftsList from "./pages/shifts/ShiftsList.jsx";
-import ShiftDetail from "./pages/shifts/ShiftDetail.jsx";
-import CloseShift from "./pages/shifts/CloseShift.jsx";
-import LedgerList from "./pages/ledger/LedgerList.jsx";
-import LedgerDay from "./pages/ledger/LedgerDay.jsx";
-import Reports from "./pages/reports/Reports.jsx";
-import StockList from "./pages/stock/StockList.jsx";
-import TankDetail from "./pages/stock/TankDetail.jsx";
-import CreditList from "./pages/credit/CreditList.jsx";
-import CustomerDetail from "./pages/credit/CustomerDetail.jsx";
+const Login = lazy(() => import("./pages/Login"));
+const AdminInviteOwner = lazy(() => import("./pages/AdminInviteOwner"));
+const OwnerHome = lazy(() => import("./pages/OwnerHome"));
+const OwnerStaff = lazy(() => import("./pages/OwnerStaff"));
+const ManagerStaff = lazy(() => import("./pages/ManagerStaff"));
+const StationSetup = lazy(() => import("./pages/StationSetup"));
+const TodayHome = lazy(() => import("./pages/today/TodayHome.jsx"));
+const StartShift = lazy(() => import("./pages/today/StartShift.jsx"));
+const ShiftRun = lazy(() => import("./pages/today/ShiftRun.jsx"));
+const TodayHistory = lazy(() => import("./pages/today/TodayHistory.jsx"));
+const TodayAccount = lazy(() => import("./pages/today/TodayAccount.jsx"));
+const ShiftsList = lazy(() => import("./pages/shifts/ShiftsList.jsx"));
+const ShiftDetail = lazy(() => import("./pages/shifts/ShiftDetail.jsx"));
+const CloseShift = lazy(() => import("./pages/shifts/CloseShift.jsx"));
+const LedgerList = lazy(() => import("./pages/ledger/LedgerList.jsx"));
+const LedgerDay = lazy(() => import("./pages/ledger/LedgerDay.jsx"));
+const Reports = lazy(() => import("./pages/reports/Reports.jsx"));
+const StockList = lazy(() => import("./pages/stock/StockList.jsx"));
+const TankDetail = lazy(() => import("./pages/stock/TankDetail.jsx"));
+const CreditList = lazy(() => import("./pages/credit/CreditList.jsx"));
+const CustomerDetail = lazy(() => import("./pages/credit/CustomerDetail.jsx"));
 import { useAuth } from "./state/AuthContext";
 import { PetravBoot } from "./components/branding.jsx";
 
@@ -118,44 +119,48 @@ export default function App() {
 
   if (!profile) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Suspense fallback={<PetravBoot />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={<Navigate to={HOME[profile.role] || "/"} replace />}
-      />
-      <Route element={<Layout />}>
-        {/* ---- developer ---- */}
+    <Suspense fallback={<PetravBoot />}>
+      <Routes>
         <Route
-          path="/admin"
-          element={
-            <Protect roles={["admin"]}>
-              <AdminInviteOwner />
-            </Protect>
-          }
+          path="/login"
+          element={<Navigate to={HOME[profile.role] || "/"} replace />}
         />
+        <Route element={<Layout />}>
+          {/* ---- developer ---- */}
+          <Route
+            path="/admin"
+            element={
+              <Protect roles={["admin"]}>
+                <AdminInviteOwner />
+              </Protect>
+            }
+          />
 
-        {ROLE_ROUTES.flatMap(({ prefix, roles, routes }) =>
-          routes.map(({ path, element }) => (
-            <Route
-              key={`${prefix}${path}`}
-              path={`${prefix}${path}`}
-              element={<Protect roles={roles}>{element}</Protect>}
-            />
-          ))
-        )}
-      </Route>
-      <Route
-        path="*"
-        element={<Navigate to={HOME[profile.role] || "/login"} replace />}
-      />
-    </Routes>
+          {ROLE_ROUTES.flatMap(({ prefix, roles, routes }) =>
+            routes.map(({ path, element }) => (
+              <Route
+                key={`${prefix}${path}`}
+                path={`${prefix}${path}`}
+                element={<Protect roles={roles}>{element}</Protect>}
+              />
+            ))
+          )}
+        </Route>
+        <Route
+          path="*"
+          element={<Navigate to={HOME[profile.role] || "/login"} replace />}
+        />
+      </Routes>
+    </Suspense>
   );
 }
