@@ -12,6 +12,7 @@ import {
   listShifts,
   readableError,
   rejectShift,
+  reopenShiftForCorrection,
   reviseShift,
 } from "../../lib/api";
 import { formatDate, formatStamp, money } from "../../lib/format";
@@ -31,7 +32,8 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
  * A settled shift, as its own screen: the full breakdown a reviewer needs,
  * reached by tapping a row of the shifts list or the attendant's history.
  * Until a shift is approved, a reviewer can correct expenses and testing
- * inline and sign it off from the pinned action bar.
+ * inline and sign it off from the pinned action bar. The owner can also
+ * reopen the whole record for correction — an approved one included.
  */
 export default function ShiftDetail() {
   const { t, tn } = useLanguage();
@@ -75,13 +77,20 @@ export default function ShiftDetail() {
   const [run, busy, error] = useRunner(load);
 
   const shift = shifts.find((s) => s.id === id);
-  // A sent-back shift belongs to its operator. Give that attendant a direct,
-  // explicit way into the correction form; owners and managers retain the
-  // review controls below instead.
+  // A sent-back shift belongs to its operator, who gets a direct, explicit
+  // way into the correction form. An owner who reopens a closed shift gets
+  // the same way in; managers keep only the review controls below.
   const canResubmit =
-    profile.role === "attendant" &&
     shift?.status === SHIFT_STATUS.REJECTED &&
-    shift.userId === profile.uid;
+    ((profile.role === "attendant" && shift.userId === profile.uid) ||
+      profile.role === "owner");
+  // Reopening is the owner's alone: any closed shift — even an approved one —
+  // can be pushed back into the correction state to be fixed end to end. It
+  // never becomes a running shift again, so no nozzle is ever reclaimed.
+  const canReopen =
+    profile.role === "owner" &&
+    (shift?.status === SHIFT_STATUS.PENDING_REVIEW ||
+      shift?.status === SHIFT_STATUS.APPROVED);
   // Attendants reach a settled shift from their history list; managers and
   // owners from the shifts list. Either way, the back arrow points at the
   // list that led here.
@@ -141,8 +150,12 @@ export default function ShiftDetail() {
           canReview={canReview}
           canResubmit={canResubmit}
           correctionUrl={canResubmit ? link(paths.correct(shift.id)) : ""}
+          canReopen={canReopen}
           busy={busy}
           onRevise={(patch) => run(() => reviseShift(stationId, shift.id, patch))}
+          onReopen={(reason) =>
+            run(() => reopenShiftForCorrection(stationId, shift.id, reason))
+          }
           onApprove={() => run(() => approveShift(stationId, shift.id))}
           onReject={(reason) => run(() => rejectShift(stationId, shift.id, reason))}
         />
@@ -162,8 +175,10 @@ export function SettledShiftDetail({
   canReview = false,
   canResubmit = false,
   correctionUrl = "",
+  canReopen = false,
   busy = false,
   onRevise,
+  onReopen,
   onApprove,
   onReject,
 }) {
@@ -177,12 +192,16 @@ export function SettledShiftDetail({
   });
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const [reopening, setReopening] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
 
   // Re-sync whenever the shift reloads under us.
   useEffect(() => {
     setExpenses(shift.expenses || []);
     setTesting({ MS: shift.testing?.MS ?? "", HSD: shift.testing?.HSD ?? "" });
     setEditing(false);
+    setReopening(false);
+    setReopenReason("");
   }, [shift]);
 
   const totals = useMemo(() => shiftTotals(shift), [shift]);
@@ -201,6 +220,16 @@ export function SettledShiftDetail({
     if (ok) {
       setReason("");
       setRejecting(false);
+    }
+  };
+
+  // Reopening moves the shift into the sent-back correction state. The
+  // reason is optional — the database records who reopened it either way.
+  const submitReopen = async () => {
+    const ok = await onReopen(reopenReason.trim());
+    if (ok) {
+      setReopenReason("");
+      setReopening(false);
     }
   };
 
@@ -232,6 +261,43 @@ export function SettledShiftDetail({
           <Link className="cta" to={correctionUrl}>
             {t("shifts.editAndResubmit")}
           </Link>
+        </section>
+      )}
+      {canReopen && (
+        <section className="card reopen-card">
+          <div className="stack" style={{ gap: 10 }}>
+            <div>
+              <h2>{t("shifts.reopenTitle")}</h2>
+              <p className="small muted">{t("shifts.reopenHelp")}</p>
+            </div>
+            {reopening ? (
+              <div className="row reopen-card__reason">
+                <input
+                  style={{ flex: 1 }}
+                  value={reopenReason}
+                  placeholder={t("shifts.whatNeedsCorrecting")}
+                  onChange={(e) => setReopenReason(e.target.value)}
+                />
+                <button type="button" disabled={busy} onClick={submitReopen}>
+                  {t("common.confirm")}
+                </button>
+                <button
+                  type="button"
+                  className="quiet"
+                  disabled={busy}
+                  onClick={() => setReopening(false)}
+                >
+                  {t("common.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="row">
+                <button type="button" disabled={busy} onClick={() => setReopening(true)}>
+                  {t("shifts.reopenForCorrection")}
+                </button>
+              </div>
+            )}
+          </div>
         </section>
       )}
 

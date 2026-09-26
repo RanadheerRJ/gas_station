@@ -41,6 +41,21 @@ describe("run is the attendant-only extra", () => {
   });
 });
 
+describe("correct serves the attendant's fix and the owner's reopen flow", () => {
+  it("attendant and owner each have a correction screen", () => {
+    expect(typeof SHIFT_PATHS.attendant.correct).toBe("function");
+    expect(SHIFT_PATHS.attendant.correct("s1")).toBe("/today/history/s1/edit");
+    expect(typeof SHIFT_PATHS.owner.correct).toBe("function");
+    expect(SHIFT_PATHS.owner.correct("s1")).toBe("/owner/shifts/s1/edit");
+  });
+
+  // A manager sends a shift back for its operator to fix; the owner-only
+  // reopen flow is deliberately not theirs, so there is no URL to link to.
+  it("manager has none", () => {
+    expect(SHIFT_PATHS.manager.correct).toBeUndefined();
+  });
+});
+
 describe("the URLs match the routes App.jsx mounts", () => {
   it("attendant", () => {
     const p = SHIFT_PATHS.attendant;
@@ -68,6 +83,7 @@ describe("the URLs match the routes App.jsx mounts", () => {
     expect(p.start).toBe("/owner/shifts/start");
     expect(p.list).toBe("/owner/shifts");
     expect(p.detail("s1")).toBe("/owner/shifts/s1");
+    expect(p.correct("s1")).toBe("/owner/shifts/s1/edit");
     expect(p.close("s1")).toBe("/owner/shifts/s1/close");
   });
 });

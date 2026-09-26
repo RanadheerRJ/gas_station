@@ -123,6 +123,15 @@ export default function App() {
             </Protect>
           }
         />
+        {/* An owner who reopens a closed shift corrects it here, end to end. */}
+        <Route
+          path="/owner/shifts/:id/edit"
+          element={
+            <Protect roles={["owner"]}>
+              <CloseShift />
+            </Protect>
+          }
+        />
         <Route
           path="/owner/setup"
           element={

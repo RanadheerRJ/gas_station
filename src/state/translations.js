@@ -267,6 +267,10 @@ const en = {
   "shifts.editAndResubmit": "Edit & resubmit",
   "shifts.resubmitting": "Resubmitting…",
   "shifts.resubmitForReview": "Resubmit for review",
+  "shifts.reopenTitle": "Correct this shift",
+  "shifts.reopenHelp":
+    "Reopen this closed shift to correct its readings, expenses, payments, and credit, then resubmit it for review. It stays a closed record — nothing is re-run and no nozzles are reclaimed.",
+  "shifts.reopenForCorrection": "Reopen for correction",
   "shifts.drawerExpenses": "Expenses paid from the drawer",
   "shifts.whatPaidFor": "What was paid for",
   "shifts.fuelTested": "Fuel tested today",
@@ -848,6 +852,10 @@ const te = {
   "shifts.editAndResubmit": "సరిచేసి మళ్లీ పంపండి",
   "shifts.resubmitting": "మళ్లీ సమర్పిస్తోంది…",
   "shifts.resubmitForReview": "సమీక్ష కోసం మళ్లీ పంపండి",
+  "shifts.reopenTitle": "ఈ షిఫ్ట్‌ను సరిదిద్దండి",
+  "shifts.reopenHelp":
+    "రీడింగ్‌లు, ఖర్చులు, చెల్లింపులు, క్రెడిట్ సరిచేసి, సమీక్ష కోసం ఈ మూసివేసిన షిఫ్ట్‌ను తిరిగి తెరవండి. ఇది మూసివేసిన రికార్డే — మళ్లీ నడవదు, నాజిల్‌లు తిరిగి కేటాయించబడవు.",
+  "shifts.reopenForCorrection": "సవరణ కోసం తిరిగి తెరవండి",
   "shifts.drawerExpenses": "డ్రాయర్ నుండి చెల్లించిన ఖర్చులు",
   "shifts.whatPaidFor": "దేనికి చెల్లించారు",
   "shifts.fuelTested": "ఈరోజు పరీక్షించిన ఇంధనం",
@@ -1421,6 +1429,10 @@ const hi = {
   "shifts.editAndResubmit": "सुधारें और फिर भेजें",
   "shifts.resubmitting": "फिर से भेजा जा रहा है…",
   "shifts.resubmitForReview": "समीक्षा के लिए फिर भेजें",
+  "shifts.reopenTitle": "इस शिफ्ट को सुधारें",
+  "shifts.reopenHelp":
+    "रीडिंग, खर्च, भुगतान और क्रेडिट ठीक करने के लिए यह बंद शिफ्ट फिर से खोलें, फिर समीक्षा के लिए भेजें। यह बंद रिकॉर्ड ही रहती है — कुछ दोबारा नहीं चलता, कोई नोज़ल वापस नहीं लिया जाता।",
+  "shifts.reopenForCorrection": "सुधार के लिए फिर से खोलें",
   "shifts.drawerExpenses": "गल्ले से किए गए खर्च",
   "shifts.whatPaidFor": "किस लिए भुगतान हुआ",
   "shifts.fuelTested": "आज परीक्षण किया गया ईंधन",

@@ -599,6 +599,27 @@ th.num {
   white-space: nowrap;
 }
 
+/* An owner can reopen any closed shift — approved included — and correct it
+   end to end. Reopening is a correction, not a re-run, so the card reads as
+   an owner affordance rather than an error. */
+.reopen-card {
+  border-color: var(--accent-soft-strong);
+  background: var(--accent-soft);
+}
+
+.reopen-card h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.reopen-card p {
+  margin: 0;
+}
+
+.reopen-card__reason {
+  flex-wrap: wrap;
+}
+
 .card__pad {
   padding: 16px 18px;
 }

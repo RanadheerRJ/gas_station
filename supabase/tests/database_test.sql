@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(26);
+select plan(27);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -15,6 +15,9 @@ select has_table('public', 'customer_transactions', 'customer balance changes ar
 select has_function('public', 'open_shift', array['uuid', 'uuid[]', 'text'], 'open_shift RPC exists');
 select has_function('public', 'close_shift', array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text', 'jsonb'], 'close_shift RPC exists');
 select has_function('public', 'resubmit_rejected_shift', array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text', 'jsonb', 'jsonb'], 'attendant rejected-shift resubmission RPC exists');
+-- Reopening is the owner's alone, works on any closed shift (approved
+-- included) and never turns the shift back into a running one.
+select has_function('public', 'reopen_shift_for_correction', array['uuid', 'uuid', 'text'], 'owner reopen-for-correction RPC exists');
 select has_function('public', 'record_customer_transaction', array['uuid', 'uuid', 'text', 'numeric', 'text', 'date'], 'balance RPC exists');
 select has_function('public', 'reset_station_data', array['uuid'], 'reset_station_data RPC exists');
 select has_index('public', 'shift_nozzles', 'shift_nozzles_one_open_shift', 'one active shift per nozzle is enforced');
