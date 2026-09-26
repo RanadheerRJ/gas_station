@@ -566,6 +566,39 @@ th.num {
   padding: 16px 18px;
 }
 
+/* A returned shift stays closed, but its operator can correct and resubmit it. */
+.correction-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(220, 38, 38, 0.045);
+}
+
+.correction-card h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.correction-card p {
+  margin: 0;
+}
+
+.correction-card .cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-height: 40px;
+  border-radius: 11px;
+  padding: 9px 14px;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .card__pad {
   padding: 16px 18px;
 }

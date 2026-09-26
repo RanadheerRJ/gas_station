@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import { ActionBar, Field, Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
@@ -75,6 +75,13 @@ export default function ShiftDetail() {
   const [run, busy, error] = useRunner(load);
 
   const shift = shifts.find((s) => s.id === id);
+  // A sent-back shift belongs to its operator. Give that attendant a direct,
+  // explicit way into the correction form; owners and managers retain the
+  // review controls below instead.
+  const canResubmit =
+    profile.role === "attendant" &&
+    shift?.status === SHIFT_STATUS.REJECTED &&
+    shift.userId === profile.uid;
   // Attendants reach a settled shift from their history list; managers and
   // owners from the shifts list. Either way, the back arrow points at the
   // list that led here.
@@ -132,6 +139,8 @@ export default function ShiftDetail() {
           shift={shift}
           customers={customers}
           canReview={canReview}
+          canResubmit={canResubmit}
+          correctionUrl={canResubmit ? link(paths.correct(shift.id)) : ""}
           busy={busy}
           onRevise={(patch) => run(() => reviseShift(stationId, shift.id, patch))}
           onApprove={() => run(() => approveShift(stationId, shift.id))}
@@ -151,6 +160,8 @@ export function SettledShiftDetail({
   shift,
   customers = [],
   canReview = false,
+  canResubmit = false,
+  correctionUrl = "",
   busy = false,
   onRevise,
   onApprove,
@@ -211,6 +222,17 @@ export function SettledShiftDetail({
           {shift.approvedAt ? ` · ${formatStamp(shift.approvedAt)}` : ""}.{" "}
           {t("shifts.nowLocked")}
         </Notice>
+      )}
+      {canResubmit && correctionUrl && (
+        <section className="card correction-card">
+          <div>
+            <h2>{t("shifts.correctionRequested")}</h2>
+            <p className="small muted">{t("shifts.correctionHelp")}</p>
+          </div>
+          <Link className="cta" to={correctionUrl}>
+            {t("shifts.editAndResubmit")}
+          </Link>
+        </section>
       )}
 
       <div className="detail-grid">

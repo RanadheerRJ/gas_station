@@ -581,6 +581,28 @@ export async function reviseShift(stationId, shiftId, patch) {
   );
 }
 
+/**
+ * Return a sent-back shift to the review queue after its operator has made
+ * the requested corrections. This is deliberately a separate RPC from the
+ * manager/owner revise path: the database verifies that an attendant is only
+ * resubmitting their own rejected shift and reconciles meter, stock, expense,
+ * and credit data in one transaction.
+ */
+export async function resubmitRejectedShift(stationId, shiftId, payload) {
+  return camelize(
+    await rpc("resubmit_rejected_shift", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_closing_readings: payload.closingReadings || {},
+      p_payments: payload.payments || {},
+      p_testing: payload.testing || {},
+      p_note: payload.note || "",
+      p_credit_sales: payload.creditSales || [],
+      p_expenses: payload.expenses || [],
+    })
+  );
+}
+
 export async function setStationState(stationId, state) {
   return camelize(
     await rpc("set_station_state", { p_station_id: stationId, p_state: state })
