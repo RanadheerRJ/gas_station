@@ -76,6 +76,35 @@ function mapShift(row) {
   };
 }
 
+const LOGIN_LOCKOUT_LIMIT = 5;
+const LOGIN_LOCKOUT_MS = 30_000;
+const loginFailures = new Map();
+
+function checkLoginLockout(username) {
+  const entry = loginFailures.get(username);
+  if (!entry) return;
+  if (!entry.lockedUntil) return;
+  const remaining = entry.lockedUntil - Date.now();
+  if (remaining <= 0) {
+    loginFailures.delete(username);
+    return;
+  }
+  throw new Error(`Too many attempts. Try again in ${Math.ceil(remaining / 1000)}s.`);
+}
+
+function recordLoginFailure(username) {
+  const previous = loginFailures.get(username);
+  const failures = (previous?.failures || 0) + 1;
+  loginFailures.set(username, {
+    failures,
+    lockedUntil: failures >= LOGIN_LOCKOUT_LIMIT ? Date.now() + LOGIN_LOCKOUT_MS : 0,
+  });
+}
+
+function resetLoginFailures(username) {
+  loginFailures.delete(username);
+}
+
 function mapCustomer(row) {
   const { customer_transactions: rawTransactions = [], ...customer } = row;
   return {
@@ -195,35 +224,53 @@ export async function pinLogin({ username, pin }) {
   const name = String(username || "")
     .trim()
     .toLowerCase();
-  if (!name || !/^\d{4}$/.test(String(pin || ""))) {
-    throw new Error("Incorrect username or PIN.");
+  checkLoginLockout(name);
+  try {
+    if (!name || !/^\d{4}$/.test(String(pin || ""))) {
+      throw new Error("Incorrect username or PIN.");
+    }
+    const client = assertConfigured();
+    const { data, error } = await client.auth.signInWithPassword({
+      email: staffLoginEmail(name),
+      password: staffPinPassword(name, pin),
+    });
+    if (error) throw error;
+    const profile = mapProfile(
+      await query(client.from("profiles").select("*").eq("id", data.user.id).single())
+    );
+    resetLoginFailures(name);
+    return profile;
+  } catch (error) {
+    recordLoginFailure(name);
+    throw error;
   }
-  const client = assertConfigured();
-  const { data, error } = await client.auth.signInWithPassword({
-    email: staffLoginEmail(name),
-    password: staffPinPassword(name, pin),
-  });
-  if (error) throw error;
-  return mapProfile(
-    await query(client.from("profiles").select("*").eq("id", data.user.id).single())
-  );
 }
 
 export async function developerLogin({ email, password }) {
-  const client = assertConfigured();
-  const { data, error } = await client.auth.signInWithPassword({
-    email: String(email || "").trim(),
-    password,
-  });
-  if (error) throw error;
-  const profile = mapProfile(
-    await query(client.from("profiles").select("*").eq("id", data.user.id).single())
-  );
-  if (profile?.role !== "admin") {
-    await client.auth.signOut();
-    throw new Error("This account is not a developer account.");
+  const address = String(email || "")
+    .trim()
+    .toLowerCase();
+  checkLoginLockout(address);
+  try {
+    const client = assertConfigured();
+    const { data, error } = await client.auth.signInWithPassword({
+      email: String(email || "").trim(),
+      password,
+    });
+    if (error) throw error;
+    const profile = mapProfile(
+      await query(client.from("profiles").select("*").eq("id", data.user.id).single())
+    );
+    if (profile?.role !== "admin") {
+      await client.auth.signOut();
+      throw new Error("This account is not a developer account.");
+    }
+    resetLoginFailures(address);
+    return profile;
+  } catch (error) {
+    recordLoginFailure(address);
+    throw error;
   }
-  return profile;
 }
 
 export async function signOut() {
