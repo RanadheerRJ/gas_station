@@ -7,7 +7,7 @@
  * because someone would act on it.
  */
 
-const VERSION = "v5";
+const VERSION = "v6";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 
@@ -69,13 +69,21 @@ self.addEventListener("fetch", (event) => {
   // takes over from there.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(SHELL).then((c) => c.put(SHELL_URL, copy));
-          return res;
-        })
-        .catch(() => caches.match(SHELL_URL).then((r) => r || caches.match(BASE)))
+      caches.match(SHELL_URL).then((cached) => {
+        // Stale-while-revalidate: the shell is a fixed entry point, so serving
+        // the cached copy paints instantly while the network copy refreshes it
+        // for the next launch.
+        const network = fetch(request)
+          .then((res) => {
+            if (res && res.ok) {
+              const copy = res.clone();
+              caches.open(SHELL).then((c) => c.put(SHELL_URL, copy));
+            }
+            return res;
+          })
+          .catch(() => cached || caches.match(BASE));
+        return cached || network;
+      })
     );
     return;
   }
