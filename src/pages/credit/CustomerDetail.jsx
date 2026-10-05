@@ -1,76 +1,109 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import { ActionBar, Field, Notice } from "../../components/ui.jsx";
+import { ActionBar, Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
+import Sheet from "../../components/Sheet.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { useRunner } from "../../state/useRunner.js";
-import { addCustomerTransaction, listCustomers, readableError } from "../../lib/api";
+import {
+  addCustomerTransaction,
+  archiveCustomer,
+  listCustomers,
+  readableError,
+} from "../../lib/api";
 import { formatDate, money, num, todayISO } from "../../lib/format";
 import { creditBase } from "./CreditList.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
-
-/**
- * One account, one screen: the balance at the top, the full statement
- * beneath, and recording a credit or a payment as the pinned action. The
- * running balance column means a question like "when did they cross ₹10k?"
- * is answered by reading down the page.
- */
+const moneyInput = (v) =>
+  String(v || "")
+    .replace(/[^0-9.]/g, "")
+    .replace(/(\..*)\./g, "$1")
+    .replace(/^(\d+\.\d{0,2}).*$/, "$1");
 export default function CustomerDetail() {
-  const { t } = useLanguage();
-  const { customerId } = useParams();
-  const { profile } = useAuth();
-  const { station, stationId, link, loading: stationsLoading } = useStation();
-  const base = creditBase(profile.role);
-
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { t } = useLanguage(),
+    { customerId } = useParams(),
+    { profile } = useAuth(),
+    { station, stationId, link, loading: stationsLoading } = useStation(),
+    base = creditBase(profile.role);
+  const [customers, setCustomers] = useState([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [sheet, setSheet] = useState(null),
+    [menu, setMenu] = useState(false),
+    [success, setSuccess] = useState("");
   const [tx, setTx] = useState({
-    type: "credit",
     amount: "",
     note: "",
     date: todayISO(),
+    showDate: false,
   });
-
   const load = useCallback(async () => {
     if (!stationId) return;
     setLoading(true);
     try {
       setCustomers(await listCustomers(stationId));
       setError("");
-    } catch (err) {
-      setError(readableError(err));
+    } catch (e) {
+      setError(readableError(e));
     } finally {
       setLoading(false);
     }
   }, [stationId]);
-
   useEffect(() => {
     load();
   }, [load]);
-
-  const [run, busy, runError] = useRunner(load);
-
+  const [run, busy, runError] = useRunner(async () => {
+    await load();
+  });
   const customer = customers.find((c) => c.id === customerId);
   const balance = Number(customer?.outstandingBalance || 0);
-
+  const payment = sheet === "payment";
+  const amount = num(tx.amount),
+    after = payment ? balance - amount : balance + amount,
+    valid = amount > 0 && (!payment || amount <= balance);
+  const notes = [
+    "credit.noteSuggestionCash",
+    "credit.noteSuggestionUpi",
+    "credit.noteSuggestionNeft",
+    "credit.noteSuggestionDiesel",
+    "credit.noteSuggestionPetrol",
+  ];
   const submit = async (e) => {
     e.preventDefault();
-    if (!customer || !num(tx.amount)) return;
+    if (!customer || !valid) return;
     const ok = await run(() =>
       addCustomerTransaction(stationId, customer.id, {
         date: tx.date,
-        type: tx.type,
-        amount: num(tx.amount),
+        type: payment ? "payment" : "credit",
+        amount,
         note: tx.note.trim(),
       })
     );
-    if (ok) setTx({ type: "credit", amount: "", note: "", date: todayISO() });
+    if (ok) {
+      setSheet(null);
+      setTx({ amount: "", note: "", date: todayISO(), showDate: false });
+      setSuccess(payment ? t("credit.receivePayment") : t("credit.giveCredit"));
+      setTimeout(() => setSuccess(""), 2800);
+    }
   };
-
-  if (stationsLoading || loading) {
+  const archive = async () => {
+    if (
+      balance !== 0 &&
+      !window.confirm(t("credit.archiveWarning", { amount: money(balance) }))
+    )
+      return;
+    if (balance === 0 && !window.confirm(t("credit.archive"))) return;
+    try {
+      await archiveCustomer(customer.id);
+      setMenu(false);
+      await load();
+    } catch (e) {
+      setError(readableError(e));
+    }
+  };
+  if (stationsLoading || loading)
     return (
       <>
         <ScreenHeader title={t("credit.title")} back={link(base)} />
@@ -79,9 +112,7 @@ export default function CustomerDetail() {
         </div>
       </>
     );
-  }
-
-  if (error) {
+  if (error && !customer)
     return (
       <>
         <ScreenHeader title={t("credit.title")} back={link(base)} />
@@ -90,9 +121,7 @@ export default function CustomerDetail() {
         </div>
       </>
     );
-  }
-
-  if (!customer) {
+  if (!customer)
     return (
       <>
         <ScreenHeader title={t("credit.title")} back={link(base)} />
@@ -103,93 +132,42 @@ export default function CustomerDetail() {
         </div>
       </>
     );
-  }
-
   const transactions = customer.transactions || [];
-
   return (
     <>
       <ScreenHeader
         title={customer.name}
         sub={`${customer.phone || "—"}${station ? ` · ${station.name}` : ""}`}
         back={link(base)}
+        actions={
+          <button
+            className="icon-btn"
+            aria-label={t("credit.archive")}
+            onClick={() => setMenu((v) => !v)}
+          >
+            ⋯
+          </button>
+        }
       />
       <div className="content stack">
-        {runError && <Notice kind="error">{runError}</Notice>}
-
-        {/* ---- the balance ---- */}
+        {(error || runError) && <Notice kind="error">{error || runError}</Notice>}
+        {success && <Notice kind="good">{success}</Notice>}
+        {menu && (
+          <div className="overflow-menu">
+            <button type="button" onClick={archive}>
+              {t("credit.archive")}
+            </button>
+          </div>
+        )}
         <section
           className={`card balance-hero${balance > 0 ? " balance-hero--due" : ""}`}
         >
           <span className="k">{t("credit.balanceIs")}</span>
           <span className="v mono">₹ {money(balance)}</span>
-          {balance > 0 ? (
-            <span className="tag rust">{t("credit.outstanding")}</span>
-          ) : (
-            <span className="tag green">{t("credit.settled")}</span>
-          )}
+          <span className={`tag ${balance > 0 ? "rust" : "green"}`}>
+            {balance > 0 ? t("credit.outstanding") : t("credit.settled")}
+          </span>
         </section>
-
-        {/* ---- record a credit or a payment ---- */}
-        <section className="card">
-          <div className="card__head">
-            <h2>{t("credit.recordTransaction")}</h2>
-          </div>
-          <form
-            id="customer-tx-form"
-            className="stack"
-            style={{ gap: 14 }}
-            onSubmit={submit}
-          >
-            <div className="form-grid">
-              <Field label={t("common.type")}>
-                <select
-                  value={tx.type}
-                  onChange={(e) =>
-                    setTx((current) => ({ ...current, type: e.target.value }))
-                  }
-                >
-                  <option value="credit">{t("credit.creditGivenOption")}</option>
-                  <option value="payment">{t("credit.paymentReceived")}</option>
-                </select>
-              </Field>
-              <Field label={t("common.date")}>
-                <input
-                  type="date"
-                  className="mono"
-                  value={tx.date}
-                  max={todayISO()}
-                  onChange={(e) =>
-                    setTx((current) => ({ ...current, date: e.target.value }))
-                  }
-                />
-              </Field>
-              <Field label={t("common.amount")}>
-                <input
-                  className="mono"
-                  inputMode="decimal"
-                  style={{ textAlign: "right" }}
-                  value={tx.amount}
-                  onChange={(e) =>
-                    setTx((current) => ({ ...current, amount: e.target.value }))
-                  }
-                  placeholder="0.00"
-                />
-              </Field>
-              <Field label={t("common.note")} hint={t("common.optional")}>
-                <input
-                  value={tx.note}
-                  onChange={(e) =>
-                    setTx((current) => ({ ...current, note: e.target.value }))
-                  }
-                  placeholder="Diesel 200L / NEFT"
-                />
-              </Field>
-            </div>
-          </form>
-        </section>
-
-        {/* ---- the statement ---- */}
         <section className="card card--flush">
           <div className="card__head">
             <h2>{t("credit.accountHistory")}</h2>
@@ -210,10 +188,10 @@ export default function CustomerDetail() {
               <tbody>
                 {(() => {
                   let running = 0;
-                  return transactions.map((row, index) => {
+                  return transactions.map((row, i) => {
                     running += row.type === "credit" ? num(row.amount) : -num(row.amount);
                     return (
-                      <tr key={index}>
+                      <tr key={row.id || i}>
                         <td data-label={t("common.date")} className="mono small">
                           {formatDate(row.date)}
                         </td>
@@ -230,10 +208,10 @@ export default function CustomerDetail() {
                           {row.note || "—"}
                         </td>
                         <td data-label={t("common.amount")} className="num mono">
-                          {money(row.amount)}
+                          ₹ {money(row.amount)}
                         </td>
                         <td data-label={t("credit.running")} className="num mono">
-                          {money(running)}
+                          ₹ {money(running)}
                         </td>
                       </tr>
                     );
@@ -243,18 +221,119 @@ export default function CustomerDetail() {
             </table>
           )}
         </section>
-
         <ActionBar>
-          <button
-            type="submit"
-            className="cta"
-            disabled={busy || !num(tx.amount)}
-            form="customer-tx-form"
-          >
-            {busy ? t("credit.posting") : t("credit.postToAccount")}
-          </button>
+          <div className="credit-action-buttons">
+            <button
+              className="cta credit-pay"
+              onClick={() => {
+                setSheet("payment");
+                setTx({ ...tx, amount: "", date: todayISO() });
+              }}
+            >
+              {t("credit.receivePayment")}
+            </button>
+            <button
+              className="cta credit-give"
+              onClick={() => {
+                setSheet("credit");
+                setTx({ ...tx, amount: "", date: todayISO() });
+              }}
+            >
+              {t("credit.giveCredit")}
+            </button>
+          </div>
         </ActionBar>
       </div>
+      <Sheet
+        open={Boolean(sheet)}
+        onClose={() => setSheet(null)}
+        title={payment ? t("credit.receivePayment") : t("credit.giveCredit")}
+      >
+        <form className="transaction-sheet stack" onSubmit={submit}>
+          <label className="amount-field">
+            <span>₹</span>
+            <input
+              autoFocus
+              inputMode="decimal"
+              aria-label={t("common.amount")}
+              value={tx.amount}
+              onChange={(e) => setTx({ ...tx, amount: moneyInput(e.target.value) })}
+              placeholder="0.00"
+            />
+          </label>
+          <div className="quick-chips">
+            {[500, 1000, 5000].map((n) => (
+              <button
+                type="button"
+                key={n}
+                onClick={() =>
+                  setTx({
+                    ...tx,
+                    amount: String((num(tx.amount) + n).toFixed(2).replace(/\.00$/, "")),
+                  })
+                }
+              >
+                {n === 500
+                  ? t("credit.quick500")
+                  : n === 1000
+                    ? t("credit.quick1000")
+                    : t("credit.quick5000")}
+              </button>
+            ))}
+            {payment && (
+              <button
+                type="button"
+                onClick={() => setTx({ ...tx, amount: String(balance) })}
+              >
+                {t("credit.fullBalance")}
+              </button>
+            )}
+          </div>
+          {payment && amount > balance && (
+            <Notice kind="error">{t("credit.overpayment")}</Notice>
+          )}
+          <div className="sheet-preview">
+            {t("credit.balanceAfter", { amount: money(after) })}
+          </div>
+          <div className="date-toggle">
+            {tx.showDate ? (
+              <input
+                type="date"
+                max={todayISO()}
+                value={tx.date}
+                onChange={(e) => setTx({ ...tx, date: e.target.value })}
+              />
+            ) : (
+              <button type="button" onClick={() => setTx({ ...tx, showDate: true })}>
+                {tx.date === todayISO() ? t("credit.todayChange") : formatDate(tx.date)}
+              </button>
+            )}
+          </div>
+          <label className="field">
+            <span>
+              {t("common.note")} <small>{t("common.optional")}</small>
+            </span>
+            <input
+              value={tx.note}
+              onChange={(e) => setTx({ ...tx, note: e.target.value })}
+            />
+          </label>
+          <div className="quick-chips note-chips">
+            {notes.map((k) => (
+              <button type="button" key={k} onClick={() => setTx({ ...tx, note: t(k) })}>
+                {t(k)}
+              </button>
+            ))}
+          </div>
+          <button className="cta" disabled={busy || !valid}>
+            {busy
+              ? t("credit.posting")
+              : t(payment ? "credit.recordPayment" : "credit.recordCredit", {
+                  amount: money(amount),
+                })}
+          </button>
+        </form>
+      </Sheet>
     </>
   );
 }

@@ -20,7 +20,7 @@
  * `npm run check:sw-version` enforces this locally and in CI; the pull request
  * template carries the same reminder.
  */
-const VERSION = "v12";
+const VERSION = "v13";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 
