@@ -372,15 +372,16 @@ and before every Pages deployment.
    idempotent and safe to re-run; never edit the already-applied initial
    migration to change production RBAC.
 
-   This step is the one that is **not** automated. `deploy-pages.yml` ships the
-   app and `deploy-supabase.yml` ships the `accounts` function on every merge
-   to `main`, so a release that adds a console action and the RPC behind it
-   goes live with only two of its three parts applied until this is run. The
-   app now names that state instead of failing opaquely ("This action needs a
-   database update that has not been applied to this project yet"), and
-   `npm run check:schema` fails if the `accounts` function calls an RPC that no
-   migration defines — but neither can push the migration for you.
-2. `supabase functions deploy accounts`
+   Needed by hand only for the **first** setup. After that `deploy-supabase.yml`
+   runs this on every merge to `main` that touches `supabase/migrations/**`,
+   before it deploys the `accounts` function — database first, so a newly
+   shipped console action always has its RPC. Until that ordering existed, a
+   release could go live with the button and the function deployed and the
+   migration not applied; the app now names that state instead of failing
+   opaquely ("This action needs a database update that has not been applied to
+   this project yet"), and `npm run check:schema` fails if the `accounts`
+   function calls an RPC that no migration defines.
+2. `supabase functions deploy accounts` — likewise automated from `main`.
 3. Create the first developer profile via SQL.
 4. Disable Auth self-sign-up.
 5. Add the two Pages Actions variables.

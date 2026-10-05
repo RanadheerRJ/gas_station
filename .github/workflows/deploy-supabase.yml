@@ -1,25 +1,25 @@
-name: Deploy Supabase functions
+name: Deploy Supabase migrations and functions
 
-# The frontend auto-deploys via deploy-pages.yml, but the `accounts` Edge
-# Function only changes when someone runs `supabase functions deploy accounts`
-# by hand. Every time that step is forgotten, the hosted function keeps an old
-# action set and newly shipped actions answer "Unknown account action." — so
-# deploy it automatically whenever the function source lands on main.
+# Deploy the database first: a schema ahead of the app is harmless, while a
+# UI or Edge Function ahead of its RPC is not. The Management API uses the
+# existing access token and does not require the database password.
 #
-# One-time repository setup (Settings → Secrets and variables → Actions):
-#   Secret:            SUPABASE_ACCESS_TOKEN — a Supabase personal access token
-#                      (https://supabase.com/dashboard/account/tokens)
-#   Variable or secret: SUPABASE_PROJECT_ID  — the project ref, e.g. abcdefghijklmnop
-#
-# Database migrations are intentionally NOT applied here; keep applying them
-# deliberately with `supabase db push` after review.
+# Required repository configuration:
+#   Secret:   SUPABASE_ACCESS_TOKEN — a Supabase personal access token
+#   Variable or secret: SUPABASE_PROJECT_ID — the project ref
 
 on:
   push:
     branches: [main]
     paths:
+      - "supabase/migrations/**"
       - "supabase/functions/**"
+      - "scripts/applyMigrations.mjs"
   workflow_dispatch:
+
+concurrency:
+  group: deploy-supabase
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
+      - uses: actions/setup-node@v4
         with:
-          version: latest
+          node-version: 20
 
       - name: Check configuration
         run: |
@@ -45,8 +45,14 @@ jobs:
             exit 1
           fi
 
-      - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Verify the schema contract
+        run: node scripts/checkSupabaseSchema.mjs
+
+      - name: Apply migrations through the Management API
+        run: node scripts/applyMigrations.mjs
 
       - name: Deploy the accounts function
-        run: supabase functions deploy accounts --project-ref "$SUPABASE_PROJECT_ID"
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase functions deploy accounts --project-ref "$SUPABASE_PROJECT_ID"
