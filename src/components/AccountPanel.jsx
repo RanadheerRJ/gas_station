@@ -4,7 +4,7 @@ import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import ChangePinPanel from "./ChangePinPanel.jsx";
 import { LogOutIcon, MoonIcon, RefreshIcon, StationIcon, SunIcon } from "./icons.jsx";
-import { APP_VERSION } from "../lib/version.js";
+import { APP_VERSION_LABEL } from "../lib/version.js";
 import { hardRefreshApp } from "../lib/pwa.js";
 
 const ROLE_LABEL = {
@@ -113,7 +113,7 @@ export default function AccountPanel({ onDone, stationName = "" }) {
           padding: "4px 12px 0",
         }}
       >
-        <span>App version {APP_VERSION}</span>
+        <span>App version {APP_VERSION_LABEL}</span>
         <button
           type="button"
           className="tool-btn small"

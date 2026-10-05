@@ -19,6 +19,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The last few merge commits are what scripts/appVersion.mjs reads to
+          # recover the pull request number if the API lookup below is ever
+          # unavailable, so a depth-1 checkout is not enough.
+          fetch-depth: 50
+
+      # The app reports its version as the pull request that produced the
+      # deploy, so the number updates itself on every merge. Ask GitHub which
+      # PR contains this commit; appVersion.mjs falls back to the merge commit
+      # subject when the API answers with nothing.
+      - name: Resolve the pull request number for this deploy
+        id: appversion
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+                 --jq 'map(select(.merged_at != null)) | sort_by(.number) | last | .number' \
+               2>/dev/null || true)
+          [ "$pr" = "null" ] && pr=""
+          echo "APP_PR_NUMBER=$pr" >> "$GITHUB_ENV"
+          echo "Resolved app version: ${pr:+PR #$pr}${pr:-from git history}"
 
       - uses: actions/setup-node@v4
         with:
@@ -55,6 +76,12 @@ jobs:
             echo "::error::The built bundle does not contain VITE_SUPABASE_URL."
             exit 1
           }
+          if [ -n "$APP_PR_NUMBER" ]; then
+            grep -rqF "PR #$APP_PR_NUMBER" dist/assets/*.js || {
+              echo "::error::The built bundle does not report its version as PR #$APP_PR_NUMBER."
+              exit 1
+            }
+          fi
           if grep -rqi "firebase" dist; then
             echo "::error::Firebase code unexpectedly appeared in the Pages artifact."
             exit 1
