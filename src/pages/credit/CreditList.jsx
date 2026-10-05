@@ -250,6 +250,7 @@ export default function CreditList() {
             <span>{t("credit.customerName")}</span>
             <input
               value={newCustomer.name}
+              disabled={busy}
               onChange={(e) => setNewCustomer((c) => ({ ...c, name: e.target.value }))}
               placeholder="Sri Balaji Transports"
             />
@@ -260,17 +261,23 @@ export default function CreditList() {
               className="mono"
               inputMode="tel"
               value={newCustomer.phone}
+              disabled={busy}
               onChange={(e) => setNewCustomer((c) => ({ ...c, phone: e.target.value }))}
               placeholder="+91 90101 22334"
             />
           </label>
-          <button
-            className="cta"
-            type="submit"
-            disabled={busy || !newCustomer.name.trim()}
-          >
-            {busy ? t("common.saving") : t("credit.addCustomer")}
-          </button>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              className="cta"
+              type="submit"
+              disabled={busy || !newCustomer.name.trim()}
+            >
+              {busy ? t("common.saving") : t("credit.addCustomer")}
+            </button>
+            <button type="button" disabled={busy} onClick={() => setAddOpen(false)}>
+              {t("common.cancel")}
+            </button>
+          </div>
         </form>
       </Sheet>
     </>

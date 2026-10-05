@@ -150,7 +150,9 @@ describe("the running shift screen", () => {
     );
     await click(addExpense);
     // The sheet opened over the screen.
-    expect(container.querySelector(".sheet__head h2").textContent).toContain("Expenses");
+    expect(document.body.querySelector(".sheet__head h2").textContent).toContain(
+      "Expenses"
+    );
   });
 
   it("pins exactly one primary action: Close shift", async () => {

@@ -54,10 +54,10 @@ describe("ResetStationSheet", () => {
       />
     );
 
-    const title = container.querySelector(".sheet__head h2");
+    const title = document.body.querySelector(".sheet__head h2");
     expect(title?.textContent).toContain("Highway 44 Fuel");
 
-    const notice = container.querySelector(".notice.error");
+    const notice = document.body.querySelector(".notice.error");
     expect(notice?.textContent).toContain("permanently deletes");
   });
 
@@ -72,8 +72,8 @@ describe("ResetStationSheet", () => {
       />
     );
 
-    const input = container.querySelector("input");
-    const submitBtn = container.querySelector("button.danger");
+    const input = document.body.querySelector("input");
+    const submitBtn = document.body.querySelector("button.danger");
 
     expect(submitBtn?.disabled).toBe(true);
 
@@ -105,8 +105,8 @@ describe("ResetStationSheet", () => {
       />
     );
 
-    const input = container.querySelector("input");
-    const form = container.querySelector("form");
+    const input = document.body.querySelector("input");
+    const form = document.body.querySelector("form");
 
     act(() => {
       changeInput(input, "Highway 44 Fuel");
@@ -138,8 +138,8 @@ describe("ResetStationSheet", () => {
       />
     );
 
-    const input = container.querySelector("input");
-    const form = container.querySelector("form");
+    const input = document.body.querySelector("input");
+    const form = document.body.querySelector("form");
 
     act(() => {
       changeInput(input, "Highway 44 Fuel");
@@ -149,7 +149,7 @@ describe("ResetStationSheet", () => {
       form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
 
-    const errorNotices = container.querySelectorAll(".notice.error");
+    const errorNotices = document.body.querySelectorAll(".notice.error");
     const hasError = Array.from(errorNotices).some((n) =>
       n.textContent.includes("Owner access to this station is required.")
     );

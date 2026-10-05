@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { prefersReducedMotion } from "./motion.jsx";
 import { CloseIcon } from "./icons.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -139,8 +140,9 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
   }, [phase]);
 
   if (phase === "closed") return null;
+  if (typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       ref={rootRef}
       className={`sheet-root${phase === "closing" ? " closing" : ""}`}
@@ -169,6 +171,7 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
         )}
         <div className="sheet__body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
