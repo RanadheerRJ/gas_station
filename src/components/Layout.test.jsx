@@ -130,7 +130,9 @@ describe("Layout bottom navigation and Others sheet", () => {
     expect(tabLinks.length).toBe(5);
 
     const tabTexts = tabLinks.map((t) => t.textContent.trim());
-    expect(tabTexts).toEqual([
+    expect(tabTexts).toEqual(["Overview", "Shifts", "Credit", "Stock", "Others"]);
+
+    expect(tabLinks.map((t) => t.getAttribute("aria-label"))).toEqual([
       "Overview",
       "Shifts",
       "Credit customers",
@@ -155,6 +157,34 @@ describe("Layout bottom navigation and Others sheet", () => {
       "Pumps & rates",
       "Staff & access",
       "Reports",
+    ]);
+  });
+
+  it("uses short manager tab labels without losing full accessible names", async () => {
+    await renderLayout({
+      uid: "u-manager",
+      role: "manager",
+      name: "Manager User",
+      username: "manager",
+    });
+
+    const tabbar = container.querySelector(".tabbar");
+    expect(tabbar).toBeTruthy();
+
+    const tabLinks = Array.from(tabbar.querySelectorAll(".tab"));
+    expect(tabLinks.map((t) => t.textContent.trim())).toEqual([
+      "Shifts",
+      "Credit",
+      "Stock",
+      "Ledger",
+      "Others",
+    ]);
+    expect(tabLinks.map((t) => t.getAttribute("aria-label"))).toEqual([
+      "Shifts",
+      "Credit customers",
+      "Ground stock",
+      "Daily ledger",
+      "Others",
     ]);
   });
 });

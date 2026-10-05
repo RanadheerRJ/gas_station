@@ -35,6 +35,14 @@ const ROLE_LABEL = {
   attendant: "role.attendant",
 };
 
+const MOBILE_NAV_LABEL = {
+  "nav.creditCustomers": "nav.mobile.credit",
+  "nav.groundStock": "nav.mobile.stock",
+  "nav.dailyLedger": "nav.mobile.ledger",
+  "nav.pumpsRates": "nav.mobile.pumps",
+  "nav.staffAccess": "nav.mobile.staff",
+};
+
 /**
  * Each role's destinations, split into bottom-tab entries and overflow.
  *
@@ -209,20 +217,25 @@ export default function Layout() {
       </div>
 
       {/* Mobile bottom tabs: four destinations plus "More" when a role has
-          more sections than tabs. */}
+          more sections than tabs. The visible label is allowed to be shorter
+          than the desktop/sidebar label so 375px phones do not show ellipses,
+          while aria-label keeps the full destination name for assistive tech. */}
       {tabs.length > 0 && (
         <nav className="tabbar" aria-label={t("chrome.navigation")}>
           {tabs.map((tab) => {
             const Icon = tab.Icon;
+            const fullLabel = t(tab.label);
+            const mobileLabel = t(MOBILE_NAV_LABEL[tab.label] || tab.label);
             return (
               <NavLink
                 key={tab.to}
                 to={tab.to}
                 end={tab.end}
+                aria-label={fullLabel}
                 className={({ isActive }) => `tab${isActive ? " active" : ""}`}
               >
                 <Icon size={21} />
-                <span>{t(tab.label)}</span>
+                <span>{mobileLabel}</span>
               </NavLink>
             );
           })}
@@ -232,6 +245,7 @@ export default function Layout() {
               className={`tab${moreActive ? " active" : ""}`}
               onClick={() => setMoreOpen(true)}
               aria-haspopup="dialog"
+              aria-label={t("nav.more")}
             >
               <MoreIcon size={21} />
               <span>{t("nav.more")}</span>
