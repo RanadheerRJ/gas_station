@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
+import Money from "../../components/Money.jsx";
 import { Notice, Stat } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { ChevronIcon } from "../../components/icons.jsx";
@@ -10,7 +11,7 @@ import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
 import { formatDate, money, num } from "../../lib/format";
-import { SHIFT_STATUS, shiftTotals, varianceTone } from "../../lib/shiftMath";
+import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { filterByRange, ledgerReport } from "../../lib/export.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
@@ -156,12 +157,35 @@ export default function LedgerList() {
           <>
             <section className="card stat-strip">
               <Stat label={t("ledger.litresSold")} value={`${money(totals.litres)} L`} />
-              <Stat label={t("ledger.fuelSales")} value={`₹ ${money(totals.sales)}`} />
-              <Stat label={t("ledger.onCredit")} value={`₹ ${money(totals.credit)}`} />
+              <Stat
+                label={t("ledger.fuelSales")}
+                value={
+                  <Money
+                    kind="neutral"
+                    value={totals.sales}
+                    label={t("ledger.fuelSales")}
+                  />
+                }
+              />
+              <Stat
+                label={t("ledger.onCredit")}
+                value={
+                  <Money
+                    kind="credit"
+                    value={totals.credit}
+                    label={t("ledger.onCredit")}
+                  />
+                }
+              />
               <Stat
                 label={t("ledger.cashVariance")}
-                value={`₹ ${money(totals.variance)}`}
-                tone={varianceTone(totals.variance)}
+                value={
+                  <Money
+                    kind="variance"
+                    value={totals.variance}
+                    label={t("ledger.cashVariance")}
+                  />
+                }
               />
             </section>
 
@@ -179,14 +203,11 @@ export default function LedgerList() {
                         {tn(day.shifts, "ledger.day", "ledger.days")}
                       </span>
                     </span>
-                    <span
-                      className={`mono small ${
-                        varianceTone(day.variance) === "neg" ? "neg" : "pos"
-                      }`}
-                      style={{ fontWeight: 650 }}
-                    >
-                      ₹ {money(day.variance)}
-                    </span>
+                    <Money
+                      kind="variance"
+                      value={day.variance}
+                      label={t("ledger.cashVariance")}
+                    />
                   </div>
                   <div className="list-card__row list-card__row--figures">
                     <span className="list-card__figure">
@@ -195,11 +216,23 @@ export default function LedgerList() {
                     </span>
                     <span className="list-card__figure">
                       <span className="k">{t("ledger.fuelSales")}</span>
-                      <span className="v mono">₹ {money(day.sales)}</span>
+                      <span className="v">
+                        <Money
+                          kind="neutral"
+                          value={day.sales}
+                          label={t("ledger.fuelSales")}
+                        />
+                      </span>
                     </span>
                     <span className="list-card__figure">
                       <span className="k">{t("ledger.collected")}</span>
-                      <span className="v mono">₹ {money(day.declared)}</span>
+                      <span className="v">
+                        <Money
+                          kind="neutral"
+                          value={day.declared}
+                          label={t("ledger.collected")}
+                        />
+                      </span>
                     </span>
                     <span className="list-card__chev">
                       <ChevronIcon size={17} />

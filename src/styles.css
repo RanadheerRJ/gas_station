@@ -3998,6 +3998,15 @@ button:focus-visible {
 
   .list-card__row--figures {
     gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .list-card__figure {
+    min-width: 0;
+  }
+
+  .list-card__figure .money {
+    font-size: clamp(10px, 2.8vw, 14px);
   }
 
   /* Compact tables may still scroll, but data-heavy tables opt into a
@@ -4808,6 +4817,15 @@ button:focus-visible {
 
   .history-card__metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .list-card__row--figures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .list-card__chev {
+    display: none;
   }
 
   .history-card__time {

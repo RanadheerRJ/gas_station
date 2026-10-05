@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
+import Money from "../../components/Money.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { ChevronIcon, PlusIcon } from "../../components/icons.jsx";
@@ -10,7 +11,7 @@ import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
 import { formatDate, formatStamp, money, todayISO } from "../../lib/format";
-import { SHIFT_STATUS, shiftTotals, varianceTone } from "../../lib/shiftMath";
+import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
 import { filterByRange, shiftsReport } from "../../lib/export.js";
 import { StatusTag } from "./parts.jsx";
@@ -219,16 +220,22 @@ export default function ShiftsList() {
                           </span>
                           <span className="list-card__figure">
                             <span className="k">{t("shifts.net")}</span>
-                            <span className="v mono">₹ {money(totals.net)}</span>
+                            <span className="v">
+                              <Money
+                                kind="neutral"
+                                value={totals.net}
+                                label={t("shifts.net")}
+                              />
+                            </span>
                           </span>
                           <span className="list-card__figure">
                             <span className="k">{t("shifts.variance")}</span>
-                            <span
-                              className={`v mono ${
-                                varianceTone(totals.variance) === "neg" ? "neg" : "pos"
-                              }`}
-                            >
-                              ₹ {money(totals.variance)}
+                            <span className="v">
+                              <Money
+                                kind="variance"
+                                value={totals.variance}
+                                label={t("shifts.variance")}
+                              />
                             </span>
                           </span>
                           <span className="list-card__chev">
