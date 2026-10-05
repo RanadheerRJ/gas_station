@@ -262,6 +262,11 @@ async function main() {
     await sqlFile(
       resolve(REPO, "supabase/migrations/20260922000000_reset_station_data.sql")
     );
+    // Developer-console CRUD over the station registry and the profiles it
+    // provisions. Admin-only, and that is what the checks below assert.
+    await sqlFile(
+      resolve(REPO, "supabase/migrations/20261006000000_admin_station_crud.sql")
+    );
   } else {
     console.log("\n!! negative control: follow-up RBAC migration NOT applied\n");
   }
@@ -869,6 +874,208 @@ async function main() {
     "station shifts were wiped by reset",
     Number(shiftsLeft?.c) === 0,
     `saw ${shiftsLeft?.c}`
+  );
+
+  console.log("\n== developer console station CRUD permissions ==");
+  const crudDenials = [
+    [
+      "attendant cannot create a station",
+      IDS.att1,
+      "select public.admin_create_station($1, 'Sneaky Fuel', 'Nowhere')",
+      [IDS.owner],
+    ],
+    [
+      "manager cannot rename a station",
+      IDS.manager,
+      "select public.admin_update_station($1, 'Renamed', 'Nowhere')",
+      [IDS.station],
+    ],
+    [
+      "owner cannot archive a station through the admin RPC",
+      IDS.owner,
+      "select public.admin_set_station_state($1, 'archived')",
+      [IDS.station],
+    ],
+    [
+      "owner cannot delete their own station",
+      IDS.owner,
+      "select public.admin_delete_station($1)",
+      [IDS.station],
+    ],
+    [
+      "another owner cannot delete this station",
+      IDS.owner2,
+      "select public.admin_delete_station($1)",
+      [IDS.station],
+    ],
+    [
+      "manager cannot rewrite an account's name",
+      IDS.manager,
+      "select public.admin_update_profile($1, 'Not Olive', '')",
+      [IDS.owner],
+    ],
+    [
+      "anonymous cannot read the station registry",
+      null,
+      "select * from public.admin_station_registry()",
+      [],
+    ],
+  ];
+  for (const [name, uid, sql, params] of crudDenials) {
+    const res = await asUser(uid, sql, params);
+    check(name, Boolean(res.error), res.error?.message || "no error raised");
+  }
+
+  const devCreate = await asUser(
+    IDS.admin,
+    "select public.admin_create_station($1, 'Seaside Fuel', '3 Pier Road') as r",
+    [IDS.owner]
+  );
+  check(
+    "developer can create a station for an owner",
+    !devCreate.error && !!devCreate.rows?.[0]?.r?.id,
+    devCreate.error?.message
+  );
+  const newStationId = devCreate.rows?.[0]?.r?.id;
+
+  const devBadOwner = await asUser(
+    IDS.admin,
+    "select public.admin_create_station($1, 'Orphan Fuel', '1 Nowhere')",
+    [IDS.manager]
+  );
+  check(
+    "a station cannot be created under a non-owner account",
+    Boolean(devBadOwner.error),
+    devBadOwner.error?.message || "no error raised"
+  );
+
+  const devRename = await asUser(
+    IDS.admin,
+    "select public.admin_update_station($1, 'Seaside Service', '3 Pier Road') as r",
+    [newStationId]
+  );
+  check(
+    "developer can correct a station's name",
+    devRename.rows?.[0]?.r?.name === "Seaside Service",
+    devRename.error?.message || `saw ${devRename.rows?.[0]?.r?.name}`
+  );
+
+  const devArchive = await asUser(
+    IDS.admin,
+    "select public.admin_set_station_state($1, 'archived')",
+    [newStationId]
+  );
+  check(
+    "developer can archive any station",
+    !devArchive.error,
+    devArchive.error?.message
+  );
+  const archivedState = await asOwner(
+    "select state::text as state from public.stations where id = $1",
+    [newStationId]
+  );
+  check(
+    "the archived state is persisted",
+    archivedState?.state === "archived",
+    `saw ${archivedState?.state}`
+  );
+  const devReopen = await asUser(
+    IDS.admin,
+    "select public.admin_set_station_state($1, 'active')",
+    [newStationId]
+  );
+  check("developer can reactivate a station", !devReopen.error, devReopen.error?.message);
+
+  const devTransfer = await asUser(
+    IDS.admin,
+    "select public.admin_update_station($1, 'Riverside Fuel', '12 River Road', $2)",
+    [IDS.station, IDS.owner2]
+  );
+  check(
+    "developer can move a station to another owner",
+    !devTransfer.error,
+    devTransfer.error?.message
+  );
+  const movedLogins = await asOwner(
+    `select count(*)::int as c from public.profiles
+       where station_id = $1 and owner_id = $2`,
+    [IDS.station, IDS.owner2]
+  );
+  check(
+    "a transferred station takes its logins with it",
+    Number(movedLogins?.c) === 3,
+    `saw ${movedLogins?.c}`
+  );
+  await asUser(
+    IDS.admin,
+    "select public.admin_update_station($1, 'Riverside Fuel', '12 River Road', $2)",
+    [IDS.station, IDS.owner]
+  );
+
+  const devProfile = await asUser(
+    IDS.admin,
+    "select public.admin_update_profile($1, 'Olive O. Owner', '555 0100') as r",
+    [IDS.owner]
+  );
+  check(
+    "developer can correct an owner's name and phone",
+    devProfile.rows?.[0]?.r?.name === "Olive O. Owner",
+    devProfile.error?.message || `saw ${devProfile.rows?.[0]?.r?.name}`
+  );
+  const devSelfEdit = await asUser(
+    IDS.admin,
+    "select public.admin_update_profile($1, 'Root', '')",
+    [IDS.admin]
+  );
+  check(
+    "a developer account cannot be rewritten from the console",
+    Boolean(devSelfEdit.error),
+    devSelfEdit.error?.message || "no error raised"
+  );
+
+  const counted = await asUser(
+    IDS.admin,
+    "select * from public.admin_station_registry()"
+  );
+  const countedRow = counted.rows?.find((row) => row.station_id === IDS.station);
+  check(
+    "the registry counts the logins posted to each station",
+    countedRow?.staff_count === 3,
+    counted.error?.message || `saw ${countedRow?.staff_count}`
+  );
+
+  const devDelete = await asUser(IDS.admin, "select public.admin_delete_station($1)", [
+    IDS.station2,
+  ]);
+  check("developer can delete a station", !devDelete.error, devDelete.error?.message);
+  const stationGone = await asOwner(
+    "select count(*)::int as c from public.stations where id = $1",
+    [IDS.station2]
+  );
+  check("the station row is gone", Number(stationGone?.c) === 0, `saw ${stationGone?.c}`);
+  const loginGone = await asOwner(
+    "select count(*)::int as c from public.profiles where id = $1",
+    [IDS.att3]
+  );
+  check(
+    "the logins posted to it are gone with it",
+    Number(loginGone?.c) === 0,
+    `saw ${loginGone?.c}`
+  );
+  const ownerKept = await asOwner(
+    "select count(*)::int as c from public.profiles where id = $1",
+    [IDS.owner2]
+  );
+  check("the owner account survives", Number(ownerKept?.c) === 1, `saw ${ownerKept?.c}`);
+  const missingDelete = await asUser(
+    IDS.admin,
+    "select public.admin_delete_station($1)",
+    [IDS.station2]
+  );
+  check(
+    "deleting a station that is already gone is refused",
+    Boolean(missingDelete.error),
+    missingDelete.error?.message || "no error raised"
   );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);

@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * hosted function is identifiable straight from the browser message — the
  * exact symptom of a deploy that predates a newly shipped action.
  */
-const FUNCTION_VERSION = "2026-09-20.1";
+const FUNCTION_VERSION = "2026-10-06.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -198,6 +198,114 @@ Deno.serve(async (req) => {
       });
       if (error) throw error;
       return response({ ok: true, username: target.username });
+    }
+
+    /*
+     * Deleting a station is a two-key operation and this is the only place
+     * that holds both keys.
+     *
+     * The purge itself runs through `admin_delete_station`, called with the
+     * *developer's own* token: the database's is_admin() guard stays the
+     * authority, exactly as it is for every other console action, and the
+     * whole purge is one transaction. What the browser cannot do at all is
+     * remove the Auth users left behind by the station's manager and
+     * attendant profiles — only the service key can, so that half happens
+     * here, after the transaction has committed.
+     */
+    if (action === "delete_station") {
+      if (actor.role !== "admin") return fail("Developer access required.", 403);
+      const stationId = required(body?.stationId, "stationId");
+
+      const caller = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      });
+      const { data, error } = await caller.rpc("admin_delete_station", {
+        p_station_id: stationId,
+      });
+      if (error) throw error;
+
+      const logins: string[] = Array.isArray(data?.deleted_logins)
+        ? data.deleted_logins
+        : [];
+      let removed = 0;
+      for (const uid of logins) {
+        const { error: deleteError } = await admin.auth.admin.deleteUser(uid);
+        // The station and its data are already gone; a stranded Auth user
+        // cannot sign in (its profile row went with the station), so this is
+        // reported rather than thrown.
+        if (deleteError) console.error("accounts: stranded auth user", uid, deleteError);
+        else removed += 1;
+      }
+
+      return response({
+        ok: true,
+        name: data?.name ?? "",
+        deletedLogins: removed,
+        strandedLogins: logins.length - removed,
+      });
+    }
+
+    /*
+     * Removing a login. Deleting the Auth user is the real act — the profile
+     * row is cascaded away with it — so this too is service-key work.
+     *
+     * An owner is only removable once they hold nothing: their stations must
+     * be deleted or transferred first, which keeps "delete this owner" from
+     * quietly becoming "delete everything they ever had". A login that
+     * carries history is refused by the database's own foreign keys, and
+     * that refusal is translated into something a human can act on.
+     */
+    if (action === "delete_account") {
+      if (actor.role !== "admin") return fail("Developer access required.", 403);
+      const targetId = required(body?.uid, "uid");
+      if (targetId === actorId) return fail("You cannot delete your own account.", 400);
+
+      const { data: target, error: targetError } = await admin
+        .from("profiles")
+        .select("id, role, name, owner_id, station_id")
+        .eq("id", targetId)
+        .single();
+      if (targetError || !target) return fail("That account does not exist.", 404);
+      if (target.role === "admin") {
+        return fail("Developer accounts are managed in Supabase Auth.", 403);
+      }
+
+      if (target.role === "owner") {
+        const { count: stations } = await admin
+          .from("stations")
+          .select("id", { count: "exact", head: true })
+          .eq("owner_id", targetId);
+        if (stations) {
+          return fail(
+            `This owner still holds ${stations} station${stations === 1 ? "" : "s"}. Delete or transfer them first.`,
+            409
+          );
+        }
+        const { count: staff } = await admin
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("owner_id", targetId)
+          .neq("id", targetId);
+        if (staff) {
+          return fail(
+            `This owner still has ${staff} staff login${staff === 1 ? "" : "s"}. Delete them first.`,
+            409
+          );
+        }
+      }
+
+      const { error } = await admin.auth.admin.deleteUser(targetId);
+      if (error) {
+        if (/foreign key|violates|constraint/i.test(error.message || "")) {
+          return fail(
+            "This login has shift or ledger history, so it cannot be deleted on its own. Reset its PIN, or delete the station it belongs to.",
+            409
+          );
+        }
+        throw error;
+      }
+      return response({ ok: true, name: target.name });
     }
 
     if (action !== "create_owner" && action !== "create_staff") {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { pinReady } from "../../components/PinField";
 import { phoneProblem } from "../../lib/validate.js";
 import {
@@ -25,6 +25,10 @@ export const BLANK = {
  * The owner account is minted by the `accounts` Edge Function, so the only
  * thing this holds that cannot be re-read is the freshly chosen PIN — kept in
  * memory, never persisted, and dropped when the screen unmounts.
+ *
+ * Everything the console *changes* lives in useConsoleActions; this hook is
+ * the read side plus owner creation, so a mutation only ever has to call the
+ * `reload` this returns.
  */
 export function useAdminConsole() {
   const [form, setForm] = useState(BLANK);
@@ -41,6 +45,23 @@ export function useAdminConsole() {
   const [resetting, setResetting] = useState(null);
   const [resettingStation, setResettingStation] = useState(null);
 
+  // The roster that is on screen while a reload runs, so a refresh after a
+  // deletion re-reads exactly the list the developer is looking at.
+  const openRoster = useRef(null);
+  openRoster.current = staffOpen;
+
+  const fetchStaff = useCallback(async (owner) => {
+    try {
+      const rows = await listOwnerStaff(owner);
+      setStaff((s) => ({ ...s, [owner.uid]: { rows, error: "" } }));
+    } catch (err) {
+      setStaff((s) => ({
+        ...s,
+        [owner.uid]: { rows: [], error: readableError(err) },
+      }));
+    }
+  }, []);
+
   const loadOwners = useCallback(async () => {
     setLoadingOwners(true);
     try {
@@ -50,10 +71,15 @@ export function useAdminConsole() {
       ]);
       setOwners(ownerRows || []);
       setRegistry(stations);
+      // Rosters are cached per owner; a write may have changed any of them,
+      // so the cache is dropped and only the visible one is re-read.
+      setStaff({});
+      const open = (ownerRows || []).find((o) => o.uid === openRoster.current);
+      if (open) await fetchStaff(open);
     } finally {
       setLoadingOwners(false);
     }
-  }, []);
+  }, [fetchStaff]);
 
   useEffect(() => {
     loadOwners();
@@ -80,15 +106,7 @@ export function useAdminConsole() {
     // The entry appears only once the roster resolves, so the panel can tell
     // "still loading" from "genuinely no logins".
     if (staff[owner.uid]) return;
-    try {
-      const rows = await listOwnerStaff(owner);
-      setStaff((s) => ({ ...s, [owner.uid]: { rows, error: "" } }));
-    } catch (err) {
-      setStaff((s) => ({
-        ...s,
-        [owner.uid]: { rows: [], error: readableError(err) },
-      }));
-    }
+    await fetchStaff(owner);
   };
 
   const submit = async (e) => {

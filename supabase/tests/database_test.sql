@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(37);
+select plan(43);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -94,6 +94,17 @@ select has_function('public', 'update_customer_credit', array['uuid', 'numeric',
 select has_function('public', 'void_customer_credit', array['uuid', 'text', 'text'], 'credit void RPC exists');
 select has_function('public', 'list_shift_credit', array['uuid', 'uuid'], 'balance-free shift credit list exists');
 select has_function('public', 'credit_day_summary', array['uuid', 'date'], 'credit day summary RPC exists');
+
+/* Developer console: the admin-only account and registry surface ------ */
+-- Support work — a mistyped station name, a station filed under the wrong
+-- owner, a station created by mistake — must be doable from the console, and
+-- only from an admin session. Each function re-checks is_admin() itself.
+select has_function('public', 'admin_station_registry', 'admin station registry RPC exists');
+select has_function('public', 'admin_create_station', array['uuid', 'text', 'text'], 'admin station create RPC exists');
+select has_function('public', 'admin_update_station', array['uuid', 'text', 'text', 'uuid'], 'admin station update RPC exists');
+select has_function('public', 'admin_set_station_state', array['uuid', 'station_state'], 'admin archive/reactivate RPC exists');
+select has_function('public', 'admin_delete_station', array['uuid'], 'admin station delete RPC exists');
+select has_function('public', 'admin_update_profile', array['uuid', 'text', 'text'], 'admin profile correction RPC exists');
 
 select * from finish();
 rollback;

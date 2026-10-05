@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import Sheet from "./Sheet.jsx";
+import Sheet, { useSheetSubject } from "./Sheet.jsx";
 import { Field, Notice } from "./ui.jsx";
 import { resetStationData, readableError } from "../lib/api.js";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
-export default function ResetStationSheet({ open, station, onClose, onDone }) {
+export default function ResetStationSheet({ open, station: subject, onClose, onDone }) {
   const { t } = useLanguage();
   const [confirmName, setConfirmName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Held so the sheet keeps its station while it slides out.
+  const station = useSheetSubject(subject, open);
 
   const stationName = station?.name || "";
   const stationId = station?.id || station?.stationId;

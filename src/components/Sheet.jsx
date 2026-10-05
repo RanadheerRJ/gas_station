@@ -14,6 +14,22 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * the DOM: `open` → slides up, `closing` → slides down, then unmounts.
  * Reduced-motion users skip straight to unmounted.
  */
+/**
+ * The row a sheet is showing, held for as long as the sheet is on screen.
+ *
+ * A sheet animates out over about a fifth of a second. If the screen clears
+ * the row at the moment it asks the sheet to close — which it must, because
+ * that state is also what holds the sheet open — the title and body blank
+ * out mid-slide. Keeping the last value it was opened with lets the sheet
+ * leave showing what the user was just looking at. Opening with nothing
+ * (a "create one" sheet) still reads as nothing.
+ */
+export function useSheetSubject(subject, open) {
+  const last = useRef(subject);
+  if (open) last.current = subject;
+  return open ? subject : last.current;
+}
+
 export default function Sheet({ open, onClose, title, children, wide = false }) {
   const { t } = useLanguage();
   // "closed" | "open" | "closing"

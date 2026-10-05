@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 const Login = lazy(() => import("./pages/Login"));
-const AdminInviteOwner = lazy(() => import("./pages/AdminInviteOwner"));
+const DeveloperConsole = lazy(() => import("./pages/DeveloperConsole"));
 const OwnerHome = lazy(() => import("./pages/OwnerHome"));
 const OwnerStaff = lazy(() => import("./pages/OwnerStaff"));
 const ManagerStaff = lazy(() => import("./pages/ManagerStaff"));
@@ -141,7 +141,7 @@ export default function App() {
             path="/admin"
             element={
               <Protect roles={["admin"]}>
-                <AdminInviteOwner />
+                <DeveloperConsole />
               </Protect>
             }
           />

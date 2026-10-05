@@ -627,11 +627,9 @@ const en = {
   "staff.resetPin": "reset PIN",
 
   /* ---- developer console ---- */
-  "admin.title": "Invite a station owner",
-  "admin.subtitle":
-    "Developer console · creates the owner account and their first station",
+  "admin.title": "Developer console",
+  "admin.subtitle": "Owner accounts, stations, and logins across the platform",
   "admin.newOwnerCredentials": "New owner credentials",
-  "admin.ownerDetails": "Owner details",
   "admin.ownerDetailsNote":
     "The account is created server-side. Fields marked * are required. You choose the PIN; the username is generated from the name.",
   "admin.ownerName": "Owner name",
@@ -649,8 +647,6 @@ const en = {
   "admin.statArchived": "Archived",
   "admin.registryMissing":
     "Station counts need the latest database migration. Run supabase db push, then reload.",
-  "admin.showStaff": "staff",
-  "admin.hideStaff": "hide staff",
   "admin.noStaff": "No manager or attendant logins under this owner yet.",
   "admin.loadingStaff": "Loading staff…",
   "team.title": "Team & access",
@@ -663,6 +659,65 @@ const en = {
   "admin.stations": "Stations",
   "admin.stationsList": "Stations",
   "admin.howItWorks": "How this works",
+  "admin.refresh": "Refresh",
+  "admin.tabOwners": "Owners",
+  "admin.tabStations": "Stations",
+  "admin.newOwner": "New owner",
+  "admin.newStation": "New station",
+  "admin.createStation": "Create station",
+  "admin.manage": "Manage",
+  "admin.logins": "Logins",
+  "admin.showDetail": "stations & logins",
+  "admin.hideDetail": "hide detail",
+  "admin.ownerAccountsNote":
+    "Every owner this console has created. Open one to see their stations and logins.",
+  "admin.noOwnersHint": "Create the first owner account to get started.",
+  "admin.searchOwners": "Search by name, username or phone",
+  "admin.searchStations": "Search by station, owner or address",
+  "admin.showingCount": "{shown} of {total}",
+  "admin.noMatches": "Nothing matches that search.",
+  "admin.stationsListNote": "Every station on the platform, whoever owns it.",
+  "admin.noStationsHint": "Create one for an owner with New station.",
+  "admin.filterAll": "All",
+  "admin.filterActive": "Active",
+  "admin.filterArchived": "Archived",
+  "admin.stationCountOne": "{count} station",
+  "admin.stationCountMany": "{count} stations",
+  "admin.stationsUnknown": "stations unknown",
+  "admin.transferHint": "moving a station moves its logins too",
+  "admin.reactivate": "Reactivate",
+  "admin.editAccountTitle": "Edit {name}",
+  "admin.deleteOwner": "delete owner",
+  "admin.deleteLogin": "Delete login",
+  "admin.deleteStation": "Delete station",
+  "admin.deleteStationShort":
+    "Removes the station, its records, and the logins posted to it.",
+  "admin.deleteStationTitle": "Delete {name}",
+  "admin.deleteStationWarning":
+    "This permanently deletes the station and everything recorded at it — shifts, sales, meter readings, stock, credit customers, prices, and equipment. It cannot be undone.",
+  "admin.deleteStationLoginOne":
+    "The {count} manager or attendant login posted here is deleted with it.",
+  "admin.deleteStationLogins":
+    "The {count} manager and attendant logins posted here are deleted with it.",
+  "admin.deleteStationKeeps": "The owner account and their other stations are kept.",
+  "admin.deleteStationAction": "Delete this station",
+  "admin.deleteAccountTitle": "Delete {name}",
+  "admin.deleteAccountAction": "Delete this login",
+  "admin.deleteOwnerWarning":
+    "This permanently removes the owner's login. Their stations must be deleted or transferred first.",
+  "admin.deleteLoginWarning":
+    "This permanently removes the login. Shifts and ledger entries already recorded keep their name, and a login that carries history cannot be removed.",
+  "admin.deleteOwnerBlocked":
+    "Still holding: {names}. Delete or transfer these stations first.",
+  "admin.confirmName": "Type \u201c{name}\u201d to confirm:",
+  "admin.deleting": "Deleting\u2026",
+  "admin.stationCreated": "{name} created",
+  "admin.stationUpdated": "{name} saved",
+  "admin.stationArchived": "{name} archived",
+  "admin.stationActivated": "{name} reactivated",
+  "admin.stationDeleted": "{name} deleted",
+  "admin.accountUpdated": "{name} saved",
+  "admin.accountDeleted": "{name} deleted",
 
   /* ---- station reset ---- */
   "station.resetData": "Reset station data",

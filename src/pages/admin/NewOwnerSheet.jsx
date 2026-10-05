@@ -1,4 +1,6 @@
-import { Field, Notice, Panel } from "../../components/ui";
+import { useEffect } from "react";
+import Sheet from "../../components/Sheet.jsx";
+import { Field, Notice } from "../../components/ui";
 import PinField from "../../components/PinField";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
@@ -7,8 +9,14 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
  * required, because the Edge Function that mints the account takes them all
  * in a single call; the PIN typed here is the only copy that will ever exist
  * in plain text.
+ *
+ * The sheet closes itself the moment credentials come back — they are shown
+ * on the console behind it, where they stay until the developer has handed
+ * them over and dismisses them.
  */
-export default function NewOwnerForm({
+export default function NewOwnerSheet({
+  open,
+  onClose,
   form,
   setForm,
   set,
@@ -17,11 +25,26 @@ export default function NewOwnerForm({
   busy,
   complete,
   onSubmit,
+  credentials,
 }) {
   const { t } = useLanguage();
+
+  useEffect(() => {
+    if (open && credentials) onClose();
+  }, [open, credentials, onClose]);
+
   return (
-    <Panel title={t("admin.ownerDetails")} note={t("admin.ownerDetailsNote")}>
-      <form className="stack" onSubmit={onSubmit}>
+    <Sheet
+      open={open}
+      onClose={busy ? () => {} : onClose}
+      title={t("admin.newOwner")}
+      wide
+    >
+      <form className="stack" style={{ gap: 14 }} onSubmit={onSubmit}>
+        <p className="small muted" style={{ margin: 0 }}>
+          {t("admin.ownerDetailsNote")}
+        </p>
+
         <div className="form-grid">
           <Field label={t("admin.ownerName")} required>
             <input
@@ -78,12 +101,15 @@ export default function NewOwnerForm({
 
         {error && <Notice kind="error">{error}</Notice>}
 
-        <div className="row">
+        <div className="row" style={{ gap: 8 }}>
           <button className="primary" type="submit" disabled={busy || !complete}>
             {busy ? t("admin.creatingAccount") : t("admin.createOwner")}
           </button>
+          <button type="button" onClick={onClose} disabled={busy}>
+            {t("common.cancel")}
+          </button>
         </div>
       </form>
-    </Panel>
+    </Sheet>
   );
 }

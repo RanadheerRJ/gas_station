@@ -1,0 +1,303 @@
+/* =====================================================================
+   Developer console
+   ---------------------------------------------------------------------
+   The console is the one screen whose job is administration rather than
+   a forecourt's day, so it is built from lists that stay scannable with
+   two accounts or two hundred: a search row, a card per owner, a table of
+   stations, and every action in a sheet over the row it belongs to.
+
+   Nothing here is phone-only. The console is used at a desk as often as
+   on a phone, so the search row, the chips, and the cards are styled at
+   every width rather than inside a `max-width` block.
+   ===================================================================== */
+
+/* ---------------- search / filter row ---------------- */
+
+.dev-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dev-toolbar input[type="search"] {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.dev-toolbar__count {
+  margin-left: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-chips {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.dev-chips button {
+  min-height: 38px;
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.dev-chips button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+/* ---------------- owner cards ---------------- */
+
+.dev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dev-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.dev-card--open {
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.dev-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
+
+.dev-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 750;
+  font-size: 15px;
+}
+
+.dev-card__ident {
+  min-width: 0;
+  flex: 1;
+}
+
+.dev-card__ident h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.dev-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+  padding: 0 16px 12px;
+}
+
+.dev-card__actions button.quiet {
+  min-height: 34px;
+}
+
+/* A quiet button that still reads as destructive: underlined like its
+   neighbours, coloured like the danger it is. */
+button.quiet.danger-link {
+  color: var(--rust);
+  background: transparent;
+  border-color: transparent;
+}
+
+button.quiet.danger-link:hover:not(:disabled) {
+  color: var(--rust);
+  text-decoration: underline;
+}
+
+.dev-card__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--hairline);
+  background: var(--surface-sunken);
+}
+
+.dev-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dev-subhead button.quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+}
+
+/* ---------------- nested station / login rows ---------------- */
+
+.dev-mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dev-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.dev-mini__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 200px;
+  overflow-wrap: anywhere;
+}
+
+.dev-mini__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* A square, label-free button for repeated row actions. The accessible
+   name comes from aria-label, so the row stays readable at 320px. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--ink-strong);
+}
+
+.icon-btn--danger {
+  color: var(--rust);
+  border-color: rgba(220, 38, 38, 0.28);
+}
+
+.icon-btn--danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.45);
+  color: var(--rust);
+}
+
+/* ---------------- empty states ---------------- */
+
+.dev-empty {
+  padding: 26px 16px;
+  text-align: center;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.dev-empty h3 {
+  margin: 0 0 4px;
+  font-size: 14.5px;
+  color: var(--ink-strong);
+}
+
+.dev-empty p {
+  margin: 0;
+}
+
+/* ---------------- station sheet ---------------- */
+
+.dev-sheet__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+/* Destructive actions live below a rule, never beside Save. */
+.dev-danger {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.dev-danger__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+
+.dev-danger__row + .dev-danger__row {
+  border-top: 1px dashed var(--hairline);
+}
+
+/* ---------------- stations table ---------------- */
+
+.dev-table b {
+  color: var(--ink-strong);
+}
+
+@media (max-width: 860px) {
+  .dev-toolbar__count {
+    margin-left: 0;
+  }
+
+  .dev-mini__actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

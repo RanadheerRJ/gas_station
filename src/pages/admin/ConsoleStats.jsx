@@ -10,7 +10,7 @@ export default function ConsoleStats({
 }) {
   const { t } = useLanguage();
   return (
-    <section className="card stat-strip">
+    <section className="card stat-strip stat-strip--hero">
       <Stat
         label={t("admin.statOwners")}
         value={loadingOwners ? "—" : String(owners.length)}
@@ -22,6 +22,7 @@ export default function ConsoleStats({
       <Stat
         label={t("admin.statActive")}
         value={activeStations === null ? "—" : String(activeStations)}
+        tone={activeStations ? "pos" : undefined}
       />
       <Stat
         label={t("admin.statArchived")}
