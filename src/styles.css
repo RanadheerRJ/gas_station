@@ -4584,6 +4584,222 @@ button:focus-visible {
   min-height: 0;
 }
 
+/* ---------------- attendant home: date & language row ---------------- */
+
+.today-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.today-meta__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+/* The compact selector keeps to its own width on this row. */
+.today-meta .language-select {
+  width: auto;
+}
+
+.today-meta .language-select select {
+  width: auto;
+  min-width: 104px;
+  min-height: 40px;
+}
+
+/* ---------------- just-sent confirmation ---------------- */
+
+/*
+ * The green "it went through" moment after a close: one card, one check,
+ * one sentence about what happens next. Dismissed, never nagging.
+ */
+.sent-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+}
+
+.sent-card__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--money-in-action);
+  color: var(--money-action-ink);
+}
+
+.sent-card__body {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.sent-card h2 {
+  font-size: 16px;
+}
+
+.sent-card .small {
+  margin: 0;
+}
+
+/* ---------------- sent-back shift alert ---------------- */
+
+/*
+ * Amber, because credit-not-collected is amber elsewhere and "the owner
+ * wants a change" belongs to the same attention level, one step below an
+ * error. The arrow glyph and the words carry the meaning; colour repeats it.
+ */
+.sentback-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border: 2px solid var(--money-credit);
+  background: var(--money-credit-soft);
+}
+
+.sentback-card__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--money-credit);
+  color: var(--money-credit-soft);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sentback-card__body {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.sentback-card h2 {
+  font-size: 16px;
+}
+
+.sentback-card__reason {
+  margin: 0;
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
+.sentback-card .small {
+  margin: 0;
+}
+
+.sentback-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--money-credit);
+  background: var(--money-credit);
+  color: var(--money-credit-soft);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sentback-card__action:hover {
+  text-decoration: none;
+  background: var(--money-credit);
+  filter: brightness(1.08);
+}
+
+/* ---------------- nozzle chips ---------------- */
+
+/* A chip names the nozzle and colours it by fuel, but the label text is
+   what carries the meaning — the dot only repeats it. */
+.status-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nozzle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface-sunken);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.history-card__nozzles {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* ---------------- see-all link ---------------- */
+
+.see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent-strong);
+  font-size: 12.5px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.see-all:hover {
+  text-decoration: underline;
+}
+
+/* ---------------- action-bar buttons with icons ---------------- */
+
+.action-bar__with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+/* Money inside the home cards keeps each screen's own figure scale. */
+.sales-hero__amount .money--lg {
+  font-size: clamp(28px, 9vw, 38px);
+}
+
+.history-card__financial .money {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.history-card__metrics .money {
+  font-size: 12px;
+}
+
 /* History prioritises amount, then operational metadata. */
 .history-list {
   display: grid;
