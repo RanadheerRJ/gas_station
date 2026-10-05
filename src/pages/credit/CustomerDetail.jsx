@@ -177,9 +177,9 @@ export default function CustomerDetail() {
   }, [load]);
 
   /*
-   * This screen owns the viewport: the balance card and its two actions stay
-   * put and only the statement scrolls. The shell's scrolling column has to
-   * stop scrolling for that, so the screen tags it while it is mounted.
+   * Keep the route marked while it is mounted so the customer-specific mobile
+   * shell spacing can clear the fixed tab bar. The route itself remains the
+   * page scroll; the statement does not create a nested scroll viewport.
    */
   useEffect(() => {
     const main = document.querySelector(".main");

@@ -2,10 +2,9 @@
  * The customer statement's layout contract, pinned.
  *
  * The bug this guards against is the one reported from the forecourt: the
- * two money buttons sat below a fully expanded history, so they needed a
- * scroll to reach. The fix depends on four CSS facts, and a well-meaning
- * tidy-up of any one of them brings the bug back silently — so they are
- * asserted here rather than left to a screenshot.
+ * statement used a constrained nested viewport that clipped wrapped controls
+ * and summary rows on mobile. The fix depends on explicit page-scroll and
+ * sizing facts, so they are asserted here rather than left to a screenshot.
  */
 
 import { describe, expect, it } from "vitest";
@@ -33,12 +32,12 @@ function rulesFor(selector) {
 }
 
 describe("customer statement layout", () => {
-  it("hands the shell's height to the screen so the page itself cannot scroll", () => {
+  it("keeps the page scrollable and clears the fixed bottom tab bar", () => {
     const shell = rulesFor(".shell");
     expect(shell).toMatch(/grid-template-rows:\s*auto minmax\(0, 1fr\)/);
     const main = rulesFor(".main.main--fixed");
-    expect(main).toMatch(/overflow:\s*hidden/);
-    expect(main).toMatch(/padding-bottom:\s*0/);
+    expect(main).toMatch(/overflow-y:\s*auto/);
+    expect(main).toMatch(/padding-bottom:\s*calc\(var\(--tabbar-h\)/);
   });
 
   it("keeps custom date fields inside the card on narrow phones", () => {
@@ -49,14 +48,14 @@ describe("customer statement layout", () => {
     expect(rulesFor(".statement__custom input")).toMatch(/min-width:\s*0/);
   });
 
-  it("lets only the statement scroll, inside the remaining height", () => {
+  it("lets the statement and complete ledger grow with the page", () => {
     const screen = rulesFor(".customer-screen");
     expect(screen).toMatch(/flex-direction:\s*column/);
     const statement = rulesFor(".statement");
-    expect(statement).toMatch(/flex:\s*1 1 auto/);
+    expect(statement).toMatch(/flex:\s*0 0 auto/);
     expect(statement).toMatch(/min-height:\s*0/);
     const scroll = rulesFor(".statement__scroll");
-    expect(scroll).toMatch(/overflow-y:\s*auto/);
+    expect(scroll).toMatch(/overflow:\s*visible/);
     expect(scroll).toMatch(/min-height:\s*0/);
   });
 
