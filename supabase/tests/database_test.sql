@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(27);
+select plan(37);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -73,14 +73,27 @@ select results_eq(
        'shift_expenses_guard_attendant',
        'credit_customers_guard_attendant',
        'customer_transactions_guard_attendant',
+       'customer_transaction_audit_guard_attendant',
        'tanks_guard_attendant',
        'tank_readings_guard_attendant',
        'fuel_prices_guard_attendant'
      )
      and not tgisinternal $$,
-  array[8],
+  array[9],
   'every restricted table carries the attendant write guard'
 );
+
+/* Shift-aware credit ledger ------------------------------------------- */
+select has_table('public', 'customer_transaction_audit', 'credit corrections and voids are audited');
+select row_security_active('public', 'customer_transaction_audit', 'the credit audit trail is protected by RLS');
+select has_column('public', 'customer_transactions', 'status', 'a transaction carries an active/voided lifecycle');
+select has_column('public', 'customer_transactions', 'shift_id', 'a transaction can be tied to the shift that created it');
+select col_is_null('public', 'customer_transactions', 'shift_id', 'historical transactions without a shift remain valid');
+select has_function('public', 'add_shift_credit', array['uuid', 'uuid', 'uuid', 'numeric', 'text'], 'shift credit RPC exists');
+select has_function('public', 'update_customer_credit', array['uuid', 'numeric', 'text', 'text'], 'credit correction RPC exists');
+select has_function('public', 'void_customer_credit', array['uuid', 'text', 'text'], 'credit void RPC exists');
+select has_function('public', 'list_shift_credit', array['uuid', 'uuid'], 'balance-free shift credit list exists');
+select has_function('public', 'credit_day_summary', array['uuid', 'date'], 'credit day summary RPC exists');
 
 select * from finish();
 rollback;

@@ -11,6 +11,7 @@ import {
   rejectShift,
   reopenShiftForCorrection,
   reviseShift,
+  shiftCreditReview,
 } from "../../lib/api";
 import { SHIFT_STATUS } from "../../lib/shiftMath";
 import { shiftPaths } from "./paths.js";
@@ -31,6 +32,7 @@ export function useShiftDetail() {
 
   const [shifts, setShifts] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [creditReview, setCreditReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -48,13 +50,18 @@ export function useShiftDetail() {
       ]);
       setShifts(rows);
       setCustomers(directory);
+      // Review indicators are a manager/owner read; the RPC refuses an
+      // attendant, so the call is not even made for one.
+      if (profile.role !== "attendant") {
+        setCreditReview(await shiftCreditReview(stationId, id).catch(() => null));
+      }
       setLoadError("");
     } catch (err) {
       setLoadError(readableError(err));
     } finally {
       setLoading(false);
     }
-  }, [stationId, profile.role]);
+  }, [stationId, profile.role, id]);
 
   useEffect(() => {
     load();
@@ -86,6 +93,7 @@ export function useShiftDetail() {
     station,
     shift,
     customers,
+    creditReview,
     loading,
     stationsLoading,
     loadError,

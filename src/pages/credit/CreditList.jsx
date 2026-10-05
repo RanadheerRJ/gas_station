@@ -7,6 +7,7 @@ import { ChevronIcon, PlusIcon } from "../../components/icons.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import Sheet from "../../components/Sheet.jsx";
+import CreditActivity from "./CreditActivity.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { useRunner } from "../../state/useRunner.js";
@@ -17,12 +18,38 @@ import {
   readableError,
   restoreCustomer,
 } from "../../lib/api";
-import { money } from "../../lib/format";
+import { formatDayLabel, money } from "../../lib/format";
 import { creditReport } from "../../lib/export.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 export function creditBase(role) {
   return role === "owner" ? "/owner/credit" : "/station/credit";
 }
+/**
+ * The last credit and the last payment on an account, read off the history
+ * the list already loaded — no extra query per customer.
+ */
+function lastMovement(customer, label) {
+  const rows = customer.transactions || [];
+  const latest = (type) =>
+    rows.find((tx) => tx.type === type && tx.status !== "voided") || null;
+  const credit = latest("credit");
+  const payment = latest("payment");
+  const parts = [];
+  if (credit)
+    parts.push(
+      `${label("credit.lastCredit")} ₹${money(credit.amount)} · ${formatDayLabel(
+        credit.date || credit.recordedAt
+      )}`
+    );
+  if (payment)
+    parts.push(
+      `${label("credit.lastPayment")} ₹${money(payment.amount)} · ${formatDayLabel(
+        payment.date || payment.recordedAt
+      )}`
+    );
+  return { credit, payment, line: parts.join("  ·  ") };
+}
+
 export default function CreditList() {
   const { t } = useLanguage();
   const { profile } = useAuth();
@@ -184,6 +211,7 @@ export default function CreditList() {
                 )}
               </>
             )}
+            {!attendant && <CreditActivity stationId={stationId} />}
             {!attendant && (
               <div className="credit-filters">
                 <input
@@ -221,6 +249,7 @@ export default function CreditList() {
               <div className="customer-list">
                 {visible.map((c) => {
                   const b = Number(c.outstandingBalance || 0);
+                  const last = lastMovement(c, t);
                   const body = (
                     <>
                       <span className="customer-avatar">
@@ -229,6 +258,11 @@ export default function CreditList() {
                       <span className="customer-main">
                         <b>{c.name}</b>
                         <span>{c.phone || "—"}</span>
+                        {!attendant && last.line && (
+                          <span className="customer-main__last small muted">
+                            {last.line}
+                          </span>
+                        )}
                       </span>
                       {!attendant && (
                         <span className={`customer-balance ${b > 0 ? "neg" : "pos"}`}>

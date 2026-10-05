@@ -13,8 +13,11 @@ import { useRunner } from "../../state/useRunner.js";
 import {
   addCustomerTransaction,
   archiveCustomer,
+  listCustomerTransactions,
   listCustomers,
   readableError,
+  updateCustomerCredit,
+  voidCustomerCredit,
 } from "../../lib/api";
 import { formatDate, formatDayLabel, money, num, todayISO } from "../../lib/format";
 import { statementReport } from "../../lib/export.js";
@@ -38,6 +41,15 @@ const PERIOD_CHIPS = [
   ["custom", "credit.periodCustom"],
 ];
 
+/** The reasons an owner may give for voiding an entry; "Other" needs a note. */
+const VOID_REASONS = [
+  "credit.voidReasonWrongAmount",
+  "credit.voidReasonWrongCustomer",
+  "credit.voidReasonDuplicate",
+  "credit.voidReasonNoFuel",
+  "credit.voidReasonOther",
+];
+
 const FILTER_CHIPS = [
   ["all", "credit.all"],
   ["payments", "credit.filterPayments"],
@@ -51,16 +63,35 @@ const FILTER_CHIPS = [
  * is a credit (green, "−"). The running balance sits under the amount so the
  * digits of both stay in the same right-aligned monospaced column.
  */
-function StatementRow({ entry, t }) {
+function StatementRow({ entry, detail, t, onEdit, onVoid }) {
   const debit = entry.type === "credit";
   const description =
     entry.note || t(debit ? "credit.creditGivenOption" : "credit.paymentReceived");
   const sub = [entry.time, entry.recordedByName].filter(Boolean).join(" · ");
+  // Who recorded it and on which shift. A historical row carries no shift,
+  // so the line is simply left off rather than invented.
+  const shiftLine = detail?.shiftLabel;
   return (
     <li className="st-row">
       <div className="st-row__main">
         <span className="st-row__desc">{description}</span>
         {sub && <span className="st-row__sub">{sub}</span>}
+        {shiftLine && <span className="st-row__sub">{shiftLine}</span>}
+        {detail?.editCount > 0 && <span className="tag">{t("credit.corrected")}</span>}
+        {onEdit && (
+          <span className="st-row__actions">
+            <button type="button" className="small" onClick={() => onEdit(entry, detail)}>
+              {t("common.edit")}
+            </button>
+            <button
+              type="button"
+              className="small quiet"
+              onClick={() => onVoid(entry, detail)}
+            >
+              {t("credit.voidCredit")}
+            </button>
+          </span>
+        )}
       </div>
       <div className="st-row__figures">
         <span className={`st-row__amt ${debit ? "is-debit" : "is-credit"}`}>
@@ -78,7 +109,7 @@ function StatementRow({ entry, t }) {
  * The statement body: pinned column header, opening balance, day-grouped
  * entries newest first, then the closing balance and period totals.
  */
-function StatementBody({ statement, range, limit, t }) {
+function StatementBody({ statement, range, limit, t, details, onEdit, onVoid }) {
   const rows = limit ? statement.rows.slice(0, limit) : statement.rows;
   const groups = groupByDay(rows);
   return (
@@ -103,7 +134,14 @@ function StatementBody({ statement, range, limit, t }) {
               <h3 className="st-group__day">{formatDayLabel(group.day)}</h3>
               <ul className="st-group__rows">
                 {group.rows.map((entry) => (
-                  <StatementRow key={entry.id} entry={entry} t={t} />
+                  <StatementRow
+                    key={entry.id}
+                    entry={entry}
+                    detail={details?.[entry.id]}
+                    t={t}
+                    onEdit={onEdit}
+                    onVoid={onVoid}
+                  />
                 ))}
               </ul>
             </section>
@@ -150,6 +188,10 @@ export default function CustomerDetail() {
     [sheet, setSheet] = useState(null),
     [menu, setMenu] = useState(false),
     [success, setSuccess] = useState("");
+  const [details, setDetails] = useState({}),
+    [correct, setCorrect] = useState(null),
+    [edit, setEdit] = useState({ amount: "", reason: "" }),
+    [voidForm, setVoidForm] = useState({ reason: "", note: "" });
   const [period, setPeriod] = useState("thisMonth"),
     [range, setRange] = useState(() => periodRange("thisMonth")),
     [filter, setFilter] = useState("all"),
@@ -164,14 +206,21 @@ export default function CustomerDetail() {
     if (!stationId) return;
     setLoading(true);
     try {
-      setCustomers(await listCustomers(stationId));
+      // Two reads, not one per row: the customer (balance + history) and the
+      // ledger detail (who recorded it, which shift, corrected/voided state).
+      const [rows, ledger] = await Promise.all([
+        listCustomers(stationId),
+        listCustomerTransactions(stationId, { customerId }).catch(() => []),
+      ]);
+      setCustomers(rows);
+      setDetails(Object.fromEntries(ledger.map((row) => [row.id, row])));
       setError("");
     } catch (e) {
       setError(readableError(e));
     } finally {
       setLoading(false);
     }
-  }, [stationId]);
+  }, [stationId, customerId]);
   useEffect(() => {
     load();
   }, [load]);
@@ -247,6 +296,24 @@ export default function CustomerDetail() {
       setSuccess(payment ? t("credit.receivePayment") : t("credit.giveCredit"));
       setTimeout(() => setSuccess(""), 2800);
     }
+  };
+  // Corrections are the owner's: the RPC enforces it, this only decides
+  // whether the buttons are worth drawing.
+  const canCorrect = profile.role === "owner";
+  const openCorrection = (kind) => (entry, detail) => {
+    setCorrect({ kind, entry, detail });
+    setEdit({ amount: String(entry.amount), reason: "" });
+    setVoidForm({ reason: "", note: "" });
+  };
+  const submitCorrection = async (e) => {
+    e.preventDefault();
+    if (!correct) return;
+    const ok = await run(() =>
+      correct.kind === "void"
+        ? voidCustomerCredit(correct.entry.id, voidForm.reason, voidForm.note.trim())
+        : updateCustomerCredit(correct.entry.id, num(edit.amount), edit.reason.trim())
+    );
+    if (ok) setCorrect(null);
   };
   const archive = async () => {
     if (
@@ -431,7 +498,36 @@ export default function CustomerDetail() {
             {exportTools}
           </div>
           {periodControls}
-          <StatementBody statement={statement} range={range} limit={COLLAPSED} t={t} />
+          <StatementBody
+            statement={statement}
+            range={range}
+            limit={COLLAPSED}
+            t={t}
+            details={details}
+            onEdit={canCorrect ? openCorrection("edit") : undefined}
+            onVoid={canCorrect ? openCorrection("void") : undefined}
+          />
+          {(customer.voidedTransactions || []).length > 0 && (
+            <section className="st-voided">
+              <h3>{t("credit.voidedEntries")}</h3>
+              <ul className="st-group__rows">
+                {customer.voidedTransactions.map((entry) => (
+                  <li className="st-row st-row--voided" key={entry.id}>
+                    <div className="st-row__main">
+                      <span className="st-row__desc">
+                        ₹{money(entry.amount)} · {t("credit.voided")}
+                      </span>
+                      <span className="st-row__sub">
+                        {[entry.voidReason, entry.voidedByName]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {statement.count > COLLAPSED && (
             <button
               type="button"
@@ -465,11 +561,100 @@ export default function CustomerDetail() {
             </header>
             <div className="statement-full__body">
               {periodControls}
-              <StatementBody statement={statement} range={range} limit={0} t={t} />
+              <StatementBody
+                statement={statement}
+                range={range}
+                limit={0}
+                t={t}
+                details={details}
+              />
             </div>
           </div>,
           document.body
         )}
+
+      <Sheet
+        open={Boolean(correct)}
+        onClose={() => setCorrect(null)}
+        title={correct?.kind === "void" ? t("credit.voidCredit") : t("credit.editCredit")}
+      >
+        {correct && (
+          <form className="stack" onSubmit={submitCorrection}>
+            {correct.kind === "void" ? (
+              <>
+                <p className="small muted">
+                  {t("credit.voidIntro", {
+                    amount: money(correct.entry.amount),
+                    name: customer.name,
+                  })}
+                </p>
+                <div className="filter-chips filter-chips--stack">
+                  {VOID_REASONS.map((key) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={voidForm.reason === t(key) ? "active" : ""}
+                      onClick={() => setVoidForm((v) => ({ ...v, reason: t(key) }))}
+                    >
+                      {t(key)}
+                    </button>
+                  ))}
+                </div>
+                <label className="field">
+                  <span>{t("credit.additionalNote")}</span>
+                  <input
+                    value={voidForm.note}
+                    onChange={(e) => setVoidForm((v) => ({ ...v, note: e.target.value }))}
+                  />
+                </label>
+                <button
+                  className="cta danger"
+                  disabled={
+                    busy ||
+                    !voidForm.reason ||
+                    (voidForm.reason === t("credit.voidReasonOther") &&
+                      !voidForm.note.trim())
+                  }
+                >
+                  {t("credit.voidCredit")}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="sheet-preview">
+                  {t("credit.originalAmount")}: ₹{money(correct.entry.amount)}
+                </div>
+                <label className="amount-field">
+                  <span>₹</span>
+                  <input
+                    autoFocus
+                    inputMode="decimal"
+                    aria-label={t("credit.newAmount")}
+                    value={edit.amount}
+                    onChange={(e) =>
+                      setEdit((v) => ({ ...v, amount: moneyInput(e.target.value) }))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>{t("credit.reasonLabel")}</span>
+                  <input
+                    value={edit.reason}
+                    placeholder={t("credit.reasonPlaceholder")}
+                    onChange={(e) => setEdit((v) => ({ ...v, reason: e.target.value }))}
+                  />
+                </label>
+                <button
+                  className="cta"
+                  disabled={busy || num(edit.amount) <= 0 || !edit.reason.trim()}
+                >
+                  {t("credit.saveChanges")}
+                </button>
+              </>
+            )}
+          </form>
+        )}
+      </Sheet>
 
       <Sheet
         open={Boolean(sheet)}

@@ -538,3 +538,145 @@
   width: 100%;
   min-height: 50px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Shift-aware credit ledger: corrections, voids, and the activity list */
+/* ------------------------------------------------------------------ */
+
+/* A voided entry stays on the page — struck through rather than removed, so
+   the history still reads honestly — but never competes for attention. */
+.st-row--voided .st-row__desc,
+.ledger-row--voided .ledger-row__amt {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.st-row__actions,
+.ledger-row__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.st-voided {
+  padding: 8px 2px 2px;
+}
+
+.st-voided h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The attendant's running-shift credit list: one line per sale, amount hard
+   right, actions under the name. No balances anywhere. */
+.ledger-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ledger-row:last-of-type {
+  border-bottom: 0;
+}
+
+.ledger-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ledger-row__sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ledger-row__figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.ledger-row__amt {
+  font-weight: 700;
+}
+
+/* Customer search results inside the add-credit sheet. */
+.customer-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.customer-picker button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.customer-picker button span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.filter-chips--stack {
+  flex-wrap: wrap;
+}
+
+.credit-filters__selects {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.credit-filters__selects .field {
+  flex: 1 1 140px;
+}
+
+.credit-activity .stat-strip {
+  padding: 0 14px 6px;
+}
+
+.credit-activity .st-group__rows {
+  padding: 0 14px 10px;
+}
+
+.customer-main__last {
+  display: block;
+}
+
+.credit-review__chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.credit-review__items {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.credit-review__item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
