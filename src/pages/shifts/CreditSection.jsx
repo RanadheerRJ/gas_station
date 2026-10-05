@@ -1,36 +1,31 @@
+import Money from "../../components/Money.jsx";
+import { num } from "../../lib/format";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
  * Fuel taken on credit during the shift, against a customer already in the
  * station's directory or a new walk-in. Everyone who can close a shift can
  * record credit, because it lands inside close_shift's single transaction
- * and still goes to the owner/manager for review.
+ * and still goes to the owner/manager for review. The subtotal shows as
+ * credit money (amber), and the row add/remove controls are sized for a
+ * thumb.
  */
 export default function CreditSection({ creditSales, setCreditSales, customers }) {
   const { t } = useLanguage();
+  const creditTotal = creditSales.reduce((sum, sale) => sum + num(sale.amount), 0);
   return (
-    <section className="card">
+    <section className="card" id="close-credit">
       <div className="card__head">
         <h2>{t("shifts.creditSales")}</h2>
-        <button
-          type="button"
-          className="small"
-          onClick={() =>
-            setCreditSales((rows) => [
-              ...rows,
-              { customerId: "", name: "", phone: "", amount: "" },
-            ])
-          }
-        >
-          {t("shifts.addCreditSale")}
-        </button>
+        <Money kind="credit" value={creditTotal} label={t("shifts.creditSales")} />
       </div>
+      <p className="section-help">{t("close.creditHelp")}</p>
       {creditSales.length === 0 ? (
         <p className="small muted" style={{ margin: 0 }}>
           {t("common.none")}
         </p>
       ) : (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="stack section-pad">
           {creditSales.map((row, index) => {
             const known = customers.find((c) => c.id === row.customerId);
             const patch = (fields) =>
@@ -63,6 +58,7 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                   value={row.name || ""}
                   disabled={!!known}
                   placeholder={t("shifts.customerName")}
+                  autoComplete="off"
                   onChange={(e) => patch({ name: e.target.value })}
                 />
                 <input
@@ -71,11 +67,13 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                   value={row.phone || ""}
                   disabled={!!known}
                   placeholder={t("shifts.mobile")}
+                  autoComplete="off"
                   onChange={(e) => patch({ phone: e.target.value })}
                 />
                 <input
-                  className="mono"
+                  className="mono input-xl"
                   inputMode="decimal"
+                  autoComplete="off"
                   style={{ textAlign: "right" }}
                   value={row.amount}
                   placeholder="0.00"
@@ -84,7 +82,7 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                 />
                 <button
                   type="button"
-                  className="quiet"
+                  className="quiet row-remove"
                   onClick={() =>
                     setCreditSales((rows) => rows.filter((_, j) => j !== index))
                   }
@@ -97,6 +95,20 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
           <div className="small muted">{t("shifts.walkInNote")}</div>
         </div>
       )}
+      <div className="section-pad">
+        <button
+          type="button"
+          className="small row-add"
+          onClick={() =>
+            setCreditSales((rows) => [
+              ...rows,
+              { customerId: "", name: "", phone: "", amount: "" },
+            ])
+          }
+        >
+          {t("shifts.addCreditSale")}
+        </button>
+      </div>
     </section>
   );
 }

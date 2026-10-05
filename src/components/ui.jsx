@@ -76,7 +76,13 @@ export function Stat({ label, value, tone, amount, format, prefix = "" }) {
 export function Notice({ kind = "info", children }) {
   if (!children) return null;
   const cls =
-    kind === "error" ? "notice error" : kind === "good" ? "notice good" : "notice";
+    kind === "error"
+      ? "notice error"
+      : kind === "good"
+        ? "notice good"
+        : kind === "attention"
+          ? "notice attention"
+          : "notice";
   return <div className={cls}>{children}</div>;
 }
 

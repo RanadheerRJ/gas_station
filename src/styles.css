@@ -1572,13 +1572,16 @@ th.num {
   white-space: nowrap;
 }
 
-/* Closing-readings rows: meter in, litres out, live. */
+/*
+ * Closing-readings: one block per nozzle. Fuel named in a colour+text chip,
+ * opening meter shown read-only with its label, a big 18px input for the
+ * closing number, the live "Sold" line beneath. A reading below its opening
+ * tints the block and spells the problem out in words.
+ */
 .closing-row {
   display: grid;
-  grid-template-columns: auto minmax(90px, 1fr) auto auto 128px;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
+  gap: 10px;
+  padding: 14px 18px 16px;
   border-bottom: 1px solid var(--hairline);
 }
 
@@ -1587,7 +1590,26 @@ th.num {
 }
 
 .closing-row--flat {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+}
+
+.closing-row[data-bad="true"] {
+  background: var(--money-short-soft);
+}
+
+.closing-row__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.closing-row__name {
+  color: var(--ink-strong);
+  font-size: 14.5px;
 }
 
 .closing-row__label {
@@ -1599,14 +1621,72 @@ th.num {
   min-width: 0;
 }
 
-.closing-row__opening,
-.closing-row__out {
+.closing-row__figures {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(140px, 1fr);
+  gap: 12px 18px;
+  align-items: end;
+}
+
+.closing-row__figure span,
+.closing-row__figure label {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.closing-row__figure strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  text-align: right;
+}
+
+.closing-row__input {
+  width: 100%;
+  min-height: 50px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .closing-row__input.input-bad {
-  border-color: var(--rust);
+  border-color: var(--money-short);
+}
+
+.closing-row__sold {
+  margin: 0;
+  color: var(--money-neutral);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.closing-row__error {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: var(--money-short);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* During a correction, a reading that no longer matches what was submitted. */
+.changed-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 /* Credit sale rows in the close flow. */
@@ -2766,6 +2846,18 @@ tbody tr.money-row--variance:hover > td {
   color: var(--green);
 }
 
+/* Amber, not red: a sent-back shift is work to do, not a failure — the
+   reviewer's reason stays on screen for the whole correction. */
+.notice.attention {
+  border-left-color: var(--money-credit);
+  background: var(--money-credit-soft);
+  color: var(--ink);
+}
+
+.notice.attention strong {
+  color: var(--money-credit);
+}
+
 .credential {
   display: flex;
   gap: 28px;
@@ -2882,6 +2974,137 @@ tbody tr.money-row--variance:hover > td {
 
 .handover__verdict {
   padding: 12px 18px 2px;
+}
+
+/* ---------------- close-flow: explanations, big inputs, summary ---------------- */
+
+/* One plain sentence under a section title: what to type and why. */
+.section-help {
+  margin: 10px 18px 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.card .section-help {
+  margin-inline: 0;
+}
+
+.section-pad {
+  padding-top: 12px;
+}
+
+/* The attendant's numeric inputs: 18px so a phone does not zoom, and a
+   thumb-sized field. */
+.input-xl {
+  min-height: 50px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+/* Add / remove row buttons sized for a thumb, never a skinny text link. */
+.row-remove,
+.row-add {
+  min-height: 48px;
+  padding-inline: 14px;
+}
+
+.row-remove {
+  color: var(--money-out);
+}
+
+/* The cash answer, stated beside the inputs that ask for it. */
+.cash-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.cash-check__figure {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cash-check__figure > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* The final "read it back" card: plain words, money colours, nothing to
+   type — the submit button is the only control on the screen after it. */
+.check-summary {
+  border-color: var(--accent-soft-strong);
+}
+
+.check-summary__rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.check-summary__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.check-summary__row:last-child {
+  border-bottom: none;
+}
+
+.check-summary__row dt {
+  color: var(--ink-strong);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.check-summary__row dd {
+  margin: 0;
+}
+
+.check-summary__row .money {
+  font-size: 17px;
+}
+
+.check-summary__credit-lines {
+  margin: 0;
+  padding: 2px 0 10px 14px;
+  list-style: none;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.check-summary__credit-lines li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 3px 0;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.check-summary__credit-lines .money {
+  font-size: 13px;
+}
+
+/* Reassurance under a failed submit: the typed work is still on the phone. */
+.draft-note {
+  margin: 6px 0 0;
+  color: var(--muted);
 }
 
 /* ---------------- step progress (close-shift flow) ---------------- */
@@ -4206,18 +4429,9 @@ button:focus-visible {
     grid-column: 1 / -1;
   }
 
-  .closing-row {
-    grid-template-columns: auto minmax(70px, 1fr) 118px;
-  }
-
-  .closing-row__opening,
-  .closing-row__out {
-    display: none;
-  }
-
-  .closing-row--flat .closing-row__opening,
-  .closing-row--flat .closing-row__out {
-    display: block;
+  .closing-row__figures {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: 10px 14px;
   }
 
   .status-card__figures {
@@ -5417,13 +5631,17 @@ button:focus-visible {
   }
 
   .closing-row {
-    grid-template-columns: auto minmax(0, 1fr) 104px;
     gap: 8px;
-    padding-inline: 12px;
+    padding: 12px 12px 14px;
   }
 
   .closing-row--flat {
     grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+
+  .closing-row__figure strong {
+    font-size: 15.5px;
   }
 
   .action-bar__row > button:not(.cta),

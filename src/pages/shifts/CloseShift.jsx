@@ -1,9 +1,10 @@
 import { Navigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
+import StepProgress from "../../components/StepProgress.jsx";
 import { ActionBar, Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { formatStamp } from "../../lib/format";
-import { SHIFT_STATUS } from "../../lib/shiftMath";
+import { SHIFT_STATUS, validateClosing } from "../../lib/shiftMath";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 import { useCloseShiftForm } from "./useCloseShiftForm.js";
 import NozzleReadingsSection from "./NozzleReadingsSection.jsx";
@@ -12,11 +13,14 @@ import TestingSection from "./TestingSection.jsx";
 import CreditSection from "./CreditSection.jsx";
 import PaymentsSection from "./PaymentsSection.jsx";
 import HandoverSection from "./HandoverSection.jsx";
+import CheckSummary from "./CheckSummary.jsx";
 
 /**
  * Closing a shift is a confirmation flow, not a form competing with five
  * other panels: readings, testing, credit, the cash count, and the handover
- * figure — ending in one pinned action that submits it all.
+ * figure — ending in a plain-language summary and one pinned action that
+ * submits it all. A sticky progress bar says which step wants attention and
+ * fills a check on each one that has something in it (or needs nothing).
  *
  * The same screen serves the attendant closing their own shift and a
  * manager/owner closing anyone's. Everyone can record credit sales —
@@ -93,6 +97,42 @@ export default function CloseShift() {
     return <Navigate to={paths.home} replace />;
   }
 
+  // What the progress bar calls "done". Only two steps ever want typing —
+  // the closing readings (required) and the cash count — so those are the
+  // ones that hold the bar back. The review-only steps (a read-only expense
+  // list, testing and credit where "nothing today" is a complete answer,
+  // and the computed handover) are done by definition: a check there says
+  // "nothing needed here", not "you typed something". Nothing here blocks
+  // or enables the submit.
+  const withClosings = shift.nozzles.map((nozzle) => ({
+    ...nozzle,
+    closingReading: closings[nozzle.nozzleId] ?? "",
+  }));
+  const showExpenses = isCorrection || expenses.length > 0;
+  const cashCounted = payments.cash !== "";
+  const steps = [
+    {
+      id: "readings",
+      label: t("shifts.closingReadings"),
+      done: validateClosing(withClosings).length === 0,
+    },
+    ...(showExpenses
+      ? [{ id: "expenses", label: t("shifts.expensesLogged"), done: true }]
+      : []),
+    { id: "testing", label: t("shifts.fuelTested"), done: true },
+    { id: "credit", label: t("shifts.creditSales"), done: true },
+    { id: "payments", label: t("shifts.whatCollected"), done: cashCounted },
+    { id: "handover", label: t("shifts.cashToHandOver"), done: cashCounted },
+  ];
+
+  // During a correction, the readings each nozzle was submitted with — used
+  // only to highlight what has been changed since.
+  const originals = isCorrection
+    ? Object.fromEntries(
+        shift.nozzles.map((nozzle) => [nozzle.nozzleId, nozzle.closingReading])
+      )
+    : undefined;
+
   return (
     <>
       <ScreenHeader
@@ -112,23 +152,34 @@ export default function CloseShift() {
       />
       <div className="content stack">
         {isCorrection && (
-          <Notice kind="error">
-            {t("shifts.sentBackBy", {
-              who: shift.rejectedByName || t("shifts.theOwner"),
-            })}
-            {shift.rejectionReason ? `: ${shift.rejectionReason}` : ""}
+          <Notice kind="attention">
+            <strong>
+              {t("shifts.sentBackBy", {
+                who: shift.rejectedByName || t("shifts.theOwner"),
+              })}
+              {shift.rejectionReason ? `: ${shift.rejectionReason}` : ""}
+            </strong>{" "}
+            {t("close.fixAndResend")}
           </Notice>
         )}
-        {error && <Notice kind="error">{error}</Notice>}
+        {error && (
+          <Notice kind="error">
+            {error}
+            <p className="small draft-note">{t("close.draftKept")}</p>
+          </Notice>
+        )}
+
+        <StepProgress steps={steps} />
 
         <NozzleReadingsSection
           nozzles={shift.nozzles}
           closings={closings}
           setClosings={setClosings}
           preview={preview}
+          originals={originals}
         />
 
-        {(isCorrection || expenses.length > 0) && (
+        {showExpenses && (
           <ExpensesSection
             isCorrection={isCorrection}
             expenses={expenses}
@@ -150,9 +201,12 @@ export default function CloseShift() {
           setPayments={setPayments}
           note={note}
           setNote={setNote}
+          preview={preview}
         />
 
         <HandoverSection preview={preview} />
+
+        <CheckSummary preview={preview} creditSales={creditSales} payments={payments} />
 
         {problems.length > 0 && (
           <Notice kind="error">

@@ -13,6 +13,7 @@ import { num } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals, validateClosing } from "../../lib/shiftMath";
 import { shiftPaths } from "./paths.js";
 import { useDraft } from "../../state/useDraft.js";
+import { setFlash } from "../../lib/flash.js";
 
 /**
  * Everything the close-shift screen knows, minus the drawing.
@@ -253,9 +254,13 @@ export function useCloseShiftForm() {
       clearTesting();
       clearNote();
       clearEditedExpenses();
-      // A corrected shift returns to its detail so the attendant can confirm
-      // that it is back in the review queue. A newly closed shift still goes
-      // home, where it sits in history.
+      // An attendant's fresh close lands on Today; leave the one-time
+      // "sent for review" note for that screen. The navigation target itself
+      // is untouched, and a correction still returns to the detail screen so
+      // the attendant can confirm it is back in the review queue.
+      if (!isCorrection && paths.run) {
+        setFlash("shiftSent", shift.id);
+      }
       navigate(isCorrection ? paths.detail(shift.id) : paths.home, { replace: true });
     } catch (err) {
       setError(readableError(err));

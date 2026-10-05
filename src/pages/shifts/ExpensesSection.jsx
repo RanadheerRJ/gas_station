@@ -1,4 +1,4 @@
-import { money } from "../../lib/format";
+import Money from "../../components/Money.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
@@ -6,7 +6,8 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
  *
  * An ordinary close shows them read-only — they were recorded as they
  * happened. A sent-back shift lets whoever is correcting it edit the list,
- * because a wrong expense is one of the reasons a shift comes back.
+ * because a wrong expense is one of the reasons a shift comes back. Either
+ * way the subtotal reads as spent money in the shared colour language.
  */
 export default function ExpensesSection({
   isCorrection,
@@ -16,13 +17,13 @@ export default function ExpensesSection({
 }) {
   const { t } = useLanguage();
   return (
-    <section className="card card--flush">
+    <section className="card card--flush" id="close-expenses">
       <div className="card__head">
         <h2>{t("shifts.expensesLogged")}</h2>
-        <span className="small muted mono">−₹ {money(expensesTotal)}</span>
+        <Money kind="out" value={expensesTotal} label={t("shifts.expensesLogged")} />
       </div>
       {isCorrection ? (
-        <div className="stack" style={{ gap: 10, padding: 14 }}>
+        <div className="stack section-pad">
           {expenses.map((expense, index) => {
             const patch = (fields) =>
               setEditedExpenses((rows) => {
@@ -35,11 +36,13 @@ export default function ExpensesSection({
                 <input
                   value={expense.label || ""}
                   placeholder={t("shifts.whatPaidFor")}
+                  autoComplete="off"
                   onChange={(e) => patch({ label: e.target.value })}
                 />
                 <input
-                  className="mono"
+                  className="mono input-xl"
                   inputMode="decimal"
+                  autoComplete="off"
                   style={{ textAlign: "right" }}
                   value={expense.amount ?? ""}
                   placeholder="0.00"
@@ -48,7 +51,7 @@ export default function ExpensesSection({
                 />
                 <button
                   type="button"
-                  className="quiet"
+                  className="quiet row-remove"
                   onClick={() =>
                     setEditedExpenses((rows) => rows.filter((_, item) => item !== index))
                   }
@@ -60,7 +63,7 @@ export default function ExpensesSection({
           })}
           <button
             type="button"
-            className="small"
+            className="small row-add"
             onClick={() =>
               setEditedExpenses((rows) => [...rows, { label: "", amount: "" }])
             }
@@ -73,7 +76,9 @@ export default function ExpensesSection({
           {expenses.map((expense, index) => (
             <div key={index} className="closing-row closing-row--flat">
               <span className="closing-row__label">{expense.label}</span>
-              <span className="closing-row__out mono">₹ {money(expense.amount)}</span>
+              <span className="closing-row__out mono">
+                <Money kind="out" value={expense.amount} label={expense.label} />
+              </span>
             </div>
           ))}
         </div>
