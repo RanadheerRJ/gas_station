@@ -75,6 +75,24 @@ const OPEN_SHIFT = {
   testing: {},
 };
 
+const REJECTED_SHIFT = {
+  ...OPEN_SHIFT,
+  id: "sh-2",
+  status: "rejected",
+  rejectedByName: "Owner",
+  rejectionReason: "Nozzle 2 reading looks wrong",
+  nozzles: OPEN_SHIFT.nozzles.map((nozzle, index) => ({
+    ...nozzle,
+    closingReading: index === 0 ? "1500" : "2500",
+  })),
+  expenses: [
+    { label: "Tea", amount: "40" },
+    { label: "Air pump repair", amount: "150" },
+  ],
+  payments: { cash: "1000", card: "", upi: "", credit: "", other: "" },
+  testing: { MS: "50", HSD: "" },
+};
+
 let container = null;
 let root = null;
 
@@ -147,7 +165,7 @@ function buttonByText(text) {
 beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
-  api.listShifts.mockResolvedValue([OPEN_SHIFT]);
+  api.listShifts.mockResolvedValue([OPEN_SHIFT, REJECTED_SHIFT]);
   api.listCustomerDirectory.mockResolvedValue([
     { id: "c1", name: "Kumar Transports", phone: "9000000000" },
   ]);
@@ -385,5 +403,43 @@ describe("submitting", () => {
     expect(window.localStorage.getItem("petrav.draft.close:sh-1:readings")).toBe(
       '{"n1":"1100","n2":"2050"}'
     );
+  });
+});
+
+describe("correcting a sent-back shift", () => {
+  it("keeps the reviewer's reason in a persistent amber banner", async () => {
+    await mountClose("sh-2");
+
+    const banner = container.querySelector(".notice.attention");
+    expect(banner).toBeTruthy();
+    expect(banner.textContent).toContain("Sent back by Owner");
+    expect(banner.textContent).toContain("Nozzle 2 reading looks wrong");
+    expect(banner.textContent).toContain("Fix the flagged figures and send it again.");
+  });
+
+  it("highlights a reading that no longer matches what was submitted", async () => {
+    await mountClose("sh-2");
+
+    // Seeded from the submission: n1 = 1500, n2 = 2500 — no flags yet.
+    expect(container.querySelector(".changed-flag")).toBeNull();
+
+    await type(readingInput("P1 · N1"), "1600");
+    const rows = [...container.querySelectorAll(".closing-row")];
+    expect(rows[0].querySelector(".changed-flag").textContent).toContain("Edited");
+    expect(rows[1].querySelector(".changed-flag")).toBeNull();
+  });
+
+  it("flags nothing on an ordinary close", async () => {
+    await mountClose("sh-1");
+    await type(readingInput("P1 · N1"), "1100");
+    expect(container.querySelector(".changed-flag")).toBeNull();
+  });
+
+  it("starts from the submitted figures with the step bar already settled", async () => {
+    await mountClose("sh-2");
+
+    expect(readingInput("P1 · N1").value).toBe("1500");
+    // Readings valid and cash seeded: nothing left to type.
+    expect(container.querySelector(".step-progress").dataset.complete).toBe("true");
   });
 });
