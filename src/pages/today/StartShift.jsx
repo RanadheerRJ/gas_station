@@ -27,9 +27,11 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
 /**
  * Pick your nozzles and go — the forecourt as its own screen.
  *
- * Tapping a free nozzle claims it into your basket the way a delivery app
- * adds an item to a cart; the sticky bar keeps count, and the primary button
- * does the one thing this screen exists to do.
+ * Each nozzle is a large tile: its name, a colour-and-text fuel label, and
+ * the opening meter reading it will start from, so the choice is confirmed
+ * before it is made. A taken nozzle is disabled but stays fully readable —
+ * "Busy" plus who-agnostic wording, never a greyed-out mystery row. The
+ * sticky bar keeps the running count next to the one big Start button.
  *
  * Serves the attendant's `/today/start` and (for parity with the old single
  * page, where the button appeared for every role) the manager's and owner's
@@ -184,15 +186,19 @@ export default function StartShift() {
                         }`}
                         disabled={!!busyHere || busy}
                         aria-pressed={checked}
+                        aria-label={`${nozzle.name} · ${nozzle.fuelType} · ${
+                          busyHere ? t("shifts.busy") : t("shifts.free")
+                        }`}
                         onClick={() => toggle(nozzle.id)}
                       >
-                        <span
-                          className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
-                        />
                         <span className="nozzle-row__body">
                           <span className="nozzle-row__title">
                             {nozzle.name}
-                            <span className="muted">{nozzle.fuelType}</span>
+                            <span
+                              className={`fuel-tag fuel-tag--${fuelClass(nozzle.fuelType)}`}
+                            >
+                              {nozzle.fuelType}
+                            </span>
                           </span>
                           <span className="nozzle-row__sub">
                             {busyHere
@@ -204,8 +210,15 @@ export default function StartShift() {
                                 )}`}
                           </span>
                         </span>
+                        <span
+                          className={`nozzle-row__state${
+                            busyHere ? " nozzle-row__state--busy" : ""
+                          }`}
+                        >
+                          {busyHere ? t("shifts.busy") : t("shifts.free")}
+                        </span>
                         <span className="nozzle-row__check" aria-hidden="true">
-                          {checked && <CheckIcon size={13} />}
+                          {checked && <CheckIcon size={14} />}
                         </span>
                       </button>
                     );
@@ -217,6 +230,9 @@ export default function StartShift() {
         )}
 
         <ActionBar>
+          <span className="action-bar__count" aria-live="polite">
+            {tn(picked.length, "shifts.selectedOne", "shifts.selectedCount")}
+          </span>
           <button
             type="button"
             className="cta"
