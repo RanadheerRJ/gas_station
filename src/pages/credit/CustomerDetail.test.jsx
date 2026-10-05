@@ -41,13 +41,18 @@ const CUSTOMER = {
   transactions,
 };
 
-vi.mock("../../lib/api", () => ({
+const api = vi.hoisted(() => ({
   listCustomers: vi.fn(async () => [CUSTOMER]),
   listCustomerTransactions: vi.fn(async () => []),
+  updateCustomer: vi.fn(async () => ({ ok: true })),
   updateCustomerCredit: vi.fn(async () => ({ ok: true })),
   voidCustomerCredit: vi.fn(async () => ({ ok: true })),
   addCustomerTransaction: vi.fn(async () => ({ ok: true })),
   archiveCustomer: vi.fn(async () => ({ ok: true })),
+}));
+
+vi.mock("../../lib/api", () => ({
+  ...api,
   readableError: (e) => String(e?.message || e),
 }));
 
@@ -98,6 +103,16 @@ async function render() {
 const text = (node) => node?.textContent || "";
 const buttonWith = (label) =>
   [...document.querySelectorAll("button")].find((b) => text(b).includes(label));
+
+/** Set an input the way React notices: native setter, then an input event. */
+const setInput = (input, value) => {
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value"
+  ).set;
+  setter.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+};
 
 beforeEach(() => {
   document.body.innerHTML = "";
@@ -178,5 +193,38 @@ describe("customer detail", () => {
     await act(async () => root.unmount());
     root = null;
     expect(main.classList.contains("main--fixed")).toBe(false);
+  });
+
+  it("edits the customer's name and phone in place, behind the more menu", async () => {
+    await render();
+    await act(async () => container.querySelector("button.icon-btn").click());
+    await act(async () => buttonWith("Edit customer details").click());
+    const dialog = document.querySelector(".sheet, [role='dialog']");
+    expect(dialog).toBeTruthy();
+    const [nameInput, phoneInput] = dialog.querySelectorAll("input");
+    expect(nameInput.value).toBe("Blue Haul Logistics");
+    expect(phoneInput.value).toBe("9000000001");
+
+    // A no-op save is refused on screen before the database ever sees it.
+    const save = [...dialog.querySelectorAll("button")].find((b) =>
+      text(b).includes("Save changes")
+    );
+    expect(save.disabled).toBe(true);
+
+    await act(async () => {
+      setInput(nameInput, "Blue Haul Logistics Pvt Ltd");
+      setInput(phoneInput, "9000000099");
+    });
+    expect(save.disabled).toBe(false);
+    await act(async () => {
+      dialog
+        .querySelector("form")
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(api.updateCustomer).toHaveBeenCalledWith("c1", {
+      name: "Blue Haul Logistics Pvt Ltd",
+      phone: "9000000099",
+    });
+    expect(text(container)).toContain("Customer details updated.");
   });
 });

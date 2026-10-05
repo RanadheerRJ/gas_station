@@ -55,6 +55,7 @@ const api = vi.hoisted(() => ({
   listCustomerTransactions: vi.fn(),
   addCustomerTransaction: vi.fn(async () => ({ ok: true })),
   archiveCustomer: vi.fn(async () => ({ ok: true })),
+  updateCustomer: vi.fn(async () => ({ ok: true })),
   updateCustomerCredit: vi.fn(async () => ({ ok: true })),
   voidCustomerCredit: vi.fn(async () => ({ ok: true })),
 }));

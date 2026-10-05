@@ -27,17 +27,6 @@
   flex-wrap: wrap;
 }
 
-/* Filter stacks (the activity drawer) keep one control per row on a phone. */
-.credit-filters {
-  display: grid;
-  gap: 10px;
-}
-
-.credit-filters input {
-  width: 100%;
-  min-width: 0;
-}
-
 /* ---------------- the hero: what the book is worth ---------------- */
 
 .credit-hero {
@@ -237,88 +226,6 @@
   flex-wrap: wrap;
   gap: 4px 14px;
   margin: 0;
-}
-
-.credit-activity__subhead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.credit-activity__subhead h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.credit-link {
-  border: 0;
-  padding: 6px 0;
-  background: none;
-  color: var(--accent);
-  font-size: 12.5px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.credit-link:hover {
-  text-decoration: underline;
-}
-
-/* A filter wall is noise until the moment it is needed. Collapsed by
-   default, it still announces how many filters are narrowing the list, so a
-   half-filtered view is never mistaken for the whole day. */
-.credit-drawer {
-  border-top: 1px solid var(--hairline);
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.credit-drawer__summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  cursor: pointer;
-  list-style: none;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--ink);
-}
-
-.credit-drawer__summary::-webkit-details-marker {
-  display: none;
-}
-
-.credit-drawer__summary::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted);
-  transform: rotate(-45deg);
-  transition: transform var(--duration-fast) var(--ease-out);
-}
-
-.credit-drawer[open] .credit-drawer__summary::before {
-  transform: rotate(45deg);
-}
-
-.credit-drawer__badge {
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 11.5px;
-  font-weight: 700;
-}
-
-.credit-drawer__body {
-  padding-top: 10px;
 }
 
 /* ---------------- toolbar: search, tabs, sort ---------------- */
