@@ -14,7 +14,7 @@ const hi = {
   "nav.history": "पिछली शिफ्टें",
   "nav.account": "खाता",
   "nav.overview": "सारांश",
-  "nav.more": "और",
+  "nav.more": "अन्य",
   "role.admin": "डेवलपर",
   "role.owner": "मालिक",
   "role.manager": "प्रबंधक",

@@ -15,7 +15,7 @@ const en = {
   "nav.history": "History",
   "nav.account": "Account",
   "nav.overview": "Overview",
-  "nav.more": "More",
+  "nav.more": "Others",
   "role.admin": "Developer",
   "role.owner": "Owner",
   "role.manager": "Manager",

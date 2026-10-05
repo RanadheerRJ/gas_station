@@ -46,19 +46,19 @@ const ROLE_LABEL = {
  * The same list drives the desktop sidebar (where everything is shown flat —
  * there is room) and the mobile tab bar, so the two never drift apart.
  */
-function destinationsFor(role) {
+export function destinationsFor(role) {
   switch (role) {
     case "owner":
       return {
         tabs: [
           { to: "/owner", label: "nav.overview", Icon: StationIcon, end: true },
           { to: "/owner/shifts", label: "nav.shifts", Icon: ShiftIcon },
+          { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
           { to: "/owner/stock", label: "nav.groundStock", Icon: TankIcon },
-          { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
         ],
         more: [
+          { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
           { to: "/owner/setup", label: "nav.pumpsRates", Icon: RateIcon },
-          { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
           { to: "/owner/staff", label: "nav.staffAccess", Icon: PeopleIcon },
           { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon },
         ],
@@ -67,9 +67,9 @@ function destinationsFor(role) {
       return {
         tabs: [
           { to: "/station", label: "nav.shifts", Icon: ShiftIcon, end: true },
+          { to: "/station/credit", label: "nav.creditCustomers", Icon: CreditIcon },
           { to: "/station/stock", label: "nav.groundStock", Icon: TankIcon },
           { to: "/station/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
-          { to: "/station/credit", label: "nav.creditCustomers", Icon: CreditIcon },
         ],
         more: [
           { to: "/station/staff", label: "nav.staffAccess", Icon: PeopleIcon },
@@ -80,11 +80,11 @@ function destinationsFor(role) {
       return {
         tabs: [
           { to: "/today", label: "nav.today", Icon: HomeIcon, end: true },
+          { to: "/today/credit", label: "nav.creditCustomers", Icon: CreditIcon },
           { to: "/today/stock", label: "nav.groundStock", Icon: TankIcon },
           { to: "/today/history", label: "nav.history", Icon: HistoryIcon },
-          { to: "/today/account", label: "nav.account", Icon: UserIcon },
         ],
-        more: [{ to: "/today/credit", label: "nav.creditCustomers", Icon: CreditIcon }],
+        more: [{ to: "/today/account", label: "nav.account", Icon: UserIcon }],
       };
     default:
       return { tabs: [], more: [] };

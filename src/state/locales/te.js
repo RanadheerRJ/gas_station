@@ -14,7 +14,7 @@ const te = {
   "nav.history": "గత షిఫ్టులు",
   "nav.account": "ఖాతా",
   "nav.overview": "సారాంశం",
-  "nav.more": "మరిన్ని",
+  "nav.more": "ఇతరాలు",
   "role.admin": "డెవలపర్",
   "role.owner": "యజమాని",
   "role.manager": "మేనేజర్",
