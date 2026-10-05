@@ -2469,13 +2469,16 @@ button.small {
 }
 
 .tab span {
-  display: block;
+  display: -webkit-box;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 /* ---------------- bottom sheet ---------------- */
@@ -4610,6 +4613,10 @@ button:focus-visible {
   .tab {
     min-width: 0;
     min-height: 50px;
+  }
+
+  .tab span {
+    font-size: 10px;
   }
 
   .nozzle-row {
