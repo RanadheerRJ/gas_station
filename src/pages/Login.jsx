@@ -5,6 +5,8 @@ import { supabaseConfigured } from "../lib/supabase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
 import { PetravMark, PetravWordmark } from "../components/branding.jsx";
+import { RefreshIcon } from "../components/icons.jsx";
+import { hardRefreshApp } from "../lib/pwa.js";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 
@@ -21,6 +23,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   // Counts rejections so a second wrong PIN knocks the field again rather
@@ -210,6 +213,19 @@ export default function Login() {
               {theme === "dark"
                 ? `☀ ${t("chrome.lightMode")}`
                 : `☾ ${t("chrome.darkMode")}`}
+            </button>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={async () => {
+                setRefreshing(true);
+                await hardRefreshApp();
+              }}
+              title={t("chrome.hardRefreshHint")}
+              disabled={refreshing}
+            >
+              <RefreshIcon size={13} className={refreshing ? "spin" : ""} />
+              {refreshing ? t("chrome.refreshing") : t("chrome.hardRefresh")}
             </button>
           </div>
         </div>

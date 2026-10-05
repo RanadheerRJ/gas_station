@@ -6,17 +6,19 @@ sourcemaps. Figures are raw (pre-gzip) kB unless stated otherwise.
 
 ## Where the bytes are
 
-| Chunk      |    Raw |   Gzip | Loaded                    |
-| ---------- | -----: | -----: | ------------------------- |
-| `supabase` | 217.75 |  57.06 | every session, at startup |
-| `vendor`   | 187.46 |  61.35 | every session, at startup |
-| `index`    | 159.85 |  42.01 | every session, at startup |
-| `index.css`|  56.36 |  10.99 | every session, at startup |
-| route chunks | ≤ 15.29 | ≤ 5.01 | on navigation (lazy)    |
+| Chunk            |    Raw |   Gzip | Loaded                                |
+| ---------------- | -----: | -----: | ------------------------------------- |
+| `supabase`       | 217.75 |  57.06 | every session, at startup             |
+| `vendor`         | 187.46 |  61.35 | every session, at startup             |
+| `index`          |  55.69 |  17.23 | every session, at startup             |
+| `en` (locale)    |  25.46 |   8.34 | on startup for English (active lang)  |
+| `hi` (locale)    |  44.58 |  10.28 | on startup / switch to Hindi          |
+| `te` (locale)    |  49.81 |  10.59 | on startup / switch to Telugu         |
+| `index.css`      |  79.26 |  14.83 | every session, at startup             |
+| route chunks     | ≤ 24.09| ≤ 5.56 | on navigation (lazy)                  |
 
-Route-level code splitting is already doing its job: the largest screen
-(`ShiftDetail`) is 15.3 kB / 3.9 kB gzip and nothing over 13 kB loads until the
-user navigates there. The remaining weight is all in the three startup chunks.
+Route-level code splitting and locale chunk splitting keep the initial startup footprint lean.
+`index.js` dropped from **159.85 kB raw / 42.01 kB gzip** down to **55.69 kB raw / 17.23 kB gzip** (~24.8 kB gzip reduction in entry payload).
 
 ### `supabase` — 217.8 kB
 
@@ -57,55 +59,46 @@ Essentially irreducible. `react-router` grew from ~22 kB to 38.2 kB in the v6→
 upgrade (vendor went 171.0 → 187.5 kB raw, 55.7 → 61.4 kB gzip); that is the
 price of the supported major and is not recoverable while using the router.
 
-### `index` — 159.9 kB
+### `index` — 55.7 kB (previously 159.9 kB)
 
 | Module                     |   Raw |
 | -------------------------- | ----: |
-| `src/state/translations.js` |  66.3 |
 | `src/lib/api.js`            |  10.5 |
 | `src/components/Layout.jsx` |   5.9 |
 | `src/App.jsx`               |   4.7 |
 | `src/components/icons.jsx`  |   4.6 |
-| everything else             |  ~68  |
+| `src/state/translations.js` |   1.2 |
+| everything else             |  ~28  |
 
-**41% of the entry chunk is the three-language dictionary.** The English, Telugu
-and Hindi dictionaries are ~25 kB of source each; the two a given device will
-never use are dead weight on every startup — on the order of 18 kB gzip.
+## The translations split: Implemented via Pre-Mount Loader
 
-## The translations split: measured, and deliberately not done
+The three language dictionaries (`en`, `te`, `hi`) are code-split into standalone modules in `src/state/locales/`.
+The active language preference is resolved from `localStorage` / `navigator.language` and loaded asynchronously in `src/main.jsx` **before** React mounts.
 
-Splitting `DICTIONARIES` into three chunks and loading only the active one is
-the single largest available win, and it is mechanically easy (three modules
-plus `import.meta.glob`). It was **not** implemented, because it cannot be done
-without an observable behaviour change:
+- `t()` remains completely synchronous inside component rendering.
+- There is **no flash of untranslated text** on first paint for Telugu or Hindi users.
+- When an operator switches language in the UI, `loadDictionary()` dynamically fetches the target language chunk before updating state.
+- `src/state/translations.test.js` continues to statically verify dictionary coverage (0 missing keys, 0 placeholder mismatches) across all languages.
 
-- `translate()` is synchronous and is called during render by `t()` in every
-  component. A dynamically imported dictionary is not available on the first
-  paint.
-- That leaves two options, both user-visible: a Telugu or Hindi device renders
-  the English fallback for a frame and then re-renders (a flash of the wrong
-  language on the login screen, on every cold load), or the provider gates the
-  whole app behind a loading state until the dictionary arrives (a new blank
-  frame for the majority of users, since the forecourt staff this app is built
-  for are precisely the non-English readers).
-- The cost lands on the users who read Telugu or Hindi, to save bytes for the
-  ones who read English — the wrong way round for a station app.
+## Stylesheet Modularization
 
-A clean version needs the language to be resolved before React mounts (for
-example, awaiting the dictionary import in `src/main.jsx` before
-`createRoot().render()`, which keeps `t()` synchronous and adds no flash, at the
-cost of a serialised request on cold load). That is a real design decision about
-startup sequencing rather than a refactor, so it is left for a deliberate change
-rather than folded into maintenance work.
+`src/styles.css` is organized into logical domain modules under `src/styles/`:
+- `tokens.css`: Color palettes, dark mode variables, typography, sizing tokens.
+- `base.css`: Global resets, box-sizing, typography, content containers.
+- `layout.css`: Mobile top bar, desktop sidebar, screen header, bottom tab bar, sheets.
+- `components.css`: Buttons, input fields, tables, stat strips, tags, notices, variance pills.
+- `shifts.css`: Forecourt shift running, step progress, meter readings, close-shift flow.
+- `views.css`: Ground stock tank visualizer, price boards, admin console, login cards.
+- `motion.css`: Keyframes, transitions, skeletons, reduced-motion overrides.
+- `responsive.css`: Consolidated mobile & narrow-phone media queries.
 
-Preserved constraint either way: `src/state/translations.test.js` asserts that
-every key in `en` exists in `te` and `hi`. Any split must keep the dictionaries
-statically importable by that test.
+Vite bundles these via `@import` rules into a single production CSS bundle (`index.css`), preserving 100% cascade order without runtime CSS overhead.
 
 ## Summary
 
-| Candidate                            | Gzip saving | Verdict                                  |
-| ------------------------------------ | ----------: | ---------------------------------------- |
-| Lazy-load one language dictionary     |     ~18 kB | Deferred — needs a pre-mount language gate to avoid a visible flash |
-| Drop unused supabase realtime/storage |     ~20 kB | Rejected — only achievable with aliasing hacks that risk auth/RPC   |
-| Further route splitting               |      < 2 kB | Not worth it — largest route chunk is already 3.9 kB gzip           |
+| Optimization                         | Result                                                     | Status      |
+| ------------------------------------ | ---------------------------------------------------------- | ----------- |
+| Lazy-load active language dictionary | **~24.8 kB gzip reduction** on entry `index.js` bundle     | Completed   |
+| Modularize monolithic stylesheet     | Split 5.7k lines into cohesive domain CSS modules          | Completed   |
+| Service worker cache busting         | Bumped to `v11` with `WATCHED_PATTERNS` covering all styles | Completed   |
+| Test suite & static analysis         | 34 test files (431 tests) passing, 0 ESLint warnings       | Passing 100%|

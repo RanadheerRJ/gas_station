@@ -25,7 +25,11 @@ import { readFileSync } from "node:fs";
 
 /** Files whose content ends up in a content-hashed bundle the shell names. */
 export const WATCHED_PATTERNS = [
-  { label: "src/styles.css", test: (f) => f === "src/styles.css" },
+  {
+    label: "src/styles.css and src/styles/**/*.css",
+    test: (f) =>
+      f === "src/styles.css" || (f.startsWith("src/styles/") && f.endsWith(".css")),
+  },
   {
     label: "src/pages/**/*.jsx",
     test: (f) => f.startsWith("src/pages/") && f.endsWith(".jsx"),

@@ -1,0 +1,223 @@
+/* =====================================================================
+   PÉTRAV — app-shell visual system
+   ---------------------------------------------------------------------
+   A consumer-delivery-app look, built for a phone held at a forecourt
+   counter: card-first layouts, one bold figure per card, a confident
+   brand-blue accent, a checkout-style primary action that is always in the
+   same place, and sheets for everything secondary.
+   Every colour, radius, shadow and motion value is a token so the two
+   themes (and any future one) stay in lockstep with the rest of the app.
+   ===================================================================== */
+
+:root {
+  /* ---- brand + semantic colour, light theme ---- */
+  --bg: #f2f4f7;
+  --paper: #f2f4f7;
+  --surface: #ffffff;
+  --panel: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eef1f5;
+  --ink: #101828;
+  --ink-strong: #0a1120;
+  --muted: #667085;
+  --hairline: #e5e9ef;
+  --hairline-strong: #d6dce5;
+
+  --accent: #0b5bc6;
+  --accent-strong: #063b8f;
+  --accent-soft: rgba(11, 91, 198, 0.1);
+  --accent-soft-strong: rgba(11, 91, 198, 0.18);
+  --accent-ink: #ffffff;
+
+  /* Money always keeps the same meaning. Text shades are deliberately dark
+     enough for AA contrast on both the white surface and their soft tint;
+     markers and labels repeat the meaning without relying on hue. */
+  --money-in: #0f6b3c;
+  --money-in-soft: #e9f7ef;
+  --money-out: #b42318;
+  --money-out-soft: #fff0ee;
+  --money-credit: #8a4b0f;
+  --money-credit-soft: #fff6df;
+  --money-neutral: #175cd3;
+  --money-neutral-soft: #edf4ff;
+  --money-ok: var(--money-in);
+  --money-ok-soft: var(--money-in-soft);
+  --money-short: var(--money-out);
+  --money-short-soft: var(--money-out-soft);
+  --money-over: var(--money-credit);
+  --money-over-soft: var(--money-credit-soft);
+  --money-in-action: #166534;
+  --money-in-action-hover: #14532d;
+  --money-action-ink: #ffffff;
+
+  /* PÉTRAV brand palette. The logo artwork (src/components/branding.jsx)
+     reads these directly, so the mark re-themes with the app rather than
+     shipping a second dark asset. */
+  --petrav-pump: #063b8f;
+  --petrav-display: #ffffff;
+  --petrav-rupee: #063b8f;
+  --petrav-base: #082b5c;
+  --petrav-nozzle: #e31b23;
+  --petrav-drop: #f5a623;
+  --petrav-clock-face: #ffffff;
+  --petrav-clock-ring: #0b5bc6;
+  --petrav-clock-hour: #063b8f;
+  --petrav-red: #e31b23;
+
+  /* The checkout button. Deliberately its own pair of tokens: it must stay
+     legible and confident in both themes whatever happens to --accent. */
+  --cta-bg: #063b8f;
+  --cta-bg-hover: #052f70;
+  --cta-ink: #ffffff;
+  --cta-shadow: 0 8px 20px -8px rgba(6, 59, 143, 0.55);
+
+  /* legacy names kept so component code and inline styles do not need to
+     change — they resolve to the system's semantic colours. */
+  --graphite: #0f1526;
+  --petrol: var(--accent);
+  --amber: #b45309;
+  --green: #15803d;
+  --rust: #dc2626;
+
+  --sidebar-bg: #ffffff;
+  --sidebar-ink: #47526b;
+  --sidebar-ink-strong: #10172a;
+  --sidebar-border: #e7eaf1;
+  --sidebar-active-bg: var(--accent-soft);
+  --sidebar-active-ink: var(--accent-strong);
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --actionbar-bg: rgba(255, 255, 255, 0.92);
+  --scrim: rgba(8, 13, 21, 0.45);
+
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 10px -3px rgba(16, 24, 40, 0.07);
+  --shadow-md:
+    0 4px 12px -3px rgba(16, 24, 40, 0.09), 0 2px 5px -2px rgba(16, 24, 40, 0.05);
+  --shadow-lg:
+    0 16px 34px -10px rgba(16, 24, 40, 0.2), 0 6px 14px -6px rgba(16, 24, 40, 0.1);
+  --focus-ring: 0 0 0 3px var(--accent-soft-strong);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --content-gutter: clamp(16px, 4vw, 28px);
+  --content-max: 1180px;
+  --attendant-max: 720px;
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* ---- shell metrics ---- */
+  --sidebar-w: 236px;
+  --appbar-h: 52px;
+  --tabbar-h: 62px;
+  --actionbar-h: 78px;
+
+  /* Motion tokens. Every duration and curve in this file comes from here, so
+     the whole app can be retimed in one place. The curves are deliberately
+     unbouncy: nothing overshoots, because a gauge that wobbles past its
+     value reads as imprecise. */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-instant: 90ms;
+  --duration-fast: 140ms;
+  --duration-base: 180ms;
+  --duration-slow: 220ms;
+  --duration-page: 260ms;
+  --duration-loop: 1100ms;
+  --duration-skeleton: 1400ms;
+  --duration-fill: 760ms;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0f16;
+  --paper: #0b0f16;
+  --surface: #131a24;
+  --panel: #131a24;
+  --surface-raised: #182130;
+  --surface-sunken: #0e141d;
+  --ink: #e8edf4;
+  --ink-strong: #f6f8fb;
+  --muted: #8f9cb0;
+  --hairline: #202b3b;
+  --hairline-strong: #2b3850;
+
+  --accent: #4e8ef5;
+  --accent-strong: #74a9f8;
+  --accent-soft: rgba(78, 142, 245, 0.14);
+  --accent-soft-strong: rgba(78, 142, 245, 0.26);
+  --accent-ink: #ffffff;
+
+  --money-in: #6ce9a6;
+  --money-in-soft: #163a2b;
+  --money-out: #fda29b;
+  --money-out-soft: #41211f;
+  --money-credit: #fec84b;
+  --money-credit-soft: #3d3219;
+  --money-neutral: #84adff;
+  --money-neutral-soft: #182e50;
+  --money-ok: var(--money-in);
+  --money-ok-soft: var(--money-in-soft);
+  --money-short: var(--money-out);
+  --money-short-soft: var(--money-out-soft);
+  --money-over: var(--money-credit);
+  --money-over-soft: var(--money-credit-soft);
+  --money-in-action: #15803d;
+  --money-in-action-hover: #16a34a;
+  --money-action-ink: #ffffff;
+
+  --fuel-petrol: #6ce9a6;
+  --fuel-petrol-soft: #14301f;
+  --fuel-diesel: #93b4ff;
+  --fuel-diesel-soft: #16294d;
+  --fuel-premium: #fdba60;
+  --fuel-premium-soft: #3a2a14;
+  --fuel-cng: #c4b0f5;
+  --fuel-cng-soft: #2c2450;
+
+  /* Dark-mode brand artwork: the pump brightens so it holds its shape on a
+     dark surface, and the secondary strokes lift with it. Not a simple
+     invert — the white display, ₹ and clock face stay light, the red
+     accents stay red, exactly as on the light theme. */
+  --petrav-pump: #1567d2;
+  --petrav-base: #3e6fbf;
+  --petrav-clock-ring: #5b9bf0;
+
+  --cta-bg: #1e6fd9;
+  --cta-bg-hover: #3480e4;
+  --cta-ink: #ffffff;
+  --cta-shadow: 0 8px 22px -8px rgba(30, 111, 217, 0.5);
+
+  --graphite: #0a0e17;
+  --petrol: var(--accent);
+  --amber: #f2b750;
+  --green: #4ade80;
+  --rust: #f87171;
+
+  --sidebar-bg: #0d1320;
+  --sidebar-ink: #a7b1c6;
+  --sidebar-ink-strong: #f4f6fb;
+  --sidebar-border: #1c2438;
+  --sidebar-active-bg: var(--accent-soft);
+  --sidebar-active-ink: var(--accent-strong);
+  --topbar-bg: rgba(11, 15, 22, 0.86);
+  --actionbar-bg: rgba(11, 15, 22, 0.92);
+  --scrim: rgba(2, 5, 10, 0.6);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px -2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 18px 36px -10px rgba(0, 0, 0, 0.55), 0 6px 14px -6px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px var(--accent-soft-strong);
+}

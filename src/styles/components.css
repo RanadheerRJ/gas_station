@@ -1,0 +1,1732 @@
+/* ---------------- cards & panels ---------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+}
+
+.card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card--pad {
+  padding: 16px 18px;
+}
+
+/* A returned shift stays closed, but its operator can correct and resubmit it. */
+.correction-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(220, 38, 38, 0.045);
+}
+
+.correction-card h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.correction-card p {
+  margin: 0;
+}
+
+.correction-card .cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-height: 40px;
+  border-radius: 11px;
+  padding: 9px 14px;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* An owner can reopen any closed shift — approved included — and correct it
+   end to end. Reopening is a correction, not a re-run, so the card reads as
+   an owner affordance rather than an error. */
+.reopen-card {
+  border-color: var(--accent-soft-strong);
+  background: var(--accent-soft);
+}
+
+.reopen-card h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.reopen-card p {
+  margin: 0;
+}
+
+.reopen-card__reason {
+  flex-wrap: wrap;
+}
+
+.card__pad {
+  padding: 16px 18px;
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.card__head h2 {
+  font-size: 14px;
+}
+
+.card__foot {
+  padding: 12px 18px;
+  border-top: 1px solid var(--hairline);
+  background: var(--surface-sunken);
+  display: grid;
+  gap: 4px;
+}
+
+/* The older, titled panel — still used by the setup and developer screens. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel > header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+}
+
+.panel > header h2 {
+  font-size: 14.5px;
+}
+
+.panel > .body {
+  padding: 18px;
+}
+
+.panel.flush > .body {
+  padding: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12.5px;
+}
+
+/* Section label above a group of cards. */
+.section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px 0;
+}
+
+.section-label h2 {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+/* ---------------- stat strips & figures ---------------- */
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px 24px;
+  padding: 18px 20px;
+}
+
+.stat-strip--hero .stat .v {
+  font-size: 24px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 128px;
+}
+
+.stat .k {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.stat .v {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.v.pos {
+  color: var(--green);
+}
+.v.neg {
+  color: var(--rust);
+}
+
+/* Semantic rupee figures. The marker repeats the meaning for users who do
+   not distinguish the colours, and tabular numerals keep columns steady. */
+.money {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.35em;
+  max-width: 100%;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.money--md {
+  font-size: inherit;
+}
+
+.money--lg {
+  font-size: clamp(18px, 5vw, 24px);
+}
+
+.money__marker {
+  flex: 0 0 auto;
+  font-family: var(--sans);
+  font-size: 0.9em;
+  font-weight: 800;
+}
+
+.money--in {
+  color: var(--money-in);
+}
+
+.money--out {
+  color: var(--money-out);
+}
+
+.money--credit {
+  color: var(--money-credit);
+}
+
+.money--neutral,
+.money--variance.money--neutral {
+  color: var(--money-neutral);
+}
+
+.money--variance.money--ok {
+  color: var(--money-ok);
+}
+
+.money--variance.money--short {
+  color: var(--money-short);
+}
+
+.money--variance.money--over {
+  color: var(--money-over);
+}
+
+/* Reviewer summary: the same computed figures, stated before the detailed
+   cards. Each semantic row carries a soft tint as well as a labelled marker. */
+.review-summary {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.review-summary__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.review-summary__head h2 {
+  font-size: 18px;
+}
+
+.review-summary__head p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.review-summary__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.review-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.review-summary__figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+}
+
+.review-summary__figure--sales {
+  background: var(--money-neutral-soft);
+}
+
+.review-summary__figure--received {
+  background: var(--money-in-soft);
+}
+
+.review-summary__figure--credit {
+  background: var(--money-credit-soft);
+}
+
+.review-summary__figure--out {
+  background: var(--money-out-soft);
+}
+
+.review-summary__figure--cash {
+  grid-column: 1 / -1;
+  background: var(--surface-sunken);
+}
+
+.review-summary__label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.review-summary__value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.review-summary__breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  width: 100%;
+}
+
+.review-summary__breakdown-item,
+.review-summary__deduction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.review-summary__cash-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  flex: 1;
+  min-width: min(100%, 300px);
+}
+
+.review-summary__cash-pair > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.review-summary__cash-pair small {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.variance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.variance-pill--balanced {
+  color: var(--money-ok);
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+}
+
+.variance-pill--short {
+  color: var(--money-short);
+  border-color: var(--money-short);
+  background: var(--money-short-soft);
+}
+
+.variance-pill--excess {
+  color: var(--money-over);
+  border-color: var(--money-over);
+  background: var(--money-over-soft);
+}
+
+.variance-pill--not-declared {
+  color: var(--money-neutral);
+  border-color: var(--money-neutral);
+  background: var(--money-neutral-soft);
+}
+
+.review-summary__reconciles {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--money-ok-soft);
+  color: var(--money-ok);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.money-legend {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.money-legend__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-color: var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 11px;
+}
+
+.money-legend__items {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  font-size: 10.5px;
+}
+
+.money-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.money-legend__item--in {
+  color: var(--money-in);
+}
+
+.money-legend__item--out {
+  color: var(--money-out);
+}
+
+.money-legend__item--credit {
+  color: var(--money-credit);
+}
+
+.money-legend__item--neutral {
+  color: var(--money-neutral);
+}
+
+/* ---------------- monthly report ---------------- */
+
+.month-dial {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* The repo's ChevronIcon points right; "previous" is the same glyph
+   rotated, so the two arrows can never drift apart in style. */
+.month-dial__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink-strong);
+  transform: rotate(180deg);
+}
+
+.month-dial__arrow--next {
+  transform: none;
+}
+
+.month-dial__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.month-dial__label {
+  text-align: center;
+}
+
+.month-dial__name {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+.report-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.report-bars__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.report-bars__value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.report-bars__track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 110px;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.report-bars__bar {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  background: var(--accent);
+  transition: height 0.5s ease;
+}
+
+.report-bars__label {
+  white-space: nowrap;
+}
+
+/* ---------------- list cards ---------------- */
+
+.list-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.list-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-instant) var(--ease-out);
+}
+
+.list-card:hover {
+  text-decoration: none;
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+
+.list-card:active {
+  transform: scale(0.99);
+}
+
+.list-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.list-card__row + .list-card__row {
+  margin-top: 10px;
+}
+
+.list-card__title {
+  font-weight: 650;
+  font-size: 14.5px;
+  color: var(--ink-strong);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.list-card__date {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.list-card__row--figures {
+  justify-content: flex-start;
+  gap: 20px;
+}
+
+.list-card__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list-card__figure .k {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.list-card__figure .v {
+  font-family: var(--mono);
+  font-size: 15.5px;
+  font-weight: 650;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-card__figure .v.neg {
+  color: var(--rust);
+}
+.list-card__figure .v.pos {
+  color: var(--green);
+}
+
+.list-card__chev {
+  margin-left: auto;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+/* ---------------- forms ---------------- */
+
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink);
+}
+
+/* The asterisk that marks a field the form cannot be submitted without. */
+.req {
+  color: var(--rust);
+  font-weight: 650;
+}
+
+/* An inline panel dropped into an expanded table row: the developer portal's
+   per-owner staff list. */
+.nested-panel {
+  padding: 10px 14px 14px;
+  overflow-x: auto;
+}
+
+.nested-panel table {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+
+input,
+select,
+textarea {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  width: 100%;
+  box-shadow: var(--shadow-xs);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--surface-sunken);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+input.mono,
+input[inputmode="numeric"] {
+  font-family: var(--mono);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.sheet-form {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 10px;
+}
+
+/* ---------------- buttons ---------------- */
+
+button {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 9px 15px;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--muted);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+button.primary {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--accent-ink);
+  font-weight: 650;
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme="dark"] button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--cta-bg-hover);
+  border-color: var(--cta-bg-hover);
+  color: #fff;
+}
+
+:root[data-theme="dark"] button.primary:hover:not(:disabled) {
+  color: var(--cta-ink);
+}
+
+button.quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  padding: 4px 6px;
+  text-decoration: underline;
+  box-shadow: none;
+  font-weight: 550;
+}
+
+button.quiet:hover:not(:disabled) {
+  background: transparent;
+  color: var(--accent-strong);
+}
+
+button.danger {
+  color: var(--rust);
+  border-color: rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+button.danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.12);
+}
+
+button.small {
+  padding: 6px 11px;
+  font-size: 12.5px;
+}
+
+/* The checkout button: hard to miss, always the same shape. */
+.cta {
+  width: 100%;
+  min-height: 54px;
+  border: none;
+  border-radius: 16px;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  box-shadow: var(--cta-shadow);
+  padding: 12px 20px;
+  cursor: pointer;
+}
+
+.cta:hover:not(:disabled) {
+  background: var(--cta-bg-hover);
+}
+
+.cta:disabled {
+  box-shadow: none;
+  opacity: 0.55;
+}
+
+/* Header tools: report/export, add actions, station filter. */
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink);
+  font-weight: 650;
+  font-size: 13px;
+  box-shadow: var(--shadow-xs);
+  white-space: nowrap;
+}
+
+.tool-btn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--muted);
+}
+
+.tool-btn--primary {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--accent-ink);
+}
+
+:root[data-theme="dark"] .tool-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tool-btn--primary:hover:not(:disabled) {
+  background: var(--cta-bg-hover);
+  border-color: var(--cta-bg-hover);
+  color: #fff;
+}
+
+:root[data-theme="dark"] .tool-btn--primary:hover:not(:disabled) {
+  color: var(--cta-ink);
+}
+
+.station-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  padding: 0 6px 0 13px;
+  color: var(--muted);
+  min-height: 40px;
+  box-shadow: var(--shadow-xs);
+}
+
+.station-filter select {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 8px 4px 8px 0;
+  font-weight: 650;
+  color: var(--ink);
+  min-height: 36px;
+  width: auto;
+  max-width: 180px;
+}
+
+.station-filter select:focus {
+  box-shadow: none;
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+}
+
+.segmented button {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  min-height: 38px;
+  font-weight: 650;
+  color: var(--muted);
+  border-radius: 11px;
+  padding: 6px 14px;
+}
+
+.segmented button.active {
+  background: var(--surface);
+  color: var(--ink-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ---------------- sticky action bar ---------------- */
+
+.action-bar {
+  position: fixed;
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  padding: 12px 28px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--actionbar-bg);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-top: 1px solid var(--hairline);
+}
+
+.action-bar__inner {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.action-bar__inner > button {
+  flex: 1;
+}
+
+.action-bar .cta {
+  flex: 2.2;
+}
+
+.action-bar__stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-bar__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-bar__row .cta {
+  flex: 0 1 auto;
+  min-width: 170px;
+}
+
+.action-bar__row > button:not(.cta) {
+  flex: 0 0 auto;
+}
+
+.action-bar__hint {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The running count beside a picker's primary button ("3 selected"). */
+.action-bar__count {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  min-height: 48px;
+  color: var(--ink-strong);
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.action-bar__reason {
+  flex: 1;
+}
+
+.action-bar--review {
+  padding-block: 10px;
+}
+
+.action-bar__spacer.action-bar--review__spacer {
+  height: 230px;
+}
+
+.review-attention {
+  display: grid;
+  gap: 4px;
+  padding: 7px 10px;
+  border-left: 3px solid var(--money-over);
+  border-radius: var(--radius-sm);
+  background: var(--money-credit-soft);
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.review-attention__line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.review-figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.review-figures__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 9px;
+  border-right: 1px solid var(--hairline);
+}
+
+.review-figures__item:last-child {
+  border-right: 0;
+}
+
+.review-figures__item > span:first-child {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.review-figures .money {
+  max-width: 100%;
+  font-size: clamp(9px, 2.8vw, 12px);
+}
+
+.review-figures__received {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.review-send-back {
+  border-color: var(--money-over);
+  background: transparent;
+  color: var(--money-over);
+  box-shadow: none;
+}
+
+.review-send-back:hover:not(:disabled) {
+  border-color: var(--money-short);
+  background: var(--money-short-soft);
+  color: var(--money-short);
+}
+
+.action-bar .review-approve,
+.action-bar .review-approve:hover:not(:disabled) {
+  border-color: var(--money-in-action);
+  background: var(--money-in-action);
+  color: var(--money-action-ink);
+}
+
+.action-bar .review-approve:hover:not(:disabled) {
+  background: var(--money-in-action-hover);
+}
+
+/* Keeps the fixed bar from trapping the last row of content. */
+.action-bar__spacer {
+  height: calc(var(--actionbar-h) + 16px);
+}
+
+/* ---------------- tables ---------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+th {
+  text-align: left;
+  font-weight: 650;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-sunken);
+  white-space: nowrap;
+}
+
+td {
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+tbody tr:hover td {
+  background: var(--surface-sunken);
+}
+
+td.num,
+th.num {
+  text-align: right;
+}
+
+tfoot td {
+  border-top: 1px solid var(--hairline-strong);
+  border-bottom: none;
+  font-weight: 650;
+  background: var(--surface-sunken);
+}
+
+tr.total td {
+  font-weight: 650;
+  background: var(--surface-sunken);
+}
+
+.money-row--in > td,
+tbody tr.money-row--in:hover > td {
+  background: var(--money-in-soft);
+}
+
+.money-row--out > td,
+tbody tr.money-row--out:hover > td {
+  background: var(--money-out-soft);
+}
+
+.money-row--credit > td,
+tbody tr.money-row--credit:hover > td {
+  background: var(--money-credit-soft);
+}
+
+.money-row--neutral > td,
+tbody tr.money-row--neutral:hover > td {
+  background: var(--money-neutral-soft);
+}
+
+.money-row--variance > td,
+tbody tr.money-row--variance:hover > td {
+  background: var(--surface-sunken);
+}
+
+.credit-sale__identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.money-credit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--money-credit-soft);
+  color: var(--money-credit);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------------- tags, notices, chips ---------------- */
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 650;
+  padding: 2px 9px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.tag.green {
+  color: var(--green);
+  border-color: rgba(21, 128, 61, 0.3);
+  background: rgba(21, 128, 61, 0.1);
+}
+
+.tag.rust {
+  color: var(--rust);
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-tag--pending {
+  color: var(--money-neutral);
+  border-color: var(--money-neutral);
+  background: var(--money-neutral-soft);
+}
+
+.status-tag--approved {
+  color: var(--money-ok);
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+}
+
+.status-tag--sent-back {
+  color: var(--money-short);
+  border-color: var(--money-short);
+  background: var(--money-short-soft);
+}
+
+.status-tag--reopened {
+  color: var(--money-over);
+  border-color: var(--money-over);
+  background: var(--money-over-soft);
+}
+
+.notice {
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.notice.error {
+  border-left-color: var(--rust);
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--rust);
+}
+
+.notice.good {
+  border-left-color: var(--green);
+  background: rgba(21, 128, 61, 0.08);
+  color: var(--green);
+}
+
+/* Amber, not red: a sent-back shift is work to do, not a failure — the
+   reviewer's reason stays on screen for the whole correction. */
+.notice.attention {
+  border-left-color: var(--money-credit);
+  background: var(--money-credit-soft);
+  color: var(--ink);
+}
+
+.notice.attention strong {
+  color: var(--money-credit);
+}
+
+.credential {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.credential .k {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.credential .v {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--ink-strong);
+}
+
+.divider {
+  height: 1px;
+  background: var(--hairline);
+  margin: 16px 0;
+}
+
+.fuel-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  flex: 0 0 auto;
+}
+
+.fuel-dot--petrol {
+  background: #16a34a;
+}
+.fuel-dot--diesel {
+  background: #2563eb;
+}
+.fuel-dot--premium {
+  background: #d97706;
+}
+.fuel-dot--cng {
+  background: #8b5cf6;
+}
+
+/* Fuel families as labelled chips, not just dots: the word (Petrol, Diesel,
+   MS, HSD…) carries the meaning and the tint repeats it. Text shades are
+   dark enough for AA on their soft tint in the light theme, and lift
+   together in the dark theme. */
+.fuel-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--fuel-ink);
+  background: var(--fuel-soft);
+  color: var(--fuel-ink);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.fuel-tag--petrol {
+  --fuel-ink: var(--fuel-petrol);
+  --fuel-soft: var(--fuel-petrol-soft);
+}
+
+.fuel-tag--diesel {
+  --fuel-ink: var(--fuel-diesel);
+  --fuel-soft: var(--fuel-diesel-soft);
+}
+
+.fuel-tag--premium {
+  --fuel-ink: var(--fuel-premium);
+  --fuel-soft: var(--fuel-premium-soft);
+}
+
+.fuel-tag--cng {
+  --fuel-ink: var(--fuel-cng);
+  --fuel-soft: var(--fuel-cng-soft);
+}
+
+.temp-chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 2px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.temp-chip.warm {
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--rust);
+}
+
+/* ---------------- handover emphasis ---------------- */
+
+.handover__cash td {
+  color: var(--green);
+  font-size: 15px;
+}
+
+.handover__verdict {
+  padding: 12px 18px 2px;
+}
+
+/* ---------------- step progress (close-shift flow) ---------------- */
+
+/*
+ * One dot per step: done dots fill and carry a check, the current dot is the
+ * only one with a ring, and the label names the step in words. Sits sticky
+ * under the app bar so "where am I" is answerable at any scroll depth; the
+ * bar is short enough that it never crowds a phone's content width.
+ */
+.step-progress {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--actionbar-bg);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  box-shadow: var(--shadow-xs);
+}
+
+.step-progress__dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step-progress__dot {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.step-progress__dot-inner {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.step-progress__dot[data-state="done"] .step-progress__dot-inner {
+  border-color: var(--money-in-action);
+  background: var(--money-in-action);
+  color: var(--money-action-ink);
+}
+
+.step-progress__dot[data-state="current"] .step-progress__dot-inner {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+  box-shadow: var(--focus-ring);
+}
+
+.step-progress__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.step-progress__label-icon {
+  display: inline-flex;
+  color: var(--money-in);
+}
+
+.step-progress[data-complete] .step-progress__label {
+  color: var(--money-in);
+}
+
+/* ---------------- variance pill ---------------- */
+
+/*
+ * The cash-count verdict. Soft tint + strong text + a direction glyph, so the
+ * meaning survives a monochrome screen or colour-vision difference. Quiet
+ * state keeps the row's shape while nothing has been counted yet.
+ */
+.variance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.variance-pill--ok {
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+  color: var(--money-ok);
+}
+
+.variance-pill--short {
+  border-color: var(--money-short);
+  background: var(--money-short-soft);
+  color: var(--money-short);
+}
+
+.variance-pill--over {
+  border-color: var(--money-over);
+  background: var(--money-over-soft);
+  color: var(--money-over);
+}
+
+.variance-pill--quiet {
+  border-color: var(--hairline-strong);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ---------------- offline / install banners ---------------- */
+
+.conn-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 28px;
+  font-size: 12.5px;
+  font-weight: 550;
+  background: var(--rust);
+  color: #fff;
+  animation: rise var(--duration-base) var(--ease-out) both;
+}
+
+.conn-banner.restored {
+  background: var(--green);
+  animation:
+    rise var(--duration-base) var(--ease-out) both,
+    bar-collapse var(--duration-slow) var(--ease-in) 2.4s both;
+}
+
+@keyframes bar-collapse {
+  from {
+    opacity: 1;
+    max-height: 60px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.install-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 28px;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  font-size: 13px;
+  animation: rise var(--duration-slow) var(--ease-out) both;
+}
+
+.install-bar button {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--accent-ink);
+  font-weight: 650;
+  padding: 7px 14px;
+}
+
+.install-bar button.ghost {
+  background: transparent;
+  border-color: var(--hairline-strong);
+  color: var(--muted);
+}
+
+/* ---------------- theme & language controls ---------------- */
+
+.theme-toggle {
+  width: 100%;
+  margin-top: 18px;
+  padding: 9px;
+  font-size: 12px;
+}
+
+.theme-toggle--sidebar {
+  margin: 0 0 12px;
+  background: var(--surface-sunken);
+  color: var(--sidebar-ink) !important;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.theme-toggle--sidebar:hover {
+  background: var(--hairline);
+}
+
+.language-select select {
+  width: 100%;
+}
+
+.language-select--sidebar {
+  margin-bottom: 10px;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--sidebar-ink);
+}
+
+.language-select--sidebar select {
+  background: var(--surface-sunken);
+  color: var(--sidebar-ink);
+  border-color: transparent;
+  font-size: 12px;
+  padding: 8px 9px;
+}
+
+/* Language and theme sit together under the login form. */
+.login-prefs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.login-prefs .language-select {
+  flex: 0 0 132px;
+}
+
+.login-prefs .theme-toggle {
+  margin-top: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---------------- report & export controls (in a sheet) ---------------- */
+
+.report-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.report-tools__dates {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.report-tools__dates .field {
+  min-width: 150px;
+  flex: 1;
+}
+
+.report-tools__actions {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.report-tools__actions button {
+  flex: 1;
+  min-height: 44px;
+}
+
+.report-tools__meta {
+  flex: 1 1 100%;
+}
