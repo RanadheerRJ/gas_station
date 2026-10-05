@@ -2,7 +2,7 @@ import Money from "../../components/Money.jsx";
 import { varianceLabel } from "../../lib/shiftMath.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 import MoneyLegend from "./MoneyLegend.jsx";
-import { PAYMENT_KEY } from "./parts.jsx";
+import { PAYMENT_KEY, StatusTag } from "./parts.jsx";
 
 const RECEIVED_MODES = ["cash", "card", "upi", "other"];
 
@@ -38,7 +38,7 @@ function PaymentFigures({ payments, t }) {
  * shiftTotals. Payment methods and deductions stay split rather than being
  * totalled again in the component.
  */
-export default function ReviewSummaryCard({ totals }) {
+export default function ReviewSummaryCard({ totals, shift }) {
   const { t } = useLanguage();
   const verdict = varianceLabel(totals.variance);
   const verdictKey =
@@ -61,7 +61,10 @@ export default function ReviewSummaryCard({ totals }) {
           <h2>{t("money.approvingTitle")}</h2>
           <p>{t("money.approvingHelp")}</p>
         </div>
-        <MoneyLegend />
+        <div className="review-summary__tools">
+          <StatusTag status={shift.status} reopened={Boolean(shift.approvedAt)} />
+          <MoneyLegend />
+        </div>
       </div>
 
       <div className="review-summary__grid">

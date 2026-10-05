@@ -155,7 +155,7 @@ export function SettledShiftDetail({
 
   return (
     <>
-      {canReview && <ReviewSummaryCard totals={draft} />}
+      {canReview && <ReviewSummaryCard totals={draft} shift={shift} />}
 
       <ReviewBanners
         shift={shift}
