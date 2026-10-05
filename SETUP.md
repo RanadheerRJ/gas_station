@@ -19,19 +19,25 @@ every push to `main` that touches `supabase/functions/**`; to enable it, add
 a `SUPABASE_ACCESS_TOKEN` secret and a `SUPABASE_PROJECT_ID` variable or
 secret under **Settings → Secrets and variables → Actions**.
 
-**Migrations are the half that is not automated.** The app bundle and the
-`accounts` function both deploy themselves on merge; `supabase db push` is
-run by hand. A release that adds a screen *and* the RPC behind it can
-therefore land with the button live and the function missing. When that
-happens the app says so directly — "This action needs a database update that
-has not been applied to this project yet" — and the fix is `supabase db push`,
-not another function deploy. Run it **before** merging anything that ships a
-migration and a UI for it together.
+**Migrations ship with it.** The same workflow also runs `supabase db push`,
+before the function deploys, on any push to `main` touching
+`supabase/migrations/**`. That ordering is deliberate: a schema ahead of the
+app is harmless, while a UI ahead of its schema is a live button with no RPC
+behind it. Applying migrations needs one more secret, `SUPABASE_DB_PASSWORD`
+(Settings → Database → Database password); the workflow fails early and says
+so if it is absent.
+
+You still need the manual commands above for the **first** setup, before the
+workflow has ever run, and `supabase db push` remains safe to run by hand at
+any time — migrations are forward-only and the follow-ups are idempotent.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | "Unknown account action." | The hosted function is older than the app. | `supabase functions deploy accounts` |
 | "…needs a database update that has not been applied…" | A migration has not been pushed. | `supabase db push` |
+
+Either message means a deploy did not finish; check the `deploy-supabase`
+workflow run for the merge that shipped the feature.
 
 ## Browser environment
 
