@@ -75,6 +75,9 @@ const en = {
   "common.phoneProblem": "Enter a valid phone number — 10 to 15 digits.",
 
   /* ---- reporting / export ---- */
+  "shifts.statement": "Daily Sales Statement",
+  "shifts.monthToDate": "Month to date",
+
   "report.title": "Report & export",
   "report.fuel": "Fuel",
   "report.allFuels": "All fuels",

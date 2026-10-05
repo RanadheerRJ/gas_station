@@ -13,7 +13,7 @@ import { listShifts, readableError } from "../../lib/api";
 import { formatDate, formatStamp, money, todayISO } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
-import { filterByRange, shiftsReport } from "../../lib/export.js";
+import { defaultRange, filterByRange, shiftStatementReport } from "../../lib/export.js";
 import { StatusTag } from "./parts.jsx";
 import ExpensesSheet from "./ExpensesSheet.jsx";
 import { shiftPaths } from "./paths.js";
@@ -76,13 +76,22 @@ export default function ShiftsList() {
 
   const buildReport = useCallback(
     (range, filters = {}) =>
-      shiftsReport({
+      shiftStatementReport({
         shifts: filterByRange(settled, range),
         stationName: station?.name || "",
         ...filters,
       }),
     [settled, station]
   );
+  const statement = useMemo(
+    () =>
+      shiftStatementReport({
+        shifts: filterByRange(settled, defaultRange()),
+        stationName: station?.name || "",
+      }),
+    [settled, station]
+  );
+  const statementCore = new Set([0, 1, 4, 7, 13, 21]);
 
   if (stationsLoading) {
     return (
@@ -107,7 +116,7 @@ export default function ShiftsList() {
           <>
             <ReportSheet
               report="shifts"
-              title="Shifts"
+              title="Daily Sales Statement"
               stationName={station?.name || ""}
               buildReport={buildReport}
             />
@@ -175,6 +184,53 @@ export default function ShiftsList() {
                     </div>
                   </div>
                 ))}
+              </section>
+            )}
+
+            {profile.role === "owner" && statement.rows.length > 0 && (
+              <section className="stack" style={{ gap: 10 }}>
+                <div className="section-label">
+                  <h2>{t("shifts.statement")}</h2>
+                  <span className="small muted">{t("shifts.monthToDate")}</span>
+                </div>
+                <div className="statement-table-wrap">
+                  <table className="responsive-table statement-table">
+                    <thead>
+                      <tr>
+                        {statement.columns.map((column, index) => (
+                          <th
+                            key={column}
+                            className={statementCore.has(index) ? "statement-core" : ""}
+                          >
+                            {column}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statement.rows.map((row, rowIndex) => (
+                        <tr
+                          key={`${row[0]}-${row[1]}-${rowIndex}`}
+                          className={
+                            row[1] === "Day total" || row[1] === "GRAND TOTAL"
+                              ? "statement-total"
+                              : ""
+                          }
+                        >
+                          {row.map((cell, index) => (
+                            <td
+                              key={index}
+                              data-label={statement.columns[index]}
+                              className={statementCore.has(index) ? "statement-core" : ""}
+                            >
+                              <span>{cell}</span>
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </section>
             )}
 

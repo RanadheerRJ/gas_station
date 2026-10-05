@@ -25,6 +25,7 @@ export default function ReportTools({
   rowCount,
   note,
   disabled = false,
+  filters = {},
 }) {
   const { t } = useLanguage();
   const empty = !rowCount;
@@ -38,6 +39,8 @@ export default function ReportTools({
       from: range.from,
       to: range.to,
       extension: kind,
+      fuelGroup: filters.fuelGroup === "ALL" ? "" : filters.fuelGroup,
+      employeeName: filters.employeeName || "",
     });
     if (kind === "csv") {
       downloadCsv(built, filename);

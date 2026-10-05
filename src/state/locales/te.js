@@ -72,6 +72,9 @@ const te = {
   "common.phoneRequired": "ఫోన్ నంబర్‌ను నమోదు చేయండి.",
   "common.phoneProblem": "సరైన ఫోన్ నంబర్ నమోదు చేయండి — 10 నుండి 15 అంకెలు.",
 
+  "shifts.statement": "రోజువారీ అమ్మకాల స్టేట్‌మెంట్",
+  "shifts.monthToDate": "ఈ నెల ఇప్పటివరకు",
+
   "report.title": "నివేదిక & ఎగుమతి",
   "report.fuel": "ఇంధనం",
   "report.allFuels": "అన్ని ఇంధనాలు",
