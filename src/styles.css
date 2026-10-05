@@ -29,6 +29,27 @@
   --accent-soft-strong: rgba(11, 91, 198, 0.18);
   --accent-ink: #ffffff;
 
+  /* Money always keeps the same meaning. Text shades are deliberately dark
+     enough for AA contrast on both the white surface and their soft tint;
+     markers and labels repeat the meaning without relying on hue. */
+  --money-in: #0f6b3c;
+  --money-in-soft: #e9f7ef;
+  --money-out: #b42318;
+  --money-out-soft: #fff0ee;
+  --money-credit: #8a4b0f;
+  --money-credit-soft: #fff6df;
+  --money-neutral: #175cd3;
+  --money-neutral-soft: #edf4ff;
+  --money-ok: var(--money-in);
+  --money-ok-soft: var(--money-in-soft);
+  --money-short: var(--money-out);
+  --money-short-soft: var(--money-out-soft);
+  --money-over: var(--money-credit);
+  --money-over-soft: var(--money-credit-soft);
+  --money-in-action: #166534;
+  --money-in-action-hover: #14532d;
+  --money-action-ink: #ffffff;
+
   /* PÉTRAV brand palette. The logo artwork (src/components/branding.jsx)
      reads these directly, so the mark re-themes with the app rather than
      shipping a second dark asset. */
@@ -137,6 +158,24 @@
   --accent-soft: rgba(78, 142, 245, 0.14);
   --accent-soft-strong: rgba(78, 142, 245, 0.26);
   --accent-ink: #ffffff;
+
+  --money-in: #6ce9a6;
+  --money-in-soft: #163a2b;
+  --money-out: #fda29b;
+  --money-out-soft: #41211f;
+  --money-credit: #fec84b;
+  --money-credit-soft: #3d3219;
+  --money-neutral: #84adff;
+  --money-neutral-soft: #182e50;
+  --money-ok: var(--money-in);
+  --money-ok-soft: var(--money-in-soft);
+  --money-short: var(--money-out);
+  --money-short-soft: var(--money-out-soft);
+  --money-over: var(--money-credit);
+  --money-over-soft: var(--money-credit-soft);
+  --money-in-action: #15803d;
+  --money-in-action-hover: #16a34a;
+  --money-action-ink: #ffffff;
 
   /* Dark-mode brand artwork: the pump brightens so it holds its shape on a
      dark surface, and the secondary strokes lift with it. Not a simple
@@ -737,6 +776,65 @@ th.num {
 }
 .v.neg {
   color: var(--rust);
+}
+
+/* Semantic rupee figures. The marker repeats the meaning for users who do
+   not distinguish the colours, and tabular numerals keep columns steady. */
+.money {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.35em;
+  max-width: 100%;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.money--md {
+  font-size: inherit;
+}
+
+.money--lg {
+  font-size: clamp(18px, 5vw, 24px);
+}
+
+.money__marker {
+  flex: 0 0 auto;
+  font-family: var(--sans);
+  font-size: 0.9em;
+  font-weight: 800;
+}
+
+.money--in {
+  color: var(--money-in);
+}
+
+.money--out {
+  color: var(--money-out);
+}
+
+.money--credit {
+  color: var(--money-credit);
+}
+
+.money--neutral,
+.money--variance.money--neutral {
+  color: var(--money-neutral);
+}
+
+.money--variance.money--ok {
+  color: var(--money-ok);
+}
+
+.money--variance.money--short {
+  color: var(--money-short);
+}
+
+.money--variance.money--over {
+  color: var(--money-over);
 }
 
 /* ---------------- monthly report ---------------- */
