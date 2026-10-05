@@ -19,6 +19,20 @@ every push to `main` that touches `supabase/functions/**`; to enable it, add
 a `SUPABASE_ACCESS_TOKEN` secret and a `SUPABASE_PROJECT_ID` variable or
 secret under **Settings → Secrets and variables → Actions**.
 
+**Migrations are the half that is not automated.** The app bundle and the
+`accounts` function both deploy themselves on merge; `supabase db push` is
+run by hand. A release that adds a screen *and* the RPC behind it can
+therefore land with the button live and the function missing. When that
+happens the app says so directly — "This action needs a database update that
+has not been applied to this project yet" — and the fix is `supabase db push`,
+not another function deploy. Run it **before** merging anything that ships a
+migration and a UI for it together.
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| "Unknown account action." | The hosted function is older than the app. | `supabase functions deploy accounts` |
+| "…needs a database update that has not been applied…" | A migration has not been pushed. | `supabase db push` |
+
 ## Browser environment
 
 Copy `.env.example` to `.env.local` and set only:

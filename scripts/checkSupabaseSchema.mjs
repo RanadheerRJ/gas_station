@@ -22,6 +22,10 @@ const migration = (
   )
 ).join("\n");
 const api = await readFile(resolve("src/lib/api.js"), "utf8");
+// The `accounts` Edge Function calls RPCs too, and it is deployed from a
+// different pipeline than the browser bundle. Its calls were outside this
+// contract until a console action shipped with no function behind it.
+const edge = await readFile(resolve("supabase/functions/accounts/index.ts"), "utf8");
 
 const required = [
   "enable row level security",
@@ -84,7 +88,18 @@ const missingRpc = rpcNames.filter(
   (name) => !migration.includes(`function public.${name}(`)
 );
 
-if (missing.length || missingRbac.length || weakPolicies.length || missingRpc.length) {
+const edgeRpcNames = [...edge.matchAll(/rpc\(\s*"([a-z_]+)"/g)].map((match) => match[1]);
+const missingEdgeRpc = edgeRpcNames.filter(
+  (name) => !migration.includes(`function public.${name}(`)
+);
+
+if (
+  missing.length ||
+  missingRbac.length ||
+  weakPolicies.length ||
+  missingRpc.length ||
+  missingEdgeRpc.length
+) {
   const problems = [
     ...(missing.length ? [`schema: ${missing.join(", ")}`] : []),
     ...(missingRbac.length ? [`RBAC: ${missingRbac.join(", ")}`] : []),
@@ -92,6 +107,9 @@ if (missing.length || missingRbac.length || weakPolicies.length || missingRpc.le
       ? [`policies not owner/manager gated: ${weakPolicies.join(", ")}`]
       : []),
     ...(missingRpc.length ? [`RPCs: ${missingRpc.join(", ")}`] : []),
+    ...(missingEdgeRpc.length
+      ? [`accounts Edge Function RPCs: ${missingEdgeRpc.join(", ")}`]
+      : []),
   ];
   console.error(`Supabase schema contract is missing ${problems.join("; ")}`);
   process.exit(1);
@@ -99,5 +117,6 @@ if (missing.length || missingRbac.length || weakPolicies.length || missingRpc.le
 
 console.log(
   `Supabase schema contract: OK (${rpcNames.length} browser RPCs, ` +
+    `${edgeRpcNames.length} Edge Function RPCs, ` +
     `${rbacRequired.length} RBAC guards, ${managerOnlyPolicies.length} owner/manager reads)`
 );

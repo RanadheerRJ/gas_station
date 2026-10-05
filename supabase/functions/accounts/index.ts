@@ -5,7 +5,59 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * hosted function is identifiable straight from the browser message — the
  * exact symptom of a deploy that predates a newly shipped action.
  */
-const FUNCTION_VERSION = "2026-10-06.1";
+const FUNCTION_VERSION = "2026-10-06.2";
+
+/*
+ * PostgREST's code for "that function is not in the schema cache" (PGRST202)
+ * and PostgreSQL's own undefined_function (42883).
+ *
+ * In production these mean one specific thing. The browser and this function
+ * are both deployed automatically on merge, but database migrations are
+ * applied by hand (`supabase db push`). So an action can ship, be reachable,
+ * and still have no RPC behind it. That is not a 500 and the developer
+ * reading the message is the person who can fix it, so it says so.
+ */
+const MISSING_FUNCTION = new Set(["PGRST202", "42883"]);
+
+function isMissingFunction(error: unknown) {
+  const err = error as { code?: string; message?: string } | null;
+  return (
+    MISSING_FUNCTION.has(err?.code ?? "") ||
+    /could not find the function|function .* does not exist/i.test(err?.message ?? "")
+  );
+}
+
+function migrationRequired(rpcName: string) {
+  return fail(
+    `This project's database does not have ${rpcName} yet. Apply the latest ` +
+      "migration with `supabase db push`, then try again.",
+    503
+  );
+}
+
+/**
+ * Keep everything PostgREST and GoTrue say about a failure.
+ *
+ * `error.message` alone is often the least useful field — `hint` carries the
+ * actionable fix and `code` is what you search for. Collapsing all of that
+ * into one generic sentence is what makes a broken deploy unreadable from the
+ * browser, so nothing is dropped here.
+ */
+function describe(error: unknown) {
+  if (!error) return "Account request failed.";
+  const err = error as {
+    message?: string;
+    hint?: string;
+    details?: string;
+    code?: string;
+  };
+  const message = err.message || String(error);
+  const parts = [message];
+  if (err.hint) parts.push(err.hint);
+  if (err.details && err.details !== message) parts.push(err.details);
+  const text = parts.filter(Boolean).join(" — ");
+  return err.code ? `${text} (${err.code})` : text;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -223,6 +275,13 @@ Deno.serve(async (req) => {
       const { data, error } = await caller.rpc("admin_delete_station", {
         p_station_id: stationId,
       });
+      // The station registry still renders from the *previous* migration's
+      // admin_station_registry(), so the console looks healthy while every
+      // action added alongside this one has nothing to call. Say that plainly
+      // rather than reporting an opaque failure.
+      if (error && isMissingFunction(error)) {
+        return migrationRequired("admin_delete_station");
+      }
       if (error) throw error;
 
       const logins: string[] = Array.isArray(data?.deleted_logins)
@@ -397,6 +456,11 @@ Deno.serve(async (req) => {
     return fail("Could not allocate a username. Please try again.", 429);
   } catch (error) {
     console.error("accounts function failed", error);
-    return fail(error instanceof Error ? error.message : "Account request failed.", 500);
+    if (isMissingFunction(error)) {
+      return migrationRequired("the function this action needs");
+    }
+    // `describe` keeps the database's own code, hint, and details. A thrown
+    // non-Error no longer degrades to a sentence that says nothing.
+    return fail(describe(error), 500);
   }
 });
