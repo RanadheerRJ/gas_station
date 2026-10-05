@@ -86,34 +86,7 @@
   background: var(--surface-sunken);
 }
 
-/* ---------------- balance & tank heroes ---------------- */
-
-.balance-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.balance-hero .k {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.balance-hero .v {
-  font-family: var(--mono);
-  font-size: 30px;
-  font-weight: 750;
-  color: var(--ink-strong);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.balance-hero--due .v {
-  color: var(--rust);
-}
+/* ---------------- tank hero ---------------- */
 
 .tank-hero {
   display: flex;

@@ -1570,22 +1570,6 @@
     color: var(--accent-strong);
     font-weight: 700;
   }
-  .credit-action-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    width: 100%;
-  }
-  .credit-action-buttons .cta {
-    min-height: 50px;
-    white-space: normal;
-  }
-  .credit-pay {
-    background: var(--green);
-  }
-  .credit-give {
-    background: var(--accent);
-  }
   .amount-field {
     display: flex;
     align-items: center;

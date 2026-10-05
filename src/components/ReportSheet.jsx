@@ -17,7 +17,20 @@ import ReportFilterBar from "./ReportFilterBar.jsx";
  * produce. `buildReport(range)` is supplied by the caller and closes over
  * whatever data the screen already loaded; this component never fetches.
  */
-export default function ReportSheet({ report, title, stationName, buildReport, note }) {
+export default function ReportSheet({
+  report,
+  title,
+  stationName,
+  buildReport,
+  note,
+  // When a screen already has a period selector (the credit statement does),
+  // it passes its own range in so the export window and the rows on screen
+  // can never disagree. Left out, the sheet keeps its own month-to-date range.
+  range: controlledRange,
+  onRangeChange,
+  label,
+  triggerClassName = "tool-btn",
+}) {
   const { t } = useLanguage();
   const { profile } = useAuth();
   const [filters, setFilters] = useState({
@@ -28,7 +41,10 @@ export default function ReportSheet({ report, title, stationName, buildReport, n
   const [staff, setStaff] = useState([]);
   const privileged = profile?.role === "owner" || profile?.role === "manager";
   const [open, setOpen] = useState(false);
-  const [range, setRange] = useState(() => defaultRange());
+  const [ownRange, setOwnRange] = useState(() => defaultRange());
+  const controlled = Boolean(controlledRange && onRangeChange);
+  const range = controlled ? controlledRange : ownRange;
+  const setRange = controlled ? onRangeChange : setOwnRange;
   useEffect(() => {
     if (open && privileged)
       listStaff(profile)
@@ -44,9 +60,9 @@ export default function ReportSheet({ report, title, stationName, buildReport, n
 
   return (
     <>
-      <button type="button" className="tool-btn" onClick={() => setOpen(true)}>
+      <button type="button" className={triggerClassName} onClick={() => setOpen(true)}>
         <DownloadIcon size={16} />
-        {t("report.title")}
+        {label || t("report.title")}
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={t("report.title")} wide>
         {privileged && (
