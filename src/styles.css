@@ -4186,6 +4186,14 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .run-readings {
+    grid-template-columns: 1fr;
+  }
+
+  .run-reading {
+    border-right: none;
+  }
+
   .sheet-form {
     grid-template-columns: 1fr;
   }
@@ -4672,6 +4680,96 @@ button:focus-visible {
 .notice__action {
   display: inline;
   min-height: 0;
+}
+
+/* ---------------- running shift ---------------- */
+
+/* The elapsed-time card: one big figure, labelled above it, with the
+   nozzles this shift holds as chips beneath. */
+.run-hero {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-color: rgba(21, 163, 74, 0.35);
+  background: linear-gradient(var(--surface), var(--surface)), var(--surface);
+}
+
+.run-hero__elapsed {
+  display: grid;
+  gap: 3px;
+}
+
+.run-hero__elapsed .k {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.run-hero__elapsed .v {
+  color: var(--ink-strong);
+  font-size: clamp(30px, 9vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-hero__elapsed .sub {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* Per-nozzle reading blocks: label above value, fuel named and coloured. */
+.run-readings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.run-reading {
+  display: grid;
+  gap: var(--space-3);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+}
+
+.run-reading:last-child {
+  border-bottom: none;
+}
+
+.run-reading__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--ink-strong);
+  font-size: 13.5px;
+}
+
+.run-reading__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+}
+
+.run-reading__figures span {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.run-reading__figures strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------------- attendant home: date & language row ---------------- */
