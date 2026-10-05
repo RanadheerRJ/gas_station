@@ -8,7 +8,15 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * must agree before the form will submit — a typo here would lock someone
  * out of an account they have never used.
  */
-export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }) {
+export default function PinField({
+  pin,
+  confirm,
+  onPin,
+  onConfirm,
+  label,
+  hint,
+  disabled = false,
+}) {
   const { t } = useLanguage();
   const resolvedLabel = label ?? t("staff.pinForLogin");
   const resolvedHint = hint ?? t("cred.pinHint");
@@ -67,6 +75,7 @@ export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }
             type={visible ? "text" : "password"}
             maxLength={4}
             required
+            disabled={disabled}
             value={pin}
             aria-invalid={rejected || undefined}
             onBlur={() => setTouched(true)}
@@ -77,6 +86,7 @@ export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }
           <button
             type="button"
             className="small"
+            disabled={disabled}
             onClick={() => setVisible((v) => !v)}
             style={{ whiteSpace: "nowrap" }}
           >
@@ -99,6 +109,7 @@ export default function PinField({ pin, confirm, onPin, onConfirm, label, hint }
           type={visible ? "text" : "password"}
           maxLength={4}
           required
+          disabled={disabled}
           value={confirm}
           aria-invalid={mismatch || undefined}
           onChange={(e) => onConfirm(e.target.value.replace(/\D/g, ""))}

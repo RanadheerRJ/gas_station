@@ -102,7 +102,10 @@ export default function OwnerStaff() {
           <button
             type="button"
             className="tool-btn tool-btn--primary"
-            onClick={() => setInviteOpen(true)}
+            onClick={() => {
+              setError("");
+              setInviteOpen(true);
+            }}
           >
             <PlusIcon size={16} />
             {t("staff.createLogin")}
@@ -177,6 +180,7 @@ export default function OwnerStaff() {
         onClose={() => {
           setInviteOpen(false);
           setCredentials(null);
+          setError("");
         }}
         title={t("staff.inviteTitle")}
         wide
@@ -204,6 +208,7 @@ export default function OwnerStaff() {
                   required
                   maxLength={120}
                   placeholder="Suresh Babu"
+                  disabled={busy}
                 />
               </Field>
               <Field label={t("common.phone")} required>
@@ -216,6 +221,7 @@ export default function OwnerStaff() {
                   maxLength={24}
                   aria-invalid={phoneKey ? true : undefined}
                   placeholder="+91 98765 44556"
+                  disabled={busy}
                 />
                 {phoneKey && (
                   <span className="small" style={{ color: "var(--rust)" }}>
@@ -227,6 +233,7 @@ export default function OwnerStaff() {
                 <select
                   value={form.stationId}
                   required
+                  disabled={busy}
                   onChange={(e) => setForm((f) => ({ ...f, stationId: e.target.value }))}
                 >
                   {stations.map((s) => (
@@ -240,6 +247,7 @@ export default function OwnerStaff() {
                 <select
                   value={form.role}
                   required
+                  disabled={busy}
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                 >
                   <option value="attendant">{t("role.attendant")}</option>
@@ -252,12 +260,26 @@ export default function OwnerStaff() {
                 onPin={(v) => setForm((f) => ({ ...f, pin: v }))}
                 onConfirm={(v) => setForm((f) => ({ ...f, confirmPin: v }))}
                 label={t("staff.pinForLogin")}
+                disabled={busy}
               />
             </div>
             {error && <Notice kind="error">{error}</Notice>}
-            <button className="cta" type="submit" disabled={busy || !complete}>
-              {busy ? t("staff.creating") : t("staff.createLogin")}
-            </button>
+            <div className="row" style={{ gap: 8 }}>
+              <button className="cta" type="submit" disabled={busy || !complete}>
+                {busy ? t("staff.creating") : t("staff.createLogin")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInviteOpen(false);
+                  setCredentials(null);
+                  setError("");
+                }}
+                disabled={busy}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
           </form>
         )}
       </Sheet>

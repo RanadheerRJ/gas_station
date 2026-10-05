@@ -282,6 +282,7 @@ export default function OwnerHome() {
             <span>{t("owner.stationName")}</span>
             <input
               value={form.name}
+              disabled={busy}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="City Centre Filling Station"
             />
@@ -290,17 +291,23 @@ export default function OwnerHome() {
             <span>{t("owner.address")}</span>
             <input
               value={form.address}
+              disabled={busy}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               placeholder="Beside RTO Office, Karimnagar"
             />
           </label>
-          <button
-            className="cta"
-            type="submit"
-            disabled={busy || !form.name.trim() || !form.address.trim()}
-          >
-            {busy ? t("owner.adding") : t("owner.addStation")}
-          </button>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              className="cta"
+              type="submit"
+              disabled={busy || !form.name.trim() || !form.address.trim()}
+            >
+              {busy ? t("owner.adding") : t("owner.addStation")}
+            </button>
+            <button type="button" disabled={busy} onClick={() => setShowAdd(false)}>
+              {t("common.cancel")}
+            </button>
+          </div>
         </form>
       </Sheet>
 

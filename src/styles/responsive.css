@@ -1478,15 +1478,3 @@
   background: var(--ink);
   color: var(--paper);
 }
-ed-control {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.segmented-control button {
-  min-height: 38px;
-}
-.segmented-control button.active {
-  background: var(--ink);
-  color: var(--paper);
-}
