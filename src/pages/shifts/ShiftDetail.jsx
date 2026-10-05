@@ -6,6 +6,7 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
 import { useShiftDetail } from "./useShiftDetail.js";
 import { useSettledShiftDetail } from "./useSettledShiftDetail.js";
 import ReviewBanners from "./ReviewBanners.jsx";
+import ReviewSummaryCard from "./ReviewSummaryCard.jsx";
 import MeterReadingsCard from "./MeterReadingsCard.jsx";
 import SettlementCard from "./SettlementCard.jsx";
 import ExpensesTestingCard from "./ExpensesTestingCard.jsx";
@@ -154,6 +155,8 @@ export function SettledShiftDetail({
 
   return (
     <>
+      {canReview && <ReviewSummaryCard totals={draft} />}
+
       <ReviewBanners
         shift={shift}
         locked={locked}
@@ -196,7 +199,7 @@ export function SettledShiftDetail({
 
       {canReview && !locked && (
         <ReviewActionBar
-          totals={totals}
+          totals={draft}
           busy={busy}
           rejecting={rejecting}
           setRejecting={setRejecting}
