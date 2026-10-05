@@ -4,13 +4,18 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
  * Fuel taken on credit during the shift, against a customer already in the
- * station's directory or a new walk-in. Everyone who can close a shift can
- * record credit, because it lands inside close_shift's single transaction
- * and still goes to the owner/manager for review. The subtotal shows as
- * credit money (amber), and the row add/remove controls are sized for a
- * thumb.
+ * station's directory or a new walk-in. Credit posted from the running-shift
+ * screen is loaded from the ledger and locked here so closing cannot post it
+ * twice. A forgotten sale may still be added atomically at close. During a
+ * rejected-shift correction the rows become editable and are reconciled by
+ * the correction RPC.
  */
-export default function CreditSection({ creditSales, setCreditSales, customers }) {
+export default function CreditSection({
+  creditSales,
+  setCreditSales,
+  customers,
+  isCorrection = false,
+}) {
   const { t } = useLanguage();
   const creditTotal = creditSales.reduce((sum, sale) => sum + num(sale.amount), 0);
   return (
@@ -28,6 +33,10 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
         <div className="stack section-pad">
           {creditSales.map((row, index) => {
             const known = customers.find((c) => c.id === row.customerId);
+            // Running-shift credit is already in the customer ledger. At an
+            // ordinary close it is displayed and counted, never reposted or
+            // silently changed. A rejected-shift correction may replace it.
+            const locked = Boolean(row.transactionId) && !isCorrection;
             const patch = (fields) =>
               setCreditSales((rows) => {
                 const next = [...rows];
@@ -35,9 +44,13 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                 return next;
               });
             return (
-              <div key={index} className="credit-row">
+              <div
+                key={row.transactionId || row.clientId || index}
+                className="credit-row"
+              >
                 <select
                   value={row.customerId || ""}
+                  disabled={locked}
                   onChange={(e) => {
                     const chosen = customers.find((c) => c.id === e.target.value);
                     patch({
@@ -56,7 +69,7 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                 </select>
                 <input
                   value={row.name || ""}
-                  disabled={!!known}
+                  disabled={locked || !!known}
                   placeholder={t("shifts.customerName")}
                   autoComplete="off"
                   onChange={(e) => patch({ name: e.target.value })}
@@ -65,7 +78,7 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                   className="mono"
                   inputMode="tel"
                   value={row.phone || ""}
-                  disabled={!!known}
+                  disabled={locked || !!known}
                   placeholder={t("shifts.mobile")}
                   autoComplete="off"
                   onChange={(e) => patch({ phone: e.target.value })}
@@ -76,19 +89,22 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
                   autoComplete="off"
                   style={{ textAlign: "right" }}
                   value={row.amount}
+                  disabled={locked}
                   placeholder="0.00"
                   onChange={(e) => patch({ amount: e.target.value })}
                   aria-label={t("common.amount")}
                 />
-                <button
-                  type="button"
-                  className="quiet row-remove"
-                  onClick={() =>
-                    setCreditSales((rows) => rows.filter((_, j) => j !== index))
-                  }
-                >
-                  {t("common.remove")}
-                </button>
+                {!locked && (
+                  <button
+                    type="button"
+                    className="quiet row-remove"
+                    onClick={() =>
+                      setCreditSales((rows) => rows.filter((_, j) => j !== index))
+                    }
+                  >
+                    {t("common.remove")}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -102,7 +118,13 @@ export default function CreditSection({ creditSales, setCreditSales, customers }
           onClick={() =>
             setCreditSales((rows) => [
               ...rows,
-              { customerId: "", name: "", phone: "", amount: "" },
+              {
+                clientId: crypto.randomUUID(),
+                customerId: "",
+                name: "",
+                phone: "",
+                amount: "",
+              },
             ])
           }
         >

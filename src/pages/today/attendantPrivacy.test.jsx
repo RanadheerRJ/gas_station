@@ -29,6 +29,7 @@ const api = vi.hoisted(() => ({
   listShifts: vi.fn(),
   listPumps: vi.fn(),
   listNozzleOccupancy: vi.fn(),
+  listShiftCredit: vi.fn(),
   listCustomerDirectory: vi.fn(),
   listCustomers: vi.fn(),
   listStations: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock("../../lib/api", async (importOriginal) => {
     listShifts: api.listShifts,
     listPumps: api.listPumps,
     listNozzleOccupancy: api.listNozzleOccupancy,
+    listShiftCredit: api.listShiftCredit,
     listCustomerDirectory: api.listCustomerDirectory,
     listCustomers: api.listCustomers,
     listStations: api.listStations,
@@ -230,6 +232,7 @@ beforeEach(() => {
   ]);
   api.listPumps.mockResolvedValue({ pumps: PUMPS, nozzles: NOZZLES });
   api.listNozzleOccupancy.mockResolvedValue(["n2"]);
+  api.listShiftCredit.mockResolvedValue([]);
   api.listCustomerDirectory.mockResolvedValue([DIRECTORY_CUSTOMER]);
   api.listCustomers.mockResolvedValue([DIRECTORY_CUSTOMER]);
 });

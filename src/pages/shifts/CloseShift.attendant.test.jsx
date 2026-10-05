@@ -21,6 +21,7 @@ import CloseShift from "./CloseShift.jsx";
 const api = vi.hoisted(() => ({
   listShifts: vi.fn(),
   listCustomerDirectory: vi.fn(),
+  listShiftCredit: vi.fn(),
   closeShift: vi.fn(),
   resubmitRejectedShift: vi.fn(),
 }));
@@ -28,6 +29,7 @@ const api = vi.hoisted(() => ({
 vi.mock("../../lib/api", () => ({
   listShifts: api.listShifts,
   listCustomerDirectory: api.listCustomerDirectory,
+  listShiftCredit: api.listShiftCredit,
   closeShift: api.closeShift,
   resubmitRejectedShift: api.resubmitRejectedShift,
   readableError: (error) => String(error?.message || error),
@@ -166,6 +168,7 @@ beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   api.listShifts.mockResolvedValue([OPEN_SHIFT, REJECTED_SHIFT]);
+  api.listShiftCredit.mockResolvedValue([]);
   api.listCustomerDirectory.mockResolvedValue([
     { id: "c1", name: "Kumar Transports", phone: "9000000000" },
   ]);

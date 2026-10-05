@@ -5,6 +5,7 @@ import { useStation } from "../../state/useStation.js";
 import {
   closeShift,
   listCustomerDirectory,
+  listShiftCredit,
   listShifts,
   readableError,
   resubmitRejectedShift,
@@ -14,6 +15,48 @@ import { SHIFT_STATUS, shiftTotals, validateClosing } from "../../lib/shiftMath"
 import { shiftPaths } from "./paths.js";
 import { useDraft } from "../../state/useDraft.js";
 import { setFlash } from "../../lib/flash.js";
+
+/** Turn the balance-free ledger response into the close form's display model. */
+export function recordedCreditSales(entries = []) {
+  return entries
+    .filter((entry) => entry.status === "active")
+    .map((entry) => ({
+      transactionId: entry.id,
+      customerId: entry.customerId,
+      name: entry.customerName,
+      phone: entry.customerPhone || "",
+      amount: String(entry.amount ?? ""),
+    }));
+}
+
+/**
+ * Refresh posted entries from the ledger without discarding genuinely new
+ * close-screen rows. Exact legacy draft duplicates are dropped: before posted
+ * credit was loaded here, a person could retype the same sale at close.
+ */
+export function mergeRecordedCredit(current = [], entries = [], preserveEdits = false) {
+  const recorded = recordedCreditSales(entries);
+  const draftsByTransaction = new Map(
+    current.filter((row) => row.transactionId).map((row) => [row.transactionId, row])
+  );
+  const merged = recorded.map((row) => {
+    const draft = draftsByTransaction.get(row.transactionId);
+    return preserveEdits && draft
+      ? { ...row, ...draft, transactionId: row.transactionId }
+      : row;
+  });
+  const sameSale = (left, right) =>
+    String(left.customerId || "") === String(right.customerId || "") &&
+    num(left.amount) === num(right.amount) &&
+    String(left.name || "").trim() === String(right.name || "").trim() &&
+    String(left.phone || "").trim() === String(right.phone || "").trim();
+  const unposted = current.filter(
+    (row) =>
+      !row.transactionId &&
+      (row.clientId || !recorded.some((posted) => sameSale(row, posted)))
+  );
+  return [...merged, ...unposted];
+}
 
 /**
  * Everything the close-shift screen knows, minus the drawing.
@@ -81,13 +124,22 @@ export function useCloseShiftForm() {
       if (!stationId) return;
       setLoading(true);
       try {
-        const [rows, directory] = await Promise.all([
+        const [rows, directory, recordedCredit] = await Promise.all([
           listShifts(stationId),
           listCustomerDirectory(stationId).catch(() => []),
+          listShiftCredit(stationId, id),
         ]);
         if (cancelled) return;
-        setShift(rows.find((s) => s.id === id) || null);
+        const loadedShift = rows.find((s) => s.id === id) || null;
+        setShift(loadedShift);
         setCustomers(directory);
+        setCreditSales((current) =>
+          mergeRecordedCredit(
+            current,
+            recordedCredit,
+            loadedShift?.status === SHIFT_STATUS.REJECTED
+          )
+        );
         setLoadError("");
       } catch (err) {
         if (!cancelled) setLoadError(readableError(err));
@@ -98,7 +150,7 @@ export function useCloseShiftForm() {
     return () => {
       cancelled = true;
     };
-  }, [stationId, id]);
+  }, [stationId, id, setCreditSales]);
 
   // A shift that is positively known to be settled has no draft worth
   // keeping — someone else closed it, or an earlier submit landed after
@@ -145,11 +197,8 @@ export function useCloseShiftForm() {
             shift.nozzles.map((nozzle) => [nozzle.nozzleId, nozzle.closingReading ?? ""])
           )
     );
-    setCreditSales((current) =>
-      current.length > 0
-        ? current
-        : (shift.creditSales || []).map((sale) => ({ ...sale }))
-    );
+    // Credit is seeded independently from list_shift_credit, the authoritative
+    // ledger read. shift.creditSales is only a report snapshot.
     setPayments((current) =>
       Object.values(current).some((value) => value !== "")
         ? current
@@ -170,7 +219,6 @@ export function useCloseShiftForm() {
     id,
     isCorrection,
     setClosings,
-    setCreditSales,
     setPayments,
     setTesting,
     setNote,
@@ -235,7 +283,7 @@ export function useCloseShiftForm() {
         closingReadings: Object.fromEntries(
           withClosings.map((nozzle) => [nozzle.nozzleId, nozzle.closingReading])
         ),
-        creditSales,
+        creditSales: creditSales.map(({ clientId: _clientId, ...sale }) => sale),
         payments,
         testing,
         note,

@@ -23,6 +23,7 @@ import CloseShift from "./CloseShift.jsx";
 const api = vi.hoisted(() => ({
   listShifts: vi.fn(),
   listCustomerDirectory: vi.fn(),
+  listShiftCredit: vi.fn(),
   closeShift: vi.fn(),
   resubmitRejectedShift: vi.fn(),
 }));
@@ -30,6 +31,7 @@ const api = vi.hoisted(() => ({
 vi.mock("../../lib/api", () => ({
   listShifts: api.listShifts,
   listCustomerDirectory: api.listCustomerDirectory,
+  listShiftCredit: api.listShiftCredit,
   closeShift: api.closeShift,
   resubmitRejectedShift: api.resubmitRejectedShift,
   readableError: (error) => String(error?.message || error),
@@ -162,6 +164,7 @@ beforeEach(() => {
   window.localStorage.clear();
   auth.profile = { uid: "u-att", role: "attendant", name: "Ravi" };
   api.listShifts.mockResolvedValue([OPEN_SHIFT, REJECTED_SHIFT]);
+  api.listShiftCredit.mockResolvedValue([]);
   api.listCustomerDirectory.mockResolvedValue([
     { id: "c1", name: "Kumar Transports", phone: "9000000000" },
   ]);
@@ -188,6 +191,29 @@ describe("closing a shift", () => {
     expect(container.querySelector(".screen-head h1").textContent).toContain("Ravi");
     // The expense logged while the shift was open is shown, read-only.
     expect(container.textContent).toContain("Tea");
+  });
+
+  it("shows running-shift credit as already posted and counts it once", async () => {
+    api.listShiftCredit.mockResolvedValue([
+      {
+        id: "tx-1",
+        customerId: "c1",
+        customerName: "Kumar Transports",
+        customerPhone: "9000000000",
+        amount: 750,
+        status: "active",
+      },
+    ]);
+
+    await mountClose("sh-1");
+
+    const postedAmount = [...container.querySelectorAll(".credit-row input")].at(-1);
+    expect(postedAmount.value).toBe("750");
+    expect(postedAmount.disabled).toBe(true);
+    expect(container.querySelector(".credit-row .row-remove")).toBeNull();
+    expect(container.querySelector("[data-testid='check-credit']").textContent).toContain(
+      "750"
+    );
   });
 
   it("refuses to submit a reading below the opening and names the nozzle", async () => {
