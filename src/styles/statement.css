@@ -4,8 +4,8 @@
 
    The screen is laid out so that the two money actions are reachable the
    instant the screen opens: header, a ~120px balance card that carries the
-   buttons inside it, then a statement that takes whatever height is left and
-   scrolls inside itself. The page as a whole does not scroll on a phone.
+   buttons inside it, then a statement that grows with its content. The page
+   itself owns scrolling on phones, which keeps the complete ledger visible.
    ===================================================================== */
 
 .customer-screen {
@@ -102,7 +102,7 @@
 /* ---------------- statement shell ---------------- */
 
 .statement {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -135,7 +135,9 @@
 .statement__chips {
   display: flex;
   gap: 6px;
+  flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -197,11 +199,9 @@
 /* ---------------- the ledger itself ---------------- */
 
 .statement__scroll {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   position: relative;
   border-top: 1px solid var(--hairline);
 }
@@ -211,6 +211,7 @@
   top: 0;
   z-index: 3;
   display: flex;
+  min-width: 0;
   justify-content: space-between;
   gap: 10px;
   padding: 6px 2px;
@@ -291,7 +292,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 52%;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -313,6 +316,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   padding: 7px 2px;
   font-size: 12px;
   font-weight: 700;
@@ -329,6 +333,8 @@
 }
 
 .st-balance__v {
+  flex: 0 1 auto;
+  min-width: 0;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -352,9 +358,11 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
 }
 
 .st-totals dt {
+  min-width: 0;
   font-size: 11.5px;
   color: var(--muted);
 }
@@ -383,6 +391,7 @@
 
 .statement-full {
   position: fixed;
+  overflow-y: auto;
   inset: 0;
   z-index: 60;
   display: flex;
@@ -427,7 +436,7 @@
 }
 
 .statement-full__body {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -441,15 +450,16 @@
 /* ---------------- breakpoints ---------------- */
 
 /*
- * Phones and small tablets: the shell's scrolling column hands its height to
- * this screen (CustomerDetail adds `main--fixed` while it is mounted), so the
- * balance card and its buttons cannot be scrolled away and only the statement
- * moves.
+ * Phones and small tablets: keep the shell's normal page scroll. The
+ * customer page adds bottom room for the fixed tab bar, while the statement
+ * and its summary rows remain part of that same scroll.
  */
 @media (max-width: 860px) {
   .main.main--fixed {
-    overflow: hidden;
-    padding-bottom: 0;
+    /* Keep the route in the normal page scroll; do not create a nested
+       statement viewport on mobile Safari. */
+    overflow-y: auto;
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
   }
 
   .main.main--fixed > div[class^="route-"],
@@ -458,10 +468,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-  }
-
-  .shell--tabs .main.main--fixed .customer-screen {
-    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
   }
 
   .customer-screen {
@@ -487,12 +493,6 @@
   }
 }
 
-@media (min-width: 861px) {
-  .statement__scroll {
-    max-height: 60vh;
-  }
-}
-
 @media (max-width: 380px) {
   .balance-card__actions .cta {
     font-size: 13.5px;
@@ -500,6 +500,22 @@
 
   .balance-card__value {
     font-size: 23px;
+  }
+}
+
+@media (max-width: 380px) {
+  .st-row__figures,
+  .st-balance__v,
+  .st-totals dd {
+    font-size: 0.96em;
+  }
+
+  .st-row__amt {
+    font-size: 12px;
+  }
+
+  .st-row__bal {
+    font-size: 10px;
   }
 }
 
