@@ -164,13 +164,17 @@
 
 .statement__custom {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
+}
+
+.statement__custom .field,
+.statement__custom input {
+  min-width: 0;
 }
 
 .statement__custom input {
   width: 100%;
-  min-width: 0;
   box-sizing: border-box;
 }
 

@@ -34,9 +34,19 @@ function rulesFor(selector) {
 
 describe("customer statement layout", () => {
   it("hands the shell's height to the screen so the page itself cannot scroll", () => {
+    const shell = rulesFor(".shell");
+    expect(shell).toMatch(/grid-template-rows:\s*auto minmax\(0, 1fr\)/);
     const main = rulesFor(".main.main--fixed");
     expect(main).toMatch(/overflow:\s*hidden/);
     expect(main).toMatch(/padding-bottom:\s*0/);
+  });
+
+  it("keeps custom date fields inside the card on narrow phones", () => {
+    expect(rulesFor(".statement__custom")).toMatch(
+      /grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\)/
+    );
+    expect(rulesFor(".statement__custom .field")).toMatch(/min-width:\s*0/);
+    expect(rulesFor(".statement__custom input")).toMatch(/min-width:\s*0/);
   });
 
   it("lets only the statement scroll, inside the remaining height", () => {
