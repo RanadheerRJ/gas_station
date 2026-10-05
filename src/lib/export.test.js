@@ -18,6 +18,7 @@ import {
   rowsPerPage,
   scopeShiftsToViewer,
   shiftsReport,
+  shiftStatementReport,
   stationSlug,
   statusText,
   stockReport,
@@ -132,6 +133,19 @@ describe("reportFilename", () => {
     expect(reportFilename({ ...range, stationName: "Alpha" })).not.toBe(
       reportFilename({ ...range, stationName: "Beta" })
     );
+  });
+
+  it("adds fuel and employee scope tokens when filtered", () => {
+    expect(
+      reportFilename({
+        report: "shifts",
+        stationName: "City Ctr",
+        from: "2026-09-01",
+        to: "2026-09-19",
+        fuelGroup: "MS",
+        employeeName: "Ravi Kumar",
+      })
+    ).toBe("petrav-shifts-cityctr-ms-ravikumar-2026-09-01_2026-09-19.csv");
   });
 });
 
@@ -363,6 +377,184 @@ describe("shiftsReport", () => {
   it("does not translate the employee's own name", () => {
     const [row] = shiftsReport({ shifts: [shift], stationName: "" }).rows;
     expect(row).toContain("Amy Attendant");
+  });
+});
+
+describe("shiftStatementReport", () => {
+  const col = (name) => shiftStatementReport().columns.indexOf(name);
+  const makeShift = ({
+    id,
+    date,
+    employeeId,
+    employeeName,
+    startHour,
+    endHour,
+    nozzles,
+    payments,
+    testing = {},
+    expenses = [],
+    status = SHIFT_STATUS.APPROVED,
+  }) => ({
+    id,
+    date,
+    employeeId,
+    userId: employeeId,
+    employeeName,
+    startTime: `${date}T${startHour}:00:00Z`,
+    endTime: `${date}T${endHour}:00:00Z`,
+    status,
+    payments,
+    testing,
+    expenses,
+    nozzles,
+  });
+  const nozzle = (label, fuelType, litres, price) => ({
+    nozzleId: label,
+    label,
+    fuelType,
+    openingReading: 1000,
+    closingReading: 1000 + litres,
+    price,
+  });
+  const ravi = makeShift({
+    id: "ravi-am",
+    date: "2026-10-05",
+    employeeId: "ravi",
+    employeeName: "Ravi, ₹ Team",
+    startHour: "06",
+    endHour: "14",
+    testing: { MS: 20, HSD: 0 },
+    expenses: [{ label: "Tea", amount: 30 }],
+    payments: { cash: 30000, upi: 2000, card: 1000, credit: 500 },
+    nozzles: [
+      nozzle("N1", "Petrol", 100, 100),
+      nozzle("N2", "MS", 50, 110),
+      nozzle("D1", "Diesel", 200, 90),
+    ],
+  });
+  const asha = makeShift({
+    id: "asha-pm",
+    date: "2026-10-05",
+    employeeId: "asha",
+    employeeName: "Asha Attendant",
+    startHour: "14",
+    endHour: "22",
+    payments: { cash: 1000, upi: 0, card: 0, credit: 0 },
+    nozzles: [nozzle("N3", "Petrol", 10, 100)],
+  });
+  const ben = makeShift({
+    id: "ben-next",
+    date: "2026-10-06",
+    employeeId: "ben",
+    employeeName: "Ben Attendant",
+    startHour: "06",
+    endHour: "14",
+    payments: { cash: 6000, upi: 250, card: 0, credit: 0 },
+    nozzles: [nozzle("D2", "HSD", 50, 90), nozzle("C1", "CNG", 25, 70)],
+  });
+
+  it("uses blended rates per fuel group", () => {
+    const [row] = shiftStatementReport({ shifts: [ravi] }).rows;
+    expect(row[col("MS litres")]).toBe("150.00");
+    expect(row[col("MS amount")]).toBe("15500.00");
+    expect(row[col("MS rate")]).toBe("103.33");
+    expect(row[col("HSD rate")]).toBe("90.00");
+  });
+
+  it("leaves a zero-litre rate blank rather than rendering NaN", () => {
+    const [row] = shiftStatementReport({ shifts: [asha] }).rows;
+    expect(row[col("HSD litres")]).toBe("0.00");
+    expect(row[col("HSD rate")]).toBe("");
+    expect(row[col("HSD rate")]).not.toBe("NaN");
+  });
+
+  it("adds day subtotals and one grand total", () => {
+    const report = shiftStatementReport({ shifts: [ravi, asha, ben] });
+    const dayTotal = report.rows.find(
+      (row) =>
+        row[col("Employee")] === "Day total" && row[col("Total sale")] === "34500.00"
+    );
+    const grand = report.rows.at(-1);
+    expect(dayTotal[col("MS litres")]).toBe("160.00");
+    expect(dayTotal[col("MS amount")]).toBe("16500.00");
+    expect(dayTotal[col("Total litres")]).toBe("360.00");
+    expect(dayTotal[col("Cash")]).toBe("31000.00");
+    expect(dayTotal[col("Cash received")]).toBe("30950.00");
+    expect(dayTotal[col("Variance")]).toBe("50.00");
+    expect(grand[col("Employee")]).toBe("GRAND TOTAL");
+    expect(grand[col("HSD amount")]).toBe("22500.00");
+    expect(grand[col("Other amount")]).toBe("1750.00");
+    expect(grand[col("Total sale")]).toBe("40750.00");
+    expect(grand[col("Net due")]).toBe("40700.00");
+  });
+
+  it("honours employee, status, and fuel filters with only the scoped fuel populated", () => {
+    const report = shiftStatementReport({
+      shifts: [ravi, asha, ben],
+      fuelGroup: "MS",
+      employeeId: "ravi",
+      status: SHIFT_STATUS.APPROVED,
+    });
+    expect(report.rows).toHaveLength(3);
+    const [row] = report.rows;
+    expect(row[col("Employee")]).toBe("Ravi, ₹ Team");
+    expect(row[col("MS litres")]).toBe("150.00");
+    expect(row[col("MS amount")]).toBe("15500.00");
+    expect(row[col("HSD litres")]).toBe("");
+    expect(row[col("Other litres")]).toBe("");
+    expect(row[col("Total sale")]).toBe("15500.00");
+  });
+
+  it("orders shifts oldest first and closes each date with a day total", () => {
+    const report = shiftStatementReport({ shifts: [ben, asha, ravi] });
+    expect(report.rows.map((row) => row[col("Employee")])).toEqual([
+      "Ravi, ₹ Team",
+      "Asha Attendant",
+      "Day total",
+      "Ben Attendant",
+      "Day total",
+      "GRAND TOTAL",
+    ]);
+    expect(report.rows[0][col("Opened (HH:MM)")]).toBe("06:00");
+    expect(report.rows[1][col("Opened (HH:MM)")]).toBe("14:00");
+  });
+
+  it("round-trips one row through CSV and keeps PDF text safe", () => {
+    const report = shiftStatementReport({ shifts: [ravi] });
+    const csv = toCsv({ columns: report.columns, rows: [report.rows[0]] });
+    const csvRows = csv.split("\r\n").map((line) => {
+      const cells = [];
+      let cell = "";
+      let quoted = false;
+      for (let index = 0; index < line.length; index += 1) {
+        const char = line[index];
+        if (char === '"' && quoted && line[index + 1] === '"') {
+          cell += '"';
+          index += 1;
+        } else if (char === '"') {
+          quoted = !quoted;
+        } else if (char === "," && !quoted) {
+          cells.push(cell);
+          cell = "";
+        } else {
+          cell += char;
+        }
+      }
+      cells.push(cell);
+      return cells;
+    });
+    expect(csvRows[1][col("Employee")]).toBe("Ravi, ₹ Team");
+    expect(csv).toContain('"Ravi, ₹ Team"');
+    expect(pdfSafe("₹ collected")).toBe("Rs. collected");
+    const pdf = buildPdf({
+      title: "Daily ₹ Statement",
+      columns: report.columns,
+      rows: [report.rows[0]],
+    });
+    expect(pdf).toContain("Daily Rs. Statement");
+    expect(pdf).toContain("Ravi, Rs. Team");
+    expect(pdf).toContain("Cash received");
+    expect(pdf).toContain("Status");
   });
 });
 

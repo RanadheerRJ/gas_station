@@ -12,7 +12,7 @@ import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
 import { formatDate, money, num } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
-import { filterByRange, ledgerReport } from "../../lib/export.js";
+import { filterByRange, shiftStatementReport } from "../../lib/export.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /** Where this role's ledger screens live, for links and the back arrow. */
@@ -108,12 +108,12 @@ export default function LedgerList() {
 
   const buildReport = useCallback(
     (range, filters = {}) =>
-      ledgerReport({
-        days: filterByRange(days, range),
+      shiftStatementReport({
+        shifts: filterByRange(shifts, range),
         stationName: station?.name || "",
         ...filters,
       }),
-    [days, station]
+    [shifts, station]
   );
 
   if (stationsLoading) {
@@ -137,8 +137,8 @@ export default function LedgerList() {
         }
         actions={
           <ReportSheet
-            report="ledger"
-            title="Daily ledger"
+            report="shifts"
+            title="Daily Sales Statement"
             stationName={station?.name || ""}
             buildReport={buildReport}
           />

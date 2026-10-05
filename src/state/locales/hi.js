@@ -72,6 +72,9 @@ const hi = {
   "common.phoneRequired": "फ़ोन नंबर दर्ज करें।",
   "common.phoneProblem": "सही फ़ोन नंबर दर्ज करें — 10 से 15 अंक।",
 
+  "shifts.statement": "दैनिक बिक्री विवरण",
+  "shifts.monthToDate": "माह से आज तक",
+
   "report.title": "रिपोर्ट और निर्यात",
   "report.fuel": "ईंधन",
   "report.allFuels": "सभी ईंधन",

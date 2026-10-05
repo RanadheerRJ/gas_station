@@ -272,18 +272,13 @@ function fuelBreakdown(fuels = {}) {
     .join("; ");
 }
 
-/**
- * Shifts: one row per handed-in shift.
- * date · employee · nozzles · readings · sales by fuel · expenses · variance · status
- */
-export function shiftsReport({
+function reportScopedShifts({
   shifts = [],
-  stationName = "",
   fuelGroup = "ALL",
   employeeId = "",
   status = "ALL",
 } = {}) {
-  const selected = shifts
+  return shifts
     .filter(
       (shift) =>
         !employeeId || shift.employeeId === employeeId || shift.userId === employeeId
@@ -299,6 +294,20 @@ export function shiftsReport({
       };
     })
     .filter((shift) => fuelGroup === "ALL" || (shift.nozzles || []).length > 0);
+}
+
+/**
+ * Shifts: one row per handed-in shift.
+ * date · employee · nozzles · readings · sales by fuel · expenses · variance · status
+ */
+export function shiftsReport({
+  shifts = [],
+  stationName = "",
+  fuelGroup = "ALL",
+  employeeId = "",
+  status = "ALL",
+} = {}) {
+  const selected = reportScopedShifts({ shifts, fuelGroup, employeeId, status });
   return {
     columns: [
       "Date",
@@ -340,6 +349,234 @@ export function shiftsReport({
       ];
     }),
   };
+}
+
+const SHIFT_STATEMENT_COLUMNS = [
+  "Date",
+  "Employee",
+  "Opened (HH:MM)",
+  "Closed (HH:MM)",
+  "MS litres",
+  "MS rate",
+  "MS amount",
+  "HSD litres",
+  "HSD rate",
+  "HSD amount",
+  "Other litres",
+  "Other amount",
+  "Total litres",
+  "Total sale",
+  "Testing",
+  "Expenses",
+  "Cash",
+  "UPI",
+  "Card",
+  "Credit",
+  "Net due",
+  "Cash received",
+  "Variance",
+  "Status",
+];
+
+const STATEMENT_INDEX = {
+  date: 0,
+  employee: 1,
+  msLitres: 4,
+  msRate: 5,
+  msAmount: 6,
+  hsdLitres: 7,
+  hsdRate: 8,
+  hsdAmount: 9,
+  otherLitres: 10,
+  otherAmount: 11,
+  totalLitres: 12,
+  totalSale: 13,
+  testing: 14,
+  expenses: 15,
+  cash: 16,
+  upi: 17,
+  card: 18,
+  credit: 19,
+  netDue: 20,
+  cashReceived: 21,
+  variance: 22,
+};
+
+const STATEMENT_ADDITIVE_INDEXES = [
+  STATEMENT_INDEX.msLitres,
+  STATEMENT_INDEX.msAmount,
+  STATEMENT_INDEX.hsdLitres,
+  STATEMENT_INDEX.hsdAmount,
+  STATEMENT_INDEX.otherLitres,
+  STATEMENT_INDEX.otherAmount,
+  STATEMENT_INDEX.totalLitres,
+  STATEMENT_INDEX.totalSale,
+  STATEMENT_INDEX.testing,
+  STATEMENT_INDEX.expenses,
+  STATEMENT_INDEX.cash,
+  STATEMENT_INDEX.upi,
+  STATEMENT_INDEX.card,
+  STATEMENT_INDEX.credit,
+  STATEMENT_INDEX.netDue,
+  STATEMENT_INDEX.cashReceived,
+  STATEMENT_INDEX.variance,
+];
+
+function clockTime(value) {
+  if (!value) return "";
+  const text = String(value);
+  const plain = text.match(/^(\d{2}):(\d{2})/);
+  if (plain) return `${plain[1]}:${plain[2]}`;
+  const iso = text.match(/T(\d{2}):(\d{2})/);
+  if (iso) return `${iso[1]}:${iso[2]}`;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(
+        2,
+        "0"
+      )}`;
+}
+
+function statementFuelBucket(lines = [], groups = []) {
+  return lines.reduce(
+    (out, line) => {
+      if (groups.includes(classifyFuel(line.fuelType))) {
+        out.litres += num(line.litresSold);
+        out.revenue += num(line.revenue);
+      }
+      return out;
+    },
+    { litres: 0, revenue: 0 }
+  );
+}
+
+function statementShowsGroup(fuelGroup, group) {
+  if (fuelGroup === "ALL") return true;
+  if (group === "OTHER") return fuelGroup === "CNG" || fuelGroup === "OTHER";
+  return fuelGroup === group;
+}
+
+function statementRate(litres, revenue) {
+  return num(litres) > 0 ? decimal(num(revenue) / num(litres)) : "";
+}
+
+function statementFuelCells(bucket, group, fuelGroup) {
+  if (!statementShowsGroup(fuelGroup, group)) {
+    return group === "OTHER" ? ["", ""] : ["", "", ""];
+  }
+  if (group === "OTHER") return [decimal(bucket.litres), decimal(bucket.revenue)];
+  return [
+    decimal(bucket.litres),
+    statementRate(bucket.litres, bucket.revenue),
+    decimal(bucket.revenue),
+  ];
+}
+
+function shiftStatementDataRow(shift, fuelGroup) {
+  const totals = shiftTotals(shift);
+  const ms = statementFuelBucket(totals.lines, ["MS"]);
+  const hsd = statementFuelBucket(totals.lines, ["HSD"]);
+  const other = statementFuelBucket(totals.lines, ["CNG", "OTHER"]);
+
+  return [
+    shift.date || isoDay(shift.startTime),
+    shift.employeeName || "—",
+    clockTime(shift.startTime),
+    clockTime(shift.endTime),
+    ...statementFuelCells(ms, "MS", fuelGroup),
+    ...statementFuelCells(hsd, "HSD", fuelGroup),
+    ...statementFuelCells(other, "OTHER", fuelGroup),
+    decimal(totals.totalLitres),
+    decimal(totals.gross),
+    decimal(totals.testingTotal),
+    decimal(totals.expensesTotal),
+    decimal(totals.payments.cash),
+    decimal(totals.payments.upi),
+    decimal(totals.payments.card),
+    decimal(totals.payments.credit),
+    decimal(totals.net),
+    decimal(totals.handover),
+    decimal(totals.variance),
+    statusText(shift.status),
+  ];
+}
+
+function shiftStatementTotalRow(rows, label, fuelGroup) {
+  const row = Array(SHIFT_STATEMENT_COLUMNS.length).fill("");
+  row[STATEMENT_INDEX.employee] = label;
+  STATEMENT_ADDITIVE_INDEXES.forEach((index) => {
+    row[index] = decimal(rows.reduce((sum, item) => sum + num(item[index]), 0));
+  });
+
+  if (statementShowsGroup(fuelGroup, "MS")) {
+    row[STATEMENT_INDEX.msRate] = statementRate(
+      row[STATEMENT_INDEX.msLitres],
+      row[STATEMENT_INDEX.msAmount]
+    );
+  } else {
+    row[STATEMENT_INDEX.msLitres] = "";
+    row[STATEMENT_INDEX.msRate] = "";
+    row[STATEMENT_INDEX.msAmount] = "";
+  }
+
+  if (statementShowsGroup(fuelGroup, "HSD")) {
+    row[STATEMENT_INDEX.hsdRate] = statementRate(
+      row[STATEMENT_INDEX.hsdLitres],
+      row[STATEMENT_INDEX.hsdAmount]
+    );
+  } else {
+    row[STATEMENT_INDEX.hsdLitres] = "";
+    row[STATEMENT_INDEX.hsdRate] = "";
+    row[STATEMENT_INDEX.hsdAmount] = "";
+  }
+
+  if (!statementShowsGroup(fuelGroup, "OTHER")) {
+    row[STATEMENT_INDEX.otherLitres] = "";
+    row[STATEMENT_INDEX.otherAmount] = "";
+  }
+
+  return row;
+}
+
+/** Bank-statement-style, chronological shift sales and settlement detail. */
+export function shiftStatementReport({
+  shifts = [],
+  stationName = "",
+  fuelGroup = "ALL",
+  employeeId = "",
+  status = "ALL",
+} = {}) {
+  const selected = reportScopedShifts({ shifts, fuelGroup, employeeId, status }).sort(
+    (a, b) => {
+      const day = String(a.date || isoDay(a.startTime)).localeCompare(
+        String(b.date || isoDay(b.startTime))
+      );
+      return day || String(a.startTime || "").localeCompare(String(b.startTime || ""));
+    }
+  );
+  const rawRows = selected.map((shift) => shiftStatementDataRow(shift, fuelGroup));
+  const rows = [];
+  let dayRows = [];
+
+  rawRows.forEach((row, index) => {
+    if (
+      dayRows.length &&
+      row[STATEMENT_INDEX.date] !== dayRows[0][STATEMENT_INDEX.date]
+    ) {
+      rows.push(shiftStatementTotalRow(dayRows, "Day total", fuelGroup));
+      dayRows = [];
+    }
+    rows.push(row);
+    dayRows.push(row);
+    if (index === rawRows.length - 1) {
+      rows.push(shiftStatementTotalRow(dayRows, "Day total", fuelGroup));
+    }
+  });
+  if (rawRows.length)
+    rows.push(shiftStatementTotalRow(rawRows, "GRAND TOTAL", fuelGroup));
+
+  return { columns: SHIFT_STATEMENT_COLUMNS, rows, meta: { station: stationName } };
 }
 
 /**
@@ -627,6 +864,7 @@ export function monthlyReport({
 export const PAGE = { width: 842, height: 595, margin: 32 };
 const FONT_SIZE = 7;
 const LEADING = 10.5;
+const MIN_FONT_SIZE = 4.5;
 /** Courier is fixed-pitch at 0.6 em, which is what makes the columns line up. */
 const CHAR_WIDTH = FONT_SIZE * 0.6;
 export const MAX_CHARS = Math.floor((PAGE.width - PAGE.margin * 2) / CHAR_WIDTH);
@@ -650,16 +888,8 @@ function pdfEscape(text) {
   return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-/**
- * Lay a report out as fixed-width text rows.
- *
- * Each column is sized to its widest cell, then the whole line is clipped to
- * the page width so a long note can never spill off the paper.
- */
-export function pdfTextRows({ columns = [], rows = [] } = {}) {
-  const safeColumns = columns.map(pdfSafe);
-  const safeRows = rows.map((row) => row.map(pdfSafe));
-  const widths = safeColumns.map((column, index) =>
+function pdfColumnWidths(safeColumns = [], safeRows = []) {
+  return safeColumns.map((column, index) =>
     Math.min(
       36,
       Math.max(
@@ -669,6 +899,45 @@ export function pdfTextRows({ columns = [], rows = [] } = {}) {
       )
     )
   );
+}
+
+function pdfLineLength(widths = []) {
+  if (!widths.length) return 0;
+  return widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * 2;
+}
+
+function pdfLayoutProfile({ columns = [], rows = [] } = {}) {
+  const safeColumns = columns.map(pdfSafe);
+  const safeRows = rows.map((row) => row.map(pdfSafe));
+  const neededChars = pdfLineLength(pdfColumnWidths(safeColumns, safeRows));
+  if (neededChars <= MAX_CHARS) {
+    return { fontSize: FONT_SIZE, leading: LEADING, maxChars: MAX_CHARS };
+  }
+  const printableWidth = PAGE.width - PAGE.margin * 2;
+  const fontSize = Math.max(
+    MIN_FONT_SIZE,
+    Math.min(FONT_SIZE, printableWidth / (Math.max(neededChars, 1) * 0.6))
+  );
+  return {
+    fontSize,
+    leading: fontSize * 1.5,
+    maxChars: Math.floor(printableWidth / (fontSize * 0.6)),
+  };
+}
+
+/**
+ * Lay a report out as fixed-width text rows.
+ *
+ * Each column is sized to its widest cell, then the whole line is clipped to
+ * the page width so a long note can never spill off the paper.
+ */
+export function pdfTextRows(
+  { columns = [], rows = [] } = {},
+  { maxChars = MAX_CHARS } = {}
+) {
+  const safeColumns = columns.map(pdfSafe);
+  const safeRows = rows.map((row) => row.map(pdfSafe));
+  const widths = pdfColumnWidths(safeColumns, safeRows);
   const line = (cells) =>
     cells
       .map((cell, index) =>
@@ -677,20 +946,20 @@ export function pdfTextRows({ columns = [], rows = [] } = {}) {
           .padEnd(widths[index])
       )
       .join("  ")
-      .slice(0, MAX_CHARS)
+      .slice(0, maxChars)
       .trimEnd();
 
   return {
     header: line(safeColumns),
-    rule: "-".repeat(Math.min(MAX_CHARS, line(safeColumns).length)),
+    rule: "-".repeat(Math.min(maxChars, line(safeColumns).length)),
     body: safeRows.map(line),
   };
 }
 
 /** How many body rows fit under the title block on one page. */
-export function rowsPerPage() {
-  const usable = PAGE.height - PAGE.margin * 2 - LEADING * 5;
-  return Math.max(1, Math.floor(usable / LEADING));
+export function rowsPerPage(leading = LEADING) {
+  const usable = PAGE.height - PAGE.margin * 2 - leading * 5;
+  return Math.max(1, Math.floor(usable / leading));
 }
 
 /** Split body lines into pages. An empty report still produces one page. */
@@ -709,8 +978,9 @@ export function paginate(lines = [], perPage = rowsPerPage()) {
  * text object per line, and nothing else.
  */
 export function buildPdf({ title = "", subtitle = "", columns = [], rows = [] } = {}) {
-  const laid = pdfTextRows({ columns, rows });
-  const pages = paginate(laid.body);
+  const profile = pdfLayoutProfile({ columns, rows });
+  const laid = pdfTextRows({ columns, rows }, { maxChars: profile.maxChars });
+  const pages = paginate(laid.body, rowsPerPage(profile.leading));
 
   const objects = [];
   const pageObjectIds = [];
@@ -747,17 +1017,17 @@ export function buildPdf({ title = "", subtitle = "", columns = [], rows = [] } 
       ...footer,
     ];
 
-    let y = PAGE.height - PAGE.margin - LEADING;
+    let y = PAGE.height - PAGE.margin - profile.leading;
     const stream = all
       .map(({ text, bold }) => {
         const chunk = [
           "BT",
-          `/${bold ? "F2" : "F1"} ${FONT_SIZE} Tf`,
+          `/${bold ? "F2" : "F1"} ${profile.fontSize.toFixed(2)} Tf`,
           `1 0 0 1 ${PAGE.margin} ${y.toFixed(2)} Tm`,
           `(${pdfEscape(text)}) Tj`,
           "ET",
         ].join("\n");
-        y -= LEADING;
+        y -= profile.leading;
         return chunk;
       })
       .join("\n");
