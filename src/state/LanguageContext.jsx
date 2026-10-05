@@ -6,7 +6,13 @@ import {
   useMemo,
   useState,
 } from "react";
-import { DICTIONARIES, LANGUAGES, LANGUAGE_NAMES } from "./translations.js";
+import {
+  LANGUAGES,
+  LANGUAGE_NAMES,
+  loadDictionary,
+  loadedDictionaries,
+  registerDictionary,
+} from "./translations.js";
 
 /**
  * Lightweight localisation.
@@ -16,9 +22,8 @@ import { DICTIONARIES, LANGUAGES, LANGUAGE_NAMES } from "./translations.js";
  * bundle size than the entire dictionary. `t("shifts.title")` reads a key out
  * of the active dictionary; `t("stock.tanks", { count: 3 })` fills the braces.
  *
- * The preference is per-device and survives a reload, because the person on
- * the forecourt and the person in the office often share one owner account
- * but not one language.
+ * Dictionaries are code-split into locale chunks and loaded before mount
+ * or on demand when switching language.
  */
 
 const LanguageContext = createContext(null);
@@ -28,7 +33,7 @@ const KEY = "petrav.language";
 const LEGACY_KEY = "pumpmithra.language";
 export const DEFAULT_LANGUAGE = "en";
 
-function preferredLanguage() {
+export function preferredLanguage() {
   if (typeof window === "undefined") return DEFAULT_LANGUAGE;
   let saved = window.localStorage?.getItem(KEY);
   if (saved == null) saved = window.localStorage?.getItem(LEGACY_KEY);
@@ -47,8 +52,9 @@ function preferredLanguage() {
  * complete by `src/state/translations.test.js`.
  */
 export function translate(language, key, vars) {
-  const dictionary = DICTIONARIES[language] || DICTIONARIES[DEFAULT_LANGUAGE];
-  const text = dictionary[key] ?? DICTIONARIES[DEFAULT_LANGUAGE][key] ?? key;
+  const activeDict = loadedDictionaries[language];
+  const fallbackDict = loadedDictionaries[DEFAULT_LANGUAGE] || activeDict || {};
+  const text = activeDict?.[key] ?? fallbackDict?.[key] ?? key;
   if (!vars) return text;
   return String(text).replace(/\{(\w+)\}/g, (match, name) =>
     Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match
@@ -63,8 +69,24 @@ export function pluralKey(count, singularKey, pluralisedKey) {
   return Number(count) === 1 ? singularKey : pluralisedKey;
 }
 
-export function LanguageProvider({ children }) {
-  const [language, setLanguageState] = useState(preferredLanguage);
+export function LanguageProvider({ children, initialLanguage, initialDictionary }) {
+  const [language, setLanguageState] = useState(() => {
+    const lang = initialLanguage || preferredLanguage();
+    return LANGUAGES.includes(lang) ? lang : DEFAULT_LANGUAGE;
+  });
+
+  if (initialDictionary && !loadedDictionaries[language]) {
+    registerDictionary(language, initialDictionary);
+  }
+
+  // Ensure language dictionary is loaded if not already in cache (e.g., in unit tests or fallback)
+  useEffect(() => {
+    if (!loadedDictionaries[language]) {
+      loadDictionary(language).then(() => {
+        setLanguageState((curr) => curr);
+      });
+    }
+  }, [language]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -75,8 +97,12 @@ export function LanguageProvider({ children }) {
     }
   }, [language]);
 
-  const setLanguage = useCallback((next) => {
-    setLanguageState(LANGUAGES.includes(next) ? next : DEFAULT_LANGUAGE);
+  const setLanguage = useCallback(async (next) => {
+    const target = LANGUAGES.includes(next) ? next : DEFAULT_LANGUAGE;
+    if (!loadedDictionaries[target]) {
+      await loadDictionary(target);
+    }
+    setLanguageState(target);
   }, []);
 
   const value = useMemo(

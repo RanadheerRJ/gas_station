@@ -16,7 +16,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+function readCssWithImports(fileUrl) {
+  const content = readFileSync(fileUrl, "utf8");
+  return content.replace(/@import\s+["']([^"']+)["'];/g, (_, importPath) => {
+    return readCssWithImports(new URL(importPath, fileUrl));
+  });
+}
+
+const css = readCssWithImports(new URL("./styles.css", import.meta.url));
 
 const SCREEN_HEAD = /^\.screen-head(\b|__)/;
 

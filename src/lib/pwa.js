@@ -34,3 +34,28 @@ export function watchConnection(onChange) {
     window.removeEventListener("offline", emit);
   };
 }
+
+/**
+ * Hard-refresh the app: deletes all CacheStorage caches, unregisters active
+ * service worker registrations, and reloads the page with a cache-busting
+ * timestamp so any client on an outdated build loads the latest version.
+ */
+export async function hardRefreshApp() {
+  try {
+    if (typeof window !== "undefined" && "caches" in window) {
+      const keys = await window.caches.keys();
+      await Promise.all(keys.map((key) => window.caches.delete(key)));
+    }
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((reg) => reg.unregister()));
+    }
+  } catch (error) {
+    console.warn("Error clearing cache during hard refresh:", error);
+  }
+  if (typeof window !== "undefined") {
+    const url = new URL(window.location.href);
+    url.searchParams.set("_reload", Date.now().toString());
+    window.location.replace(url.toString());
+  }
+}

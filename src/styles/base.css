@@ -1,0 +1,62 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink-strong);
+}
+
+h1 {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+h2 {
+  font-size: 15px;
+}
+h3 {
+  font-size: 13.5px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.mono,
+input[type="number"],
+td.num,
+th.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}

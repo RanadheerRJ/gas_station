@@ -1,0 +1,421 @@
+/* ---------------- motion ----------------
+   Movement is used to explain a change, never to decorate one. Everything
+   is short, eased, and disabled outright for anyone who asks for less. */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Page content settles in rather than snapping. */
+.content > * {
+  animation: rise var(--duration-page) var(--ease-out) both;
+}
+.content > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.content > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.content > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.content > *:nth-child(n + 5) {
+  animation-delay: 110ms;
+}
+
+button,
+.card,
+.panel,
+.tank-card,
+.sidebar nav a,
+input,
+select {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-instant) var(--ease-out);
+}
+
+/* A pressed control should feel like it took the press. */
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.cta:active:not(:disabled),
+.tab:active {
+  transform: scale(0.985);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Loading: a hairline that sweeps, in keeping with the flat rules. */
+.loading-bar {
+  position: relative;
+  height: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+}
+.loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  background: var(--accent);
+  animation: sweep var(--duration-loop) ease-in-out infinite;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ---------------- screen transitions ----------------
+   Drilling in slides from the right, returning slides back in from the
+   left; tab switches and first loads settle with a plain fade. The class is
+   chosen in motion.jsx, which also checks reduced motion in JS. */
+
+.route-fade {
+  animation: route-in var(--duration-page) var(--ease-out) both;
+}
+
+.route-push {
+  animation: push-in var(--duration-page) var(--ease-out) both;
+}
+
+.route-pop {
+  animation: pop-in var(--duration-page) var(--ease-out) both;
+}
+
+@keyframes route-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes push-in {
+  from {
+    opacity: 0;
+    transform: translateX(34px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateX(-34px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes sheet-down {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* ---------------- numeric readouts ----------------
+   Counting figures are rendered with tabular digits so the width does not
+   jitter while the value animates. */
+
+.num-roll {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.num-roll[data-settling="up"] {
+  animation: tick-up var(--duration-slow) var(--ease-out);
+}
+.num-roll[data-settling="down"] {
+  animation: tick-down var(--duration-slow) var(--ease-out);
+}
+
+@keyframes tick-up {
+  from {
+    color: var(--green);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+@keyframes tick-down {
+  from {
+    color: var(--rust);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+/* ---------------- status changes ---------------- */
+
+.badge,
+.tag {
+  transition:
+    background-color var(--duration-slow) var(--ease-out),
+    border-color var(--duration-slow) var(--ease-out),
+    color var(--duration-slow) var(--ease-out);
+}
+
+.badge[data-changed="true"],
+.tag[data-changed="true"] {
+  animation: badge-flip var(--duration-slow) var(--ease-out);
+}
+
+@keyframes badge-flip {
+  from {
+    opacity: 0.4;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- input feedback ---------------- */
+
+.shake {
+  animation: knock var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes knock {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+.field-accepted {
+  animation: accept-settle var(--duration-slow) var(--ease-out);
+}
+
+@keyframes accept-settle {
+  from {
+    border-color: var(--green);
+  }
+  to {
+    border-color: var(--hairline-strong);
+  }
+}
+
+/* ---------------- list enter and exit ---------------- */
+
+.row-enter {
+  animation: row-in var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row-exit {
+  animation: row-out var(--duration-base) var(--ease-in) both;
+  overflow: hidden;
+}
+
+@keyframes row-out {
+  from {
+    opacity: 1;
+    max-height: 260px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}
+
+/* ---------------- skeletons ---------------- */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--hairline) 0%,
+    var(--surface-sunken) 50%,
+    var(--hairline) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-breathe var(--duration-skeleton) var(--ease-standard) infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-breathe {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-line {
+  height: 10px;
+  margin: 8px 0;
+}
+.skeleton-line.wide {
+  width: 100%;
+}
+.skeleton-line.half {
+  width: 52%;
+}
+.skeleton-line.short {
+  width: 28%;
+}
+.skeleton-num {
+  height: 22px;
+  width: 96px;
+}
+
+.skeleton-panel {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Anyone who has asked their system for less movement gets none of it. All
+   information carried by motion is also carried by colour and text, so
+   collapsing every duration loses nothing but the movement itself. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Translation is removed outright rather than merely shortened, so nothing
+     lands off-position if a frame is dropped. */
+  .route-fade,
+  .route-push,
+  .route-pop,
+  .row-enter,
+  .shake,
+  .badge[data-changed="true"],
+  .tag[data-changed="true"],
+  .sheet,
+  .backdrop {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .skeleton {
+    animation: none !important;
+    background: var(--hairline) !important;
+  }
+}

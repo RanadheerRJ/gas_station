@@ -1,0 +1,650 @@
+/* ---------------- attendant home ---------------- */
+
+/* The running-shift card: calm surface, green pulse, the figures that
+   matter while you work. */
+.status-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.status-card:hover {
+  text-decoration: none;
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+
+.status-card--live {
+  border-color: rgba(21, 163, 74, 0.35);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(21, 163, 74, 0.08);
+}
+
+.status-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--green);
+  background: rgba(21, 163, 74, 0.1);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+
+.status-card__figures {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.status-card__figure .k {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-card__figure .v {
+  display: block;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.status-card__nozzles {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* The "nothing is happening" state: one icon, one sentence, one action. */
+.empty-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 44px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-card h2 {
+  font-size: 17px;
+}
+
+.empty-card p {
+  margin: 0;
+  max-width: 340px;
+}
+
+.empty-card__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-sunken);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* ---------------- start-shift picker ---------------- */
+
+.pick-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
+}
+
+.pick-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.pick-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.pick-card__name {
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-strong);
+}
+
+.nozzle-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+
+.nozzle-row:last-child {
+  border-bottom: none;
+}
+
+.nozzle-row:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.nozzle-row.selected {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent-strong);
+}
+
+.nozzle-row.busy {
+  cursor: not-allowed;
+  /* A taken nozzle is still read at arm's length in daylight: sunken
+     surface and muted-but-contrastive text, never a fade to grey. */
+  background: var(--surface-sunken);
+}
+
+.nozzle-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.nozzle-row__title {
+  font-size: 15.5px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--ink-strong);
+}
+
+.nozzle-row__sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Free / Busy word next to the tile's own state, so availability is stated
+   in text as well as by the tile being tappable or not. */
+.nozzle-row__state {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nozzle-row__state--busy {
+  border-color: var(--money-out);
+  color: var(--money-out);
+  background: var(--money-out-soft);
+}
+
+.nozzle-row__check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline-strong);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  flex: 0 0 auto;
+}
+
+.nozzle-row.selected .nozzle-row__check {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
+}
+
+:root[data-theme="dark"] .nozzle-row.selected .nozzle-row__check {
+  color: #0b1f47;
+}
+
+/* ---------------- rows inside detail cards ---------------- */
+
+.reading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.reading-row:hover {
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+.reading-row:last-child {
+  border-bottom: none;
+}
+
+.reading-row__label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 550;
+  font-size: 13.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.reading-row__value {
+  font-family: var(--mono);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reading-row__price {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/*
+ * Closing-readings: one block per nozzle. Fuel named in a colour+text chip,
+ * opening meter shown read-only with its label, a big 18px input for the
+ * closing number, the live "Sold" line beneath. A reading below its opening
+ * tints the block and spells the problem out in words.
+ */
+.closing-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.closing-row:last-child {
+  border-bottom: none;
+}
+
+.closing-row--flat {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+}
+
+.closing-row[data-bad="true"] {
+  background: var(--money-short-soft);
+}
+
+.closing-row__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.closing-row__name {
+  color: var(--ink-strong);
+  font-size: 14.5px;
+}
+
+.closing-row__label {
+  font-weight: 600;
+  font-size: 13.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.closing-row__figures {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(140px, 1fr);
+  gap: 12px 18px;
+  align-items: end;
+}
+
+.closing-row__figure span,
+.closing-row__figure label {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.closing-row__figure strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.closing-row__input {
+  width: 100%;
+  min-height: 50px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.closing-row__input.input-bad {
+  border-color: var(--money-short);
+}
+
+.closing-row__sold {
+  margin: 0;
+  color: var(--money-neutral);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.closing-row__error {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: var(--money-short);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* During a correction, a reading that no longer matches what was submitted. */
+.changed-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Credit sale rows in the close flow. */
+.credit-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(120px, 1.2fr) 120px 110px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Expense rows in the sheet. */
+.expense-list {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.expense-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.expense-row:last-child {
+  border-bottom: none;
+}
+
+.expense-row--total {
+  background: var(--surface-sunken);
+  font-weight: 650;
+}
+
+.expense-row__label {
+  font-size: 13.5px;
+}
+
+.expense-row__amount {
+  font-weight: 650;
+}
+
+/* ---------------- open-shift cards (manager/owner list) ---------------- */
+
+.open-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+
+.open-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.open-card__name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink-strong);
+}
+
+.open-card__nozzles {
+  display: inline-flex;
+  gap: 5px;
+  padding-top: 4px;
+}
+
+.open-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.primary-link {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.primary-link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+/* ---------------- close-flow: explanations, big inputs, summary ---------------- */
+
+/* One plain sentence under a section title: what to type and why. */
+.section-help {
+  margin: 10px 18px 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.card .section-help {
+  margin-inline: 0;
+}
+
+.section-pad {
+  padding-top: 12px;
+}
+
+/* The attendant's numeric inputs: 18px so a phone does not zoom, and a
+   thumb-sized field. */
+.input-xl {
+  min-height: 50px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+/* Add / remove row buttons sized for a thumb, never a skinny text link. */
+.row-remove,
+.row-add {
+  min-height: 48px;
+  padding-inline: 14px;
+}
+
+.row-remove {
+  color: var(--money-out);
+}
+
+/* The cash answer, stated beside the inputs that ask for it. */
+.cash-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.cash-check__figure {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cash-check__figure > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* The final "read it back" card: plain words, money colours, nothing to
+   type — the submit button is the only control on the screen after it. */
+.check-summary {
+  border-color: var(--accent-soft-strong);
+}
+
+.check-summary__rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.check-summary__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.check-summary__row:last-child {
+  border-bottom: none;
+}
+
+.check-summary__row dt {
+  color: var(--ink-strong);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.check-summary__row dd {
+  margin: 0;
+}
+
+.check-summary__row .money {
+  font-size: 17px;
+}
+
+.check-summary__credit-lines {
+  margin: 0;
+  padding: 2px 0 10px 14px;
+  list-style: none;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.check-summary__credit-lines li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 3px 0;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.check-summary__credit-lines .money {
+  font-size: 13px;
+}
+
+/* Reassurance under a failed submit: the typed work is still on the phone. */
+.draft-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+}

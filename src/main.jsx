@@ -4,10 +4,14 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./state/AuthContext";
 import { ThemeProvider } from "./state/ThemeContext";
-import { LanguageProvider } from "./state/LanguageContext.jsx";
+import { LanguageProvider, preferredLanguage } from "./state/LanguageContext.jsx";
+import { loadDictionary } from "./state/translations.js";
 import "./styles.css";
 import { registerServiceWorker } from "./lib/pwa";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+
+const lang = preferredLanguage();
+const initialDictionary = await loadDictionary(lang);
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -20,7 +24,7 @@ createRoot(document.getElementById("root")).render(
         turned off. */}
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ThemeProvider>
-        <LanguageProvider>
+        <LanguageProvider initialLanguage={lang} initialDictionary={initialDictionary}>
           <AuthProvider>
             <ErrorBoundary>
               <App />

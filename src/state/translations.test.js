@@ -2,13 +2,18 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  DICTIONARIES,
-  LANGUAGES,
-  LANGUAGE_NAMES,
-  TRANSLATION_KEYS,
-} from "./translations.js";
+import en from "./locales/en.js";
+import te from "./locales/te.js";
+import hi from "./locales/hi.js";
+import { LANGUAGES, LANGUAGE_NAMES, registerDictionary } from "./translations.js";
 import { DEFAULT_LANGUAGE, pluralKey, translate } from "./LanguageContext.jsx";
+
+export const DICTIONARIES = { en, te, hi };
+export const TRANSLATION_KEYS = Object.keys(en);
+
+registerDictionary("en", en);
+registerDictionary("te", te);
+registerDictionary("hi", hi);
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = resolve(HERE, "..");

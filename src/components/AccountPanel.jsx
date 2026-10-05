@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useAuth } from "../state/AuthContext";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import ChangePinPanel from "./ChangePinPanel.jsx";
-import { LogOutIcon, MoonIcon, StationIcon, SunIcon } from "./icons.jsx";
+import { LogOutIcon, MoonIcon, RefreshIcon, StationIcon, SunIcon } from "./icons.jsx";
 import { APP_VERSION } from "../lib/version.js";
+import { hardRefreshApp } from "../lib/pwa.js";
 
 const ROLE_LABEL = {
   admin: "role.admin",
@@ -30,6 +32,12 @@ export default function AccountPanel({ onDone, stationName = "" }) {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t } = useLanguage();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await hardRefreshApp();
+  };
 
   return (
     <div className="account-panel">
@@ -96,8 +104,33 @@ export default function AccountPanel({ onDone, stationName = "" }) {
         </section>
       )}
 
-      <div className="small muted" style={{ padding: "4px 12px 0" }}>
-        App version {APP_VERSION}
+      <div
+        className="small muted"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "4px 12px 0",
+        }}
+      >
+        <span>App version {APP_VERSION}</span>
+        <button
+          type="button"
+          className="tool-btn small"
+          style={{
+            fontSize: "12px",
+            padding: "4px 8px",
+            height: "auto",
+            minHeight: "28px",
+            gap: "5px",
+          }}
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title={t("chrome.hardRefreshHint")}
+        >
+          <RefreshIcon size={13} className={refreshing ? "spin" : ""} />
+          {refreshing ? t("chrome.refreshing") : t("chrome.hardRefresh")}
+        </button>
       </div>
 
       <button
