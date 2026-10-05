@@ -177,6 +177,15 @@
   --money-in-action-hover: #16a34a;
   --money-action-ink: #ffffff;
 
+  --fuel-petrol: #6ce9a6;
+  --fuel-petrol-soft: #14301f;
+  --fuel-diesel: #93b4ff;
+  --fuel-diesel-soft: #16294d;
+  --fuel-premium: #fdba60;
+  --fuel-premium-soft: #3a2a14;
+  --fuel-cng: #c4b0f5;
+  --fuel-cng-soft: #2c2450;
+
   /* Dark-mode brand artwork: the pump brightens so it holds its shape on a
      dark surface, and the secondary strokes lift with it. Not a simple
      invert — the white display, ₹ and clock face stay light, the red
@@ -1421,8 +1430,8 @@ th.num {
   align-items: center;
   gap: 11px;
   width: 100%;
-  min-height: 58px;
-  padding: 10px 16px;
+  min-height: 64px;
+  padding: 12px 16px;
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--hairline);
@@ -1443,11 +1452,14 @@ th.num {
 
 .nozzle-row.selected {
   background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent-strong);
 }
 
 .nozzle-row.busy {
-  opacity: 0.55;
   cursor: not-allowed;
+  /* A taken nozzle is still read at arm's length in daylight: sunken
+     surface and muted-but-contrastive text, never a fade to grey. */
+  background: var(--surface-sunken);
 }
 
 .nozzle-row__body {
@@ -1456,23 +1468,48 @@ th.num {
 }
 
 .nozzle-row__title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15.5px;
+  font-weight: 650;
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 7px;
   color: var(--ink-strong);
 }
 
 .nozzle-row__sub {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
-  margin-top: 1px;
+  margin-top: 2px;
+}
+
+/* Free / Busy word next to the tile's own state, so availability is stated
+   in text as well as by the tile being tappable or not. */
+.nozzle-row__state {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nozzle-row__state--busy {
+  border-color: var(--money-out);
+  color: var(--money-out);
+  background: var(--money-out-soft);
 }
 
 .nozzle-row__check {
-  width: 23px;
-  height: 23px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 2px solid var(--hairline-strong);
   display: grid;
@@ -1535,13 +1572,16 @@ th.num {
   white-space: nowrap;
 }
 
-/* Closing-readings rows: meter in, litres out, live. */
+/*
+ * Closing-readings: one block per nozzle. Fuel named in a colour+text chip,
+ * opening meter shown read-only with its label, a big 18px input for the
+ * closing number, the live "Sold" line beneath. A reading below its opening
+ * tints the block and spells the problem out in words.
+ */
 .closing-row {
   display: grid;
-  grid-template-columns: auto minmax(90px, 1fr) auto auto 128px;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
+  gap: 10px;
+  padding: 14px 18px 16px;
   border-bottom: 1px solid var(--hairline);
 }
 
@@ -1550,7 +1590,26 @@ th.num {
 }
 
 .closing-row--flat {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+}
+
+.closing-row[data-bad="true"] {
+  background: var(--money-short-soft);
+}
+
+.closing-row__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.closing-row__name {
+  color: var(--ink-strong);
+  font-size: 14.5px;
 }
 
 .closing-row__label {
@@ -1562,14 +1621,72 @@ th.num {
   min-width: 0;
 }
 
-.closing-row__opening,
-.closing-row__out {
+.closing-row__figures {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(140px, 1fr);
+  gap: 12px 18px;
+  align-items: end;
+}
+
+.closing-row__figure span,
+.closing-row__figure label {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.closing-row__figure strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  text-align: right;
+}
+
+.closing-row__input {
+  width: 100%;
+  min-height: 50px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .closing-row__input.input-bad {
-  border-color: var(--rust);
+  border-color: var(--money-short);
+}
+
+.closing-row__sold {
+  margin: 0;
+  color: var(--money-neutral);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.closing-row__error {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: var(--money-short);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* During a correction, a reading that no longer matches what was submitted. */
+.changed-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 /* Credit sale rows in the close flow. */
@@ -2180,6 +2297,20 @@ button.small {
   min-width: 0;
 }
 
+/* The running count beside a picker's primary button ("3 selected"). */
+.action-bar__count {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  min-height: 48px;
+  color: var(--ink-strong);
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
 .action-bar__reason {
   flex: 1;
 }
@@ -2338,13 +2469,16 @@ button.small {
 }
 
 .tab span {
-  display: block;
+  display: -webkit-box;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 /* ---------------- bottom sheet ---------------- */
@@ -2715,6 +2849,18 @@ tbody tr.money-row--variance:hover > td {
   color: var(--green);
 }
 
+/* Amber, not red: a sent-back shift is work to do, not a failure — the
+   reviewer's reason stays on screen for the whole correction. */
+.notice.attention {
+  border-left-color: var(--money-credit);
+  background: var(--money-credit-soft);
+  color: var(--ink);
+}
+
+.notice.attention strong {
+  color: var(--money-credit);
+}
+
 .credential {
   display: flex;
   gap: 28px;
@@ -2766,6 +2912,45 @@ tbody tr.money-row--variance:hover > td {
   background: #8b5cf6;
 }
 
+/* Fuel families as labelled chips, not just dots: the word (Petrol, Diesel,
+   MS, HSD…) carries the meaning and the tint repeats it. Text shades are
+   dark enough for AA on their soft tint in the light theme, and lift
+   together in the dark theme. */
+.fuel-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--fuel-ink);
+  background: var(--fuel-soft);
+  color: var(--fuel-ink);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.fuel-tag--petrol {
+  --fuel-ink: var(--fuel-petrol);
+  --fuel-soft: var(--fuel-petrol-soft);
+}
+
+.fuel-tag--diesel {
+  --fuel-ink: var(--fuel-diesel);
+  --fuel-soft: var(--fuel-diesel-soft);
+}
+
+.fuel-tag--premium {
+  --fuel-ink: var(--fuel-premium);
+  --fuel-soft: var(--fuel-premium-soft);
+}
+
+.fuel-tag--cng {
+  --fuel-ink: var(--fuel-cng);
+  --fuel-soft: var(--fuel-cng-soft);
+}
+
 .temp-chip {
   font-family: var(--mono);
   font-size: 11.5px;
@@ -2792,6 +2977,268 @@ tbody tr.money-row--variance:hover > td {
 
 .handover__verdict {
   padding: 12px 18px 2px;
+}
+
+/* ---------------- close-flow: explanations, big inputs, summary ---------------- */
+
+/* One plain sentence under a section title: what to type and why. */
+.section-help {
+  margin: 10px 18px 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.card .section-help {
+  margin-inline: 0;
+}
+
+.section-pad {
+  padding-top: 12px;
+}
+
+/* The attendant's numeric inputs: 18px so a phone does not zoom, and a
+   thumb-sized field. */
+.input-xl {
+  min-height: 50px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+/* Add / remove row buttons sized for a thumb, never a skinny text link. */
+.row-remove,
+.row-add {
+  min-height: 48px;
+  padding-inline: 14px;
+}
+
+.row-remove {
+  color: var(--money-out);
+}
+
+/* The cash answer, stated beside the inputs that ask for it. */
+.cash-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.cash-check__figure {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cash-check__figure > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* The final "read it back" card: plain words, money colours, nothing to
+   type — the submit button is the only control on the screen after it. */
+.check-summary {
+  border-color: var(--accent-soft-strong);
+}
+
+.check-summary__rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.check-summary__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.check-summary__row:last-child {
+  border-bottom: none;
+}
+
+.check-summary__row dt {
+  color: var(--ink-strong);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.check-summary__row dd {
+  margin: 0;
+}
+
+.check-summary__row .money {
+  font-size: 17px;
+}
+
+.check-summary__credit-lines {
+  margin: 0;
+  padding: 2px 0 10px 14px;
+  list-style: none;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.check-summary__credit-lines li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 3px 0;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.check-summary__credit-lines .money {
+  font-size: 13px;
+}
+
+/* Reassurance under a failed submit: the typed work is still on the phone. */
+.draft-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+/* ---------------- step progress (close-shift flow) ---------------- */
+
+/*
+ * One dot per step: done dots fill and carry a check, the current dot is the
+ * only one with a ring, and the label names the step in words. Sits sticky
+ * under the app bar so "where am I" is answerable at any scroll depth; the
+ * bar is short enough that it never crowds a phone's content width.
+ */
+.step-progress {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--actionbar-bg);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  box-shadow: var(--shadow-xs);
+}
+
+.step-progress__dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step-progress__dot {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.step-progress__dot-inner {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.step-progress__dot[data-state="done"] .step-progress__dot-inner {
+  border-color: var(--money-in-action);
+  background: var(--money-in-action);
+  color: var(--money-action-ink);
+}
+
+.step-progress__dot[data-state="current"] .step-progress__dot-inner {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+  box-shadow: var(--focus-ring);
+}
+
+.step-progress__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.step-progress__label-icon {
+  display: inline-flex;
+  color: var(--money-in);
+}
+
+.step-progress[data-complete] .step-progress__label {
+  color: var(--money-in);
+}
+
+/* ---------------- variance pill ---------------- */
+
+/*
+ * The cash-count verdict. Soft tint + strong text + a direction glyph, so the
+ * meaning survives a monochrome screen or colour-vision difference. Quiet
+ * state keeps the row's shape while nothing has been counted yet.
+ */
+.variance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.variance-pill--ok {
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+  color: var(--money-ok);
+}
+
+.variance-pill--short {
+  border-color: var(--money-short);
+  background: var(--money-short-soft);
+  color: var(--money-short);
+}
+
+.variance-pill--over {
+  border-color: var(--money-over);
+  background: var(--money-over-soft);
+  color: var(--money-over);
+}
+
+.variance-pill--quiet {
+  border-color: var(--hairline-strong);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  font-weight: 600;
 }
 
 /* ---------------- login ---------------- */
@@ -3965,6 +4412,14 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .run-readings {
+    grid-template-columns: 1fr;
+  }
+
+  .run-reading {
+    border-right: none;
+  }
+
   .sheet-form {
     grid-template-columns: 1fr;
   }
@@ -3977,18 +4432,9 @@ button:focus-visible {
     grid-column: 1 / -1;
   }
 
-  .closing-row {
-    grid-template-columns: auto minmax(70px, 1fr) 118px;
-  }
-
-  .closing-row__opening,
-  .closing-row__out {
-    display: none;
-  }
-
-  .closing-row--flat .closing-row__opening,
-  .closing-row--flat .closing-row__out {
-    display: block;
+  .closing-row__figures {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: 10px 14px;
   }
 
   .status-card__figures {
@@ -4169,8 +4615,12 @@ button:focus-visible {
     min-height: 50px;
   }
 
+  .tab span {
+    font-size: 10px;
+  }
+
   .nozzle-row {
-    min-height: 60px;
+    min-height: 64px;
   }
 
   input,
@@ -4451,6 +4901,312 @@ button:focus-visible {
 .notice__action {
   display: inline;
   min-height: 0;
+}
+
+/* ---------------- running shift ---------------- */
+
+/* The elapsed-time card: one big figure, labelled above it, with the
+   nozzles this shift holds as chips beneath. */
+.run-hero {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-color: rgba(21, 163, 74, 0.35);
+  background: linear-gradient(var(--surface), var(--surface)), var(--surface);
+}
+
+.run-hero__elapsed {
+  display: grid;
+  gap: 3px;
+}
+
+.run-hero__elapsed .k {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.run-hero__elapsed .v {
+  color: var(--ink-strong);
+  font-size: clamp(30px, 9vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-hero__elapsed .sub {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* Per-nozzle reading blocks: label above value, fuel named and coloured. */
+.run-readings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.run-reading {
+  display: grid;
+  gap: var(--space-3);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+}
+
+.run-reading:last-child {
+  border-bottom: none;
+}
+
+.run-reading__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--ink-strong);
+  font-size: 13.5px;
+}
+
+.run-reading__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+}
+
+.run-reading__figures span {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.run-reading__figures strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-strong);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- attendant home: date & language row ---------------- */
+
+.today-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.today-meta__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+/* The compact selector keeps to its own width on this row. */
+.today-meta .language-select {
+  width: auto;
+}
+
+.today-meta .language-select select {
+  width: auto;
+  min-width: 104px;
+  min-height: 40px;
+}
+
+/* ---------------- just-sent confirmation ---------------- */
+
+/*
+ * The green "it went through" moment after a close: one card, one check,
+ * one sentence about what happens next. Dismissed, never nagging.
+ */
+.sent-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+}
+
+.sent-card__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--money-in-action);
+  color: var(--money-action-ink);
+}
+
+.sent-card__body {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.sent-card h2 {
+  font-size: 16px;
+}
+
+.sent-card .small {
+  margin: 0;
+}
+
+/* ---------------- sent-back shift alert ---------------- */
+
+/*
+ * Amber, because credit-not-collected is amber elsewhere and "the owner
+ * wants a change" belongs to the same attention level, one step below an
+ * error. The arrow glyph and the words carry the meaning; colour repeats it.
+ */
+.sentback-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border: 2px solid var(--money-credit);
+  background: var(--money-credit-soft);
+}
+
+.sentback-card__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--money-credit);
+  color: var(--money-credit-soft);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sentback-card__body {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.sentback-card h2 {
+  font-size: 16px;
+}
+
+.sentback-card__reason {
+  margin: 0;
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
+.sentback-card .small {
+  margin: 0;
+}
+
+.sentback-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--money-credit);
+  background: var(--money-credit);
+  color: var(--money-credit-soft);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sentback-card__action:hover {
+  text-decoration: none;
+  background: var(--money-credit);
+  filter: brightness(1.08);
+}
+
+/* ---------------- nozzle chips ---------------- */
+
+/* A chip names the nozzle and colours it by fuel, but the label text is
+   what carries the meaning — the dot only repeats it. */
+.status-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nozzle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface-sunken);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.history-card__nozzles {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* ---------------- see-all link ---------------- */
+
+.see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent-strong);
+  font-size: 12.5px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.see-all:hover {
+  text-decoration: underline;
+}
+
+/* ---------------- action-bar buttons with icons ---------------- */
+
+.action-bar__with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+/* Money inside the home cards keeps each screen's own figure scale. */
+.sales-hero__amount .money--lg {
+  font-size: clamp(28px, 9vw, 38px);
+}
+
+.history-card__financial .money {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.history-card__metrics .money {
+  font-size: 12px;
 }
 
 /* History prioritises amount, then operational metadata. */
@@ -4882,13 +5638,17 @@ button:focus-visible {
   }
 
   .closing-row {
-    grid-template-columns: auto minmax(0, 1fr) 104px;
     gap: 8px;
-    padding-inline: 12px;
+    padding: 12px 12px 14px;
   }
 
   .closing-row--flat {
     grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+
+  .closing-row__figure strong {
+    font-size: 15.5px;
   }
 
   .action-bar__row > button:not(.cta),
@@ -4996,6 +5756,18 @@ button:focus-visible {
   min-width: 160px;
 }
 .segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.segmented-control button {
+  min-height: 38px;
+}
+.segmented-control button.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+ed-control {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;

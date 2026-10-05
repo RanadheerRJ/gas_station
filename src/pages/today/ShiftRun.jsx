@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
+import Money from "../../components/Money.jsx";
 import { ActionBar, Empty, Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
+import { PlusIcon } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
@@ -13,10 +15,30 @@ import ExpensesSheet from "../shifts/ExpensesSheet.jsx";
 import { SettledShiftDetail } from "../shifts/ShiftDetail.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
+/** A wall clock that ticks once every 30s — often enough that the elapsed
+ *  figure never reads stale, rarely enough that it flickers. */
+function useNow(intervalMs = 30000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+/** Elapsed time in whole minutes, as "2h 15m" / "45m" in the UI language. */
+function elapsedLabel(elapsedMs, translate) {
+  const minutes = Math.max(0, Math.floor(elapsedMs / 60000));
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) return translate("shifts.elapsedHm", { hours, minutes: minutes % 60 });
+  return translate("shifts.elapsedM", { minutes });
+}
+
 /**
- * The running shift, on its own screen: what you took, what it read when you
- * took it, and the drawer's expenses so far. Adding an expense is a sheet;
- * closing is the pinned action. Nothing else competes for the space.
+ * The running shift, on its own screen: how long you have been on it, what
+ * you took and the meter you started from, and the drawer's expenses so far.
+ * Adding an expense is a sheet; closing is the pinned action — the one
+ * primary job of this screen. Nothing else competes for the space.
  *
  * A settled shift on this route (arrived via an old link) renders read-only
  * rather than pretending it can still be worked.
@@ -32,6 +54,7 @@ export default function ShiftRun() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const now = useNow();
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -72,7 +95,12 @@ export default function ShiftRun() {
       <>
         <ScreenHeader title={t("today.yourShift")} back="/today" />
         <div className="content">
-          <Notice kind="error">{error}</Notice>
+          <Notice kind="error">
+            {error}{" "}
+            <button type="button" className="quiet notice__action" onClick={load}>
+              {t("common.retry")}
+            </button>
+          </Notice>
         </div>
       </>
     );
@@ -108,6 +136,7 @@ export default function ShiftRun() {
   }
 
   const totals = shiftTotals(shift);
+  const elapsed = now - new Date(shift.startTime).getTime();
 
   return (
     <>
@@ -119,24 +148,61 @@ export default function ShiftRun() {
         back="/today"
       />
       <div className="content stack">
+        {/* How long, and what you are holding. */}
+        <section className="card run-hero" aria-labelledby="run-elapsed-title">
+          <div className="run-hero__elapsed">
+            <span className="k" id="run-elapsed-title">
+              {t("shifts.runningFor")}
+            </span>
+            <strong className="v mono" data-testid="run-elapsed">
+              {elapsedLabel(elapsed, t)}
+            </strong>
+            <span className="sub">
+              {t("shifts.started")} {formatStamp(shift.startTime)}
+            </span>
+          </div>
+          <div className="status-card__chips">
+            {shift.nozzles.map((nozzle) => (
+              <span key={nozzle.nozzleId} className="nozzle-chip">
+                <span
+                  className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
+                  aria-hidden="true"
+                />
+                {nozzle.label}
+              </span>
+            ))}
+          </div>
+        </section>
+
         {/* What you took, and the meter you started from. */}
         <section className="card card--flush">
           <div className="card__head">
             <h2>{tn(shift.nozzles.length, "shifts.nozzle", "shifts.nozzles")}</h2>
             <span className="small muted">{t("shifts.meterReadings")}</span>
           </div>
-          <div>
+          <div className="run-readings">
             {shift.nozzles.map((nozzle) => (
-              <div key={nozzle.nozzleId} className="reading-row">
-                <span className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`} />
-                <span className="reading-row__label">{nozzle.label}</span>
-                <span className="muted small">{nozzle.fuelType}</span>
-                <span className="reading-row__value mono">
-                  {money(nozzle.openingReading)}
-                </span>
-                <span className="reading-row__price mono muted">
-                  ₹ {money(nozzle.price)}/L
-                </span>
+              <div key={nozzle.nozzleId} className="run-reading">
+                <div className="run-reading__head">
+                  <span
+                    className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
+                    aria-hidden="true"
+                  />
+                  <strong>{nozzle.label}</strong>
+                  <span className={`fuel-tag fuel-tag--${fuelClass(nozzle.fuelType)}`}>
+                    {nozzle.fuelType}
+                  </span>
+                </div>
+                <div className="run-reading__figures">
+                  <div>
+                    <span>{t("shifts.opening")}</span>
+                    <strong className="mono">{money(nozzle.openingReading)}</strong>
+                  </div>
+                  <div>
+                    <span>{t("shifts.price")}</span>
+                    <strong className="mono">₹ {money(nozzle.price)}/L</strong>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -146,9 +212,11 @@ export default function ShiftRun() {
         <section className="card card--flush">
           <div className="card__head">
             <h2>{t("shifts.drawerExpenses")}</h2>
-            <span className="mono" style={{ fontWeight: 650 }}>
-              ₹ {money(totals.expensesTotal)}
-            </span>
+            <Money
+              kind="out"
+              value={totals.expensesTotal}
+              label={t("shifts.drawerExpenses")}
+            />
           </div>
           <div>
             {(shift.expenses || []).length === 0 ? (
@@ -158,7 +226,7 @@ export default function ShiftRun() {
                 <div key={index} className="reading-row">
                   <span className="reading-row__label">{expense.label}</span>
                   <span className="reading-row__value mono">
-                    ₹ {money(expense.amount)}
+                    <Money kind="out" value={expense.amount} label={expense.label} />
                   </span>
                 </div>
               ))
@@ -167,7 +235,12 @@ export default function ShiftRun() {
         </section>
 
         <ActionBar>
-          <button type="button" onClick={() => setExpenseOpen(true)}>
+          <button
+            type="button"
+            className="action-bar__with-icon"
+            onClick={() => setExpenseOpen(true)}
+          >
+            <PlusIcon size={16} />
             {t("shifts.addExpense")}
           </button>
           <button

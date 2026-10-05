@@ -1,22 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
+import Money from "../../components/Money.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { ChevronIcon } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
-import { currency, formatDate, formatStamp, litres } from "../../lib/format";
-import { SHIFT_STATUS, shiftTotals, varianceTone } from "../../lib/shiftMath";
+import { formatDate, formatStamp, litres } from "../../lib/format";
+import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
+import { fuelClass } from "../../lib/fuel.js";
 import { scopeShiftsToViewer, shiftsReport, filterByRange } from "../../lib/export.js";
 import { StatusTag } from "../shifts/parts.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
-/** A compact, scan-friendly register of the signed-in attendant's shifts. */
+/**
+ * The attendant's own shifts as tappable cards: date, nozzles, where the
+ * shift stands in review, and the money in the shared colour language.
+ * Scoping stays exactly as it was — the viewer's own shifts only, enforced
+ * again here on top of RLS.
+ */
 export default function TodayHistory() {
-  const { t } = useLanguage();
+  const { t, tn } = useLanguage();
   const { profile } = useAuth();
   const { station, stationId, loading: stationsLoading } = useStation();
   const [shifts, setShifts] = useState([]);
@@ -102,7 +109,6 @@ export default function TodayHistory() {
           <div className="history-list">
             {mine.map((shift) => {
               const totals = shiftTotals(shift);
-              const tone = varianceTone(totals.variance);
               return (
                 <Link
                   key={shift.id}
@@ -116,10 +122,24 @@ export default function TodayHistory() {
                     </div>
                     <StatusTag status={shift.status} />
                   </div>
+                  <div className="history-card__nozzles">
+                    {(shift.nozzles || []).map((nozzle) => (
+                      <span
+                        key={nozzle.nozzleId}
+                        className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
+                        title={nozzle.label}
+                      />
+                    ))}
+                    {tn(shift.nozzles.length, "shifts.nozzle", "shifts.nozzles")}
+                  </div>
                   <div className="history-card__financial">
                     <div>
                       <span>{t("shifts.net")}</span>
-                      <strong className="mono">{currency(totals.net)}</strong>
+                      <Money
+                        kind="neutral"
+                        value={totals.net}
+                        label={`${formatDate(shift.date)} · ${t("shifts.net")}`}
+                      />
                     </div>
                     <ChevronIcon size={18} />
                   </div>
@@ -130,9 +150,15 @@ export default function TodayHistory() {
                     </div>
                     <div>
                       <span>{t("shifts.variance")}</span>
-                      <strong className={`mono ${tone === "neg" ? "neg" : "pos"}`}>
-                        {currency(totals.variance)}
-                      </strong>
+                      {totals.variance == null ? (
+                        <strong className="mono muted">—</strong>
+                      ) : (
+                        <Money
+                          kind="variance"
+                          value={totals.variance}
+                          label={`${formatDate(shift.date)} · ${t("shifts.variance")}`}
+                        />
+                      )}
                     </div>
                     <div className="history-card__time">
                       <span>{t("shifts.started")}</span>
