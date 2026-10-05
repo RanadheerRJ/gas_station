@@ -34,23 +34,40 @@ export function paymentLabel(mode, translate) {
  * point of the review flow, so the chip marks itself for one beat when the
  * status changes rather than silently swapping colour.
  */
-export function StatusTag({ status }) {
+export function StatusTag({ status, reopened = false }) {
   const { t } = useLanguage();
-  const changed = useStatusChange(status);
-  const tone =
+  const isReopened = status === SHIFT_STATUS.REJECTED && reopened;
+  const changed = useStatusChange(`${status}:${isReopened}`);
+  const state =
     status === SHIFT_STATUS.APPROVED
-      ? " green"
-      : status === SHIFT_STATUS.REJECTED
-        ? " rust"
-        : "";
+      ? "approved"
+      : isReopened
+        ? "reopened"
+        : status === SHIFT_STATUS.REJECTED
+          ? "sent-back"
+          : "pending";
+  const marker =
+    state === "approved"
+      ? "✓"
+      : state === "reopened"
+        ? "↻"
+        : state === "sent-back"
+          ? "↩"
+          : "●";
   const label =
-    status === SHIFT_STATUS.APPROVED
+    state === "approved"
       ? t("shifts.approved")
-      : status === SHIFT_STATUS.REJECTED
-        ? t("shifts.sentBack")
-        : t("shifts.pendingReview");
+      : state === "reopened"
+        ? t("shifts.reopened")
+        : state === "sent-back"
+          ? t("shifts.sentBack")
+          : t("shifts.pendingReview");
   return (
-    <span className={`tag${tone}`} data-changed={changed || undefined}>
+    <span
+      className={`tag status-tag status-tag--${state}`}
+      data-changed={changed || undefined}
+    >
+      <span aria-hidden="true">{marker}</span>
       {label}
     </span>
   );

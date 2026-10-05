@@ -107,15 +107,19 @@ export function Card({ children, className = "", flush = false }) {
  * app's "Place order" always is. Renders the fixed bar plus the in-flow
  * spacer that keeps the last row of content out from under it.
  */
-export function ActionBar({ children }) {
+export function ActionBar({ children, className = "" }) {
+  const variant = className ? ` ${className}` : "";
   return (
     <>
-      <div className="action-bar" role="toolbar">
+      <div className={`action-bar${variant}`} role="toolbar">
         <div className="action-bar__inner">{children}</div>
       </div>
       {/* Clears the fixed bar (and the tab bar beneath it on phones) so the
           last row of a long list is never trapped underneath. */}
-      <div className="action-bar__spacer" aria-hidden="true" />
+      <div
+        className={`action-bar__spacer${className ? ` ${className}__spacer` : ""}`}
+        aria-hidden="true"
+      />
     </>
   );
 }

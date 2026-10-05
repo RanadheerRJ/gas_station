@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
+import Money from "../../components/Money.jsx";
 import { Notice, Stat } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
 import { formatDate, formatStamp, money } from "../../lib/format";
-import { SHIFT_STATUS, shiftTotals, varianceTone } from "../../lib/shiftMath";
+import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
 import { ledgerBase } from "./LedgerList.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -107,12 +108,27 @@ export default function LedgerDay() {
           <>
             <section className="card stat-strip">
               <Stat label={t("ledger.litresSold")} value={`${money(day.litres)} L`} />
-              <Stat label={t("ledger.fuelSales")} value={`₹ ${money(day.sales)}`} />
-              <Stat label={t("ledger.expenses")} value={`₹ ${money(day.expenses)}`} />
+              <Stat
+                label={t("ledger.fuelSales")}
+                value={
+                  <Money kind="neutral" value={day.sales} label={t("ledger.fuelSales")} />
+                }
+              />
+              <Stat
+                label={t("ledger.expenses")}
+                value={
+                  <Money kind="out" value={day.expenses} label={t("ledger.expenses")} />
+                }
+              />
               <Stat
                 label={t("ledger.cashVariance")}
-                value={`₹ ${money(day.variance)}`}
-                tone={varianceTone(day.variance)}
+                value={
+                  <Money
+                    kind="variance"
+                    value={day.variance}
+                    label={t("ledger.cashVariance")}
+                  />
+                }
               />
             </section>
 
@@ -141,8 +157,12 @@ export default function LedgerDay() {
                     <span className="reading-row__value mono">
                       {money(totals.totalLitres)} L
                     </span>
-                    <span className="reading-row__price mono">
-                      ₹ {money(totals.gross)}
+                    <span className="reading-row__price">
+                      <Money
+                        kind="neutral"
+                        value={totals.gross}
+                        label={t("shifts.grossSales")}
+                      />
                     </span>
                   </Link>
                 ))}
@@ -173,8 +193,12 @@ export default function LedgerDay() {
                       <td data-label={t("shifts.litres")} className="num mono">
                         {money(value.litres)}
                       </td>
-                      <td data-label={t("common.amount")} className="num mono">
-                        {money(value.amount)}
+                      <td data-label={t("common.amount")} className="num">
+                        <Money
+                          kind="neutral"
+                          value={value.amount}
+                          label={`${fuel} · ${t("common.amount")}`}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -185,8 +209,12 @@ export default function LedgerDay() {
                     <td data-label={t("shifts.litres")} className="num mono">
                       {money(day.litres)}
                     </td>
-                    <td data-label={t("common.amount")} className="num mono">
-                      {money(day.sales)}
+                    <td data-label={t("common.amount")} className="num">
+                      <Money
+                        kind="neutral"
+                        value={day.sales}
+                        label={t("ledger.fuelSales")}
+                      />
                     </td>
                   </tr>
                 </tfoot>

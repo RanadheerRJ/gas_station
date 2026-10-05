@@ -1,3 +1,4 @@
+import Money from "../../components/Money.jsx";
 import { money } from "../../lib/format";
 import { fuelClass } from "../../lib/fuel.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -10,7 +11,7 @@ export default function MeterReadingsCard({ totals }) {
       <div className="card__head">
         <h2>{t("shifts.meterReadings")}</h2>
       </div>
-      <table>
+      <table className="responsive-table">
         <thead>
           <tr>
             <th>{t("shifts.nozzleCol")}</th>
@@ -24,26 +25,50 @@ export default function MeterReadingsCard({ totals }) {
         <tbody>
           {totals.lines.map((line) => (
             <tr key={line.nozzleId}>
-              <td>
+              <td data-label={t("shifts.nozzleCol")}>
                 <span className="row" style={{ gap: 6, alignItems: "center" }}>
                   <span className={`fuel-dot fuel-dot--${fuelClass(line.fuelType)}`} />
                   {line.label}
                 </span>
               </td>
-              <td className="num mono">{money(line.openingReading)}</td>
-              <td className="num mono">{money(line.closingReading)}</td>
-              <td className="num mono">{money(line.litresSold)}</td>
-              <td className="num mono">{money(line.price)}</td>
-              <td className="num mono">{money(line.revenue)}</td>
+              <td data-label={t("shifts.opening")} className="num mono">
+                {money(line.openingReading)}
+              </td>
+              <td data-label={t("shifts.closing")} className="num mono">
+                {money(line.closingReading)}
+              </td>
+              <td data-label={t("shifts.litres")} className="num mono">
+                {money(line.litresSold)}
+              </td>
+              <td data-label={t("shifts.price")} className="num">
+                <Money
+                  kind="neutral"
+                  value={line.price}
+                  label={`${line.label} · ${t("shifts.price")}`}
+                />
+              </td>
+              <td data-label={t("common.amount")} className="num">
+                <Money
+                  kind="neutral"
+                  value={line.revenue}
+                  label={`${line.label} · ${t("common.amount")}`}
+                />
+              </td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={3}>{t("common.total")}</td>
-            <td className="num mono">{money(totals.totalLitres)}</td>
-            <td />
-            <td className="num mono">{money(totals.gross)}</td>
+            <td data-label={t("shifts.nozzleCol")} colSpan={3}>
+              {t("common.total")}
+            </td>
+            <td data-label={t("shifts.litres")} className="num mono">
+              {money(totals.totalLitres)}
+            </td>
+            <td data-label={t("shifts.price")} />
+            <td data-label={t("common.amount")} className="num">
+              <Money kind="neutral" value={totals.gross} label={t("shifts.grossSales")} />
+            </td>
           </tr>
         </tfoot>
       </table>
