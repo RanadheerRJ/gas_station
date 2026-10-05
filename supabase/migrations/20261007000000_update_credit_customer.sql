@@ -7,11 +7,23 @@
 -- customer screen. A no-op save writes nothing and leaves no audit row.
 
 -- The customer audit trail learns to record what changed, not only that an
--- account was archived or restored.
+-- account was archived or restored. The DO block makes this re-runnable in
+-- the dashboard SQL editor: applying it twice is a harmless no-op.
 alter table public.customer_audit drop constraint if exists customer_audit_action_check;
-alter table public.customer_audit
-  add constraint customer_audit_action_check
-  check (action in ('archived', 'restored', 'updated'));
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'customer_audit_action_check'
+      and conrelid = 'public.customer_audit'::regclass
+  ) then
+    alter table public.customer_audit
+      add constraint customer_audit_action_check
+      check (action in ('archived', 'restored', 'updated'));
+  end if;
+end;
+$$;
 alter table public.customer_audit add column if not exists details jsonb;
 
 create or replace function public.update_customer(
