@@ -371,6 +371,15 @@ and before every Pages deployment.
    policy a manager cannot open their team page. The follow-up migrations are
    idempotent and safe to re-run; never edit the already-applied initial
    migration to change production RBAC.
+
+   This step is the one that is **not** automated. `deploy-pages.yml` ships the
+   app and `deploy-supabase.yml` ships the `accounts` function on every merge
+   to `main`, so a release that adds a console action and the RPC behind it
+   goes live with only two of its three parts applied until this is run. The
+   app now names that state instead of failing opaquely ("This action needs a
+   database update that has not been applied to this project yet"), and
+   `npm run check:schema` fails if the `accounts` function calls an RPC that no
+   migration defines — but neither can push the migration for you.
 2. `supabase functions deploy accounts`
 3. Create the first developer profile via SQL.
 4. Disable Auth self-sign-up.

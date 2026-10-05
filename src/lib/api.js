@@ -140,6 +140,24 @@ export function readableError(error) {
     return "You do not have permission to do that.";
   if (/deadlock detected|could not serialize/i.test(message))
     return "Someone else is editing this entry. Try again.";
+  // The app and the Edge Function deploy automatically on merge; migrations
+  // are applied by hand. A feature can therefore be on screen with no RPC
+  // behind it, and "could not find the function … in the schema cache" is
+  // PostgREST telling the developer exactly that in its own vocabulary.
+  //
+  // This is deliberately narrower than isMissingFunction(): a bare "does not
+  // exist" is also how the app says "That account does not exist.", which is
+  // a different problem with a different answer.
+  if (
+    error?.code === "PGRST202" ||
+    error?.code === "42883" ||
+    /could not find the function|function [\w.()" ]* ?does not exist/i.test(message)
+  )
+    return (
+      "This action needs a database update that has not been applied to this " +
+      "project yet. Apply the latest Supabase migration (supabase db push) " +
+      "and try again."
+    );
   return String(message).replace(/^postgres(?:ql)?:\s*/i, "");
 }
 
