@@ -1,5 +1,5 @@
+import Money from "../../components/Money.jsx";
 import { Field } from "../../components/ui.jsx";
-import { money } from "../../lib/format";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
@@ -31,9 +31,11 @@ export default function ExpensesTestingCard({
         <div className="stack" style={{ gap: 14 }}>
           <div className="between">
             <h2>{t("shifts.expensesAndTesting")}</h2>
-            <span className="small muted mono">
-              −{money(draft.expensesTotal + draft.testingTotal)}
-            </span>
+            <Money
+              kind="out"
+              value={draft.expensesTotal + draft.testingTotal}
+              label={t("shifts.totalDeducted")}
+            />
           </div>
           <div className="panel flush">
             <table>
@@ -144,26 +146,44 @@ export default function ExpensesTestingCard({
           </button>
         )}
       </div>
-      <table>
+      <table className="money-table">
         <tbody>
           {(shift.expenses || []).map((expense, index) => (
-            <tr key={index}>
+            <tr key={index} className="money-row money-row--out">
               <td>{expense.label || "—"}</td>
-              <td className="num mono">{money(expense.amount)}</td>
+              <td className="num">
+                <Money
+                  kind="out"
+                  value={expense.amount}
+                  label={expense.label || t("ledger.expenses")}
+                />
+              </td>
             </tr>
           ))}
-          <tr>
+          <tr className="money-row money-row--out">
             <td className="muted">{t("shifts.testingMs")}</td>
-            <td className="num mono">{money(totals.testingMS)}</td>
+            <td className="num">
+              <Money kind="out" value={totals.testingMS} label={t("shifts.testingMs")} />
+            </td>
           </tr>
-          <tr>
+          <tr className="money-row money-row--out">
             <td className="muted">{t("shifts.testingHsd")}</td>
-            <td className="num mono">{money(totals.testingHSD)}</td>
+            <td className="num">
+              <Money
+                kind="out"
+                value={totals.testingHSD}
+                label={t("shifts.testingHsd")}
+              />
+            </td>
           </tr>
-          <tr className="total">
+          <tr className="total money-row money-row--out">
             <td>{t("shifts.totalDeducted")}</td>
-            <td className="num mono">
-              {money(totals.expensesTotal + totals.testingTotal)}
+            <td className="num">
+              <Money
+                kind="out"
+                value={totals.expensesTotal + totals.testingTotal}
+                label={t("shifts.totalDeducted")}
+              />
             </td>
           </tr>
         </tbody>

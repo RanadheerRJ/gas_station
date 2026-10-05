@@ -207,7 +207,10 @@ export default function ShiftsList() {
                               {formatDate(shift.date)}
                             </span>
                           </span>
-                          <StatusTag status={shift.status} />
+                          <StatusTag
+                            status={shift.status}
+                            reopened={Boolean(shift.approvedAt)}
+                          />
                         </div>
                         <div className="list-card__row list-card__row--figures">
                           <span className="list-card__figure">

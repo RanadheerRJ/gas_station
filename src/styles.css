@@ -2268,6 +2268,51 @@ tr.total td {
   background: var(--surface-sunken);
 }
 
+.money-row--in > td,
+tbody tr.money-row--in:hover > td {
+  background: var(--money-in-soft);
+}
+
+.money-row--out > td,
+tbody tr.money-row--out:hover > td {
+  background: var(--money-out-soft);
+}
+
+.money-row--credit > td,
+tbody tr.money-row--credit:hover > td {
+  background: var(--money-credit-soft);
+}
+
+.money-row--neutral > td,
+tbody tr.money-row--neutral:hover > td {
+  background: var(--money-neutral-soft);
+}
+
+.money-row--variance > td,
+tbody tr.money-row--variance:hover > td {
+  background: var(--surface-sunken);
+}
+
+.credit-sale__identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.money-credit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--money-credit-soft);
+  color: var(--money-credit);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* ---------------- tags, notices, chips ---------------- */
 
 .tag {
@@ -2292,6 +2337,36 @@ tr.total td {
   color: var(--rust);
   border-color: rgba(220, 38, 38, 0.3);
   background: rgba(220, 38, 38, 0.1);
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-tag--pending {
+  color: var(--money-neutral);
+  border-color: var(--money-neutral);
+  background: var(--money-neutral-soft);
+}
+
+.status-tag--approved {
+  color: var(--money-ok);
+  border-color: var(--money-ok);
+  background: var(--money-ok-soft);
+}
+
+.status-tag--sent-back {
+  color: var(--money-short);
+  border-color: var(--money-short);
+  background: var(--money-short-soft);
+}
+
+.status-tag--reopened {
+  color: var(--money-over);
+  border-color: var(--money-over);
+  background: var(--money-over-soft);
 }
 
 .notice {
@@ -3601,10 +3676,22 @@ button:focus-visible {
   }
 
   .card table.responsive-table,
-  .panel table.responsive-table {
+  .panel table.responsive-table,
+  .card table.money-table,
+  .panel table.money-table {
     display: table;
     overflow: visible;
     white-space: normal;
+  }
+
+  .money-table td:first-child {
+    width: 58%;
+    overflow-wrap: anywhere;
+  }
+
+  .money-table td:last-child {
+    width: 42%;
+    padding-left: 8px;
   }
 
   .responsive-table > thead {
