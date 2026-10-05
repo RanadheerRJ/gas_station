@@ -23,14 +23,15 @@ import CheckSummary from "./CheckSummary.jsx";
  * fills a check on each one that has something in it (or needs nothing).
  *
  * The same screen serves the attendant closing their own shift and a
- * manager/owner closing anyone's. Everyone can record credit sales —
- * against an existing customer (picked from the balance-free directory) or
- * a new walk-in — because they all land inside close_shift's single
- * transaction and the shift still goes to the owner/manager for review.
+ * manager/owner closing anyone's. A forgotten credit sale can still be added
+ * against the balance-free customer directory and lands atomically with the
+ * close; the shift then goes to the owner/manager for review.
  *
- * A sent-back shift reuses this screen for its correction: once by its own
- * attendant, and again by an owner who has reopened the shift — both walk
- * the same pre-filled form and resubmit through the reconciling RPC.
+ * Running-shift credit is loaded from its authoritative ledger rows and is
+ * read-only during an ordinary close, preventing an already-posted sale from
+ * being submitted twice. A sent-back shift reuses this screen for correction:
+ * its attendant or an owner can replace the submitted figures through the
+ * reconciling RPC without deleting financial history.
  *
  * Every figure, effect and rule behind the screen lives in
  * useCloseShiftForm; this file decides only what is drawn and in what order.
@@ -194,6 +195,7 @@ export default function CloseShift() {
           creditSales={creditSales}
           setCreditSales={setCreditSales}
           customers={customers}
+          isCorrection={isCorrection}
         />
 
         <PaymentsSection

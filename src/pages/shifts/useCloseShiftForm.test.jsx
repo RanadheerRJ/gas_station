@@ -18,6 +18,7 @@ import { useCloseShiftForm } from "./useCloseShiftForm.js";
 const api = vi.hoisted(() => ({
   listShifts: vi.fn(),
   listCustomerDirectory: vi.fn(),
+  listShiftCredit: vi.fn(),
   closeShift: vi.fn(),
   resubmitRejectedShift: vi.fn(),
 }));
@@ -25,6 +26,7 @@ const api = vi.hoisted(() => ({
 vi.mock("../../lib/api", () => ({
   listShifts: api.listShifts,
   listCustomerDirectory: api.listCustomerDirectory,
+  listShiftCredit: api.listShiftCredit,
   closeShift: api.closeShift,
   resubmitRejectedShift: api.resubmitRejectedShift,
   readableError: (error) => String(error?.message || error),
@@ -145,6 +147,7 @@ beforeEach(() => {
   station.stationId = "s1";
   station.loading = false;
   api.listShifts.mockResolvedValue([OPEN_SHIFT, REJECTED_SHIFT]);
+  api.listShiftCredit.mockResolvedValue([]);
   api.listCustomerDirectory.mockResolvedValue([{ id: "c1", name: "Kumar", phone: "9" }]);
   api.closeShift.mockResolvedValue({ ok: true });
   api.resubmitRejectedShift.mockResolvedValue({ ok: true });
@@ -175,6 +178,41 @@ describe("useCloseShiftForm: initial load", () => {
     // An ordinary close shows the expenses recorded while the shift ran.
     expect(view.current.expenses).toEqual([{ label: "Tea", amount: "40" }]);
     expect(view.current.back).toBe("/today/shift/sh-1");
+  });
+
+  it("loads posted running credit into the close totals without creating a second entry", async () => {
+    api.listShiftCredit.mockResolvedValue([
+      {
+        id: "tx-1",
+        customerId: "c1",
+        customerName: "Kumar",
+        customerPhone: "9",
+        amount: 750,
+        status: "active",
+      },
+      {
+        id: "tx-void",
+        customerId: "c1",
+        customerName: "Kumar",
+        customerPhone: "9",
+        amount: 100,
+        status: "voided",
+      },
+    ]);
+
+    const view = await mountHook("sh-1");
+
+    expect(api.listShiftCredit).toHaveBeenCalledWith("s1", "sh-1");
+    expect(view.current.creditSales).toEqual([
+      {
+        transactionId: "tx-1",
+        customerId: "c1",
+        name: "Kumar",
+        phone: "9",
+        amount: "750",
+      },
+    ]);
+    expect(view.current.payments.credit).toBe("750");
   });
 
   it("surfaces a load failure without losing the screen", async () => {
@@ -310,6 +348,34 @@ describe("useCloseShiftForm: submitting", () => {
       Object.keys(window.localStorage).filter((key) => key.includes("close:sh-1"))
     ).toEqual([]);
     expect(navigate).toHaveBeenCalledWith("/today", { replace: true });
+  });
+
+  it("submits a posted transaction reference instead of a duplicate close-time sale", async () => {
+    api.listShiftCredit.mockResolvedValue([
+      {
+        id: "tx-1",
+        customerId: "c1",
+        customerName: "Kumar",
+        customerPhone: "9",
+        amount: 750,
+        status: "active",
+      },
+    ]);
+    const view = await mountHook("sh-1");
+    await apply(() => view.current.setClosings({ n1: "1100", n2: "2050" }));
+    await apply(() => view.current.submit());
+
+    const payload = api.closeShift.mock.calls[0][2];
+    expect(payload.creditSales).toEqual([
+      {
+        transactionId: "tx-1",
+        customerId: "c1",
+        name: "Kumar",
+        phone: "9",
+        amount: "750",
+      },
+    ]);
+    expect(payload.payments.credit).toBe("750");
   });
 
   it("resubmits a correction through the reconciling RPC and returns to the detail", async () => {

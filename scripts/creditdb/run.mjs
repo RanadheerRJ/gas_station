@@ -656,6 +656,19 @@ async function main() {
     Number(summaryAfter?.creditGiven) === 750 && Number(summaryAfter?.entries) === 1,
     JSON.stringify(summaryAfter)
   );
+  const shiftAfterVoid = await asUser(
+    IDS.owner,
+    `select (payments ->> 'credit')::numeric as credit,
+            jsonb_array_length(credit_sales) as sales
+       from public.shifts where id = $1`,
+    [raviShift]
+  );
+  check(
+    "editing or voiding ledger credit refreshes the shift snapshot",
+    Number(shiftAfterVoid.rows?.[0]?.credit) === 750 &&
+      Number(shiftAfterVoid.rows?.[0]?.sales) === 1,
+    JSON.stringify(shiftAfterVoid.rows?.[0])
+  );
 
   console.log("\n== cross-station and unauthorised direct calls ==");
   const foreignOwnerRead = await asUser(
@@ -757,6 +770,131 @@ async function main() {
     "two overlapping corrections leave the balance consistent",
     (await balanceOf(lakshmi)) === 200,
     `balance ${await balanceOf(lakshmi)}`
+  );
+
+  console.log("\n== close derives credit from the running ledger ==");
+  const sureshClose = await asUser(
+    IDS.suresh,
+    `select public.close_shift(
+       $1, $2, $3::jsonb,
+       '{"cash":"0","credit":"9999"}'::jsonb,
+       '{}'::jsonb, '', '[]'::jsonb
+     ) as r`,
+    [IDS.station, sureshShift, JSON.stringify({ [n2]: "2100" })]
+  );
+  check(
+    "closing succeeds without reposting already-recorded credit",
+    !sureshClose.error,
+    sureshClose.error?.message
+  );
+  const closedCredit = await asUser(
+    IDS.owner,
+    `select (s.payments ->> 'credit')::numeric as credit,
+            jsonb_array_length(s.credit_sales) as sales,
+            s.credit_sales -> 0 ->> 'transactionId' as transaction_id,
+            (select count(*) from public.customer_transactions t
+              where t.shift_id = s.id and t.type = 'credit' and t.status = 'active') as active_rows
+       from public.shifts s where s.id = $1`,
+    [sureshShift]
+  );
+  check(
+    "the shift snapshot contains the ledger total and transaction reference",
+    Number(closedCredit.rows?.[0]?.credit) === 200 &&
+      Number(closedCredit.rows?.[0]?.sales) === 1 &&
+      closedCredit.rows?.[0]?.transaction_id === sureshTx &&
+      Number(closedCredit.rows?.[0]?.active_rows) === 1,
+    JSON.stringify(closedCredit.rows?.[0])
+  );
+  check(
+    "the close ignored the client-supplied credit payment and did not move the balance",
+    (await balanceOf(lakshmi)) === 200,
+    `balance ${await balanceOf(lakshmi)}`
+  );
+
+  console.log("\n== rejected shift resubmission preserves audited credit ==");
+  const rejected = await asUser(
+    IDS.owner,
+    "select public.review_shift($1, $2, 'reject', 'Check the credit') as r",
+    [IDS.station, sureshShift]
+  );
+  check("owner sends the credited shift back", !rejected.error, rejected.error?.message);
+  const resubmitted = await asUser(
+    IDS.suresh,
+    `select public.resubmit_rejected_shift(
+       $1, $2, $3::jsonb, '{"cash":"0"}'::jsonb, '{}'::jsonb, '',
+       $4::jsonb, '[]'::jsonb
+     ) as r`,
+    [
+      IDS.station,
+      sureshShift,
+      JSON.stringify({ [n2]: "2100" }),
+      JSON.stringify([
+        {
+          transactionId: sureshTx,
+          customerId: lakshmi,
+          name: "Lakshmi Traders",
+          phone: "9988000002",
+          amount: 200,
+        },
+      ]),
+    ]
+  );
+  check(
+    "the attendant can resubmit despite the original transaction audit",
+    !resubmitted.error,
+    resubmitted.error?.message
+  );
+  const correctedCredit = await asUser(
+    IDS.owner,
+    `select
+       (select status from public.customer_transactions where id = $1) as old_status,
+       (select count(*) from public.customer_transaction_audit
+         where transaction_id = $1 and action = 'voided') as old_void_audits,
+       (select count(*) from public.customer_transactions
+         where shift_id = $2 and type = 'credit' and status = 'active') as active_rows,
+       (select sum(amount) from public.customer_transactions
+         where shift_id = $2 and type = 'credit' and status = 'active') as active_total,
+       (select (payments ->> 'credit')::numeric from public.shifts where id = $2) as shift_credit`,
+    [sureshTx, sureshShift]
+  );
+  check(
+    "resubmission voids instead of deleting and rebuilds one authoritative row",
+    correctedCredit.rows?.[0]?.old_status === "voided" &&
+      Number(correctedCredit.rows?.[0]?.old_void_audits) === 1 &&
+      Number(correctedCredit.rows?.[0]?.active_rows) === 1 &&
+      Number(correctedCredit.rows?.[0]?.active_total) === 200 &&
+      Number(correctedCredit.rows?.[0]?.shift_credit) === 200,
+    JSON.stringify(correctedCredit.rows?.[0])
+  );
+  check(
+    "resubmission leaves the customer balance unchanged",
+    (await balanceOf(lakshmi)) === 200,
+    `balance ${await balanceOf(lakshmi)}`
+  );
+
+  console.log("\n== station reset removes restrictive audit dependencies first ==");
+  const reset = await asUser(IDS.owner, "select public.reset_station_data($1)", [
+    IDS.station,
+  ]);
+  check(
+    "owner can reset a station containing customer and transaction audit rows",
+    !reset.error,
+    reset.error?.message
+  );
+  const afterReset = await client.query(
+    `select
+       (select count(*) from public.customer_transaction_audit where station_id = $1) tx_audits,
+       (select count(*) from public.customer_audit where station_id = $1) customer_audits,
+       (select count(*) from public.customer_transactions where station_id = $1) transactions,
+       (select count(*) from public.credit_customers where station_id = $1) customers,
+       (select count(*) from public.shifts where station_id = $1) shifts,
+       (select count(*) from public.tanks where station_id = $1) tanks`,
+    [IDS.station]
+  );
+  check(
+    "reset leaves no audited, financial, shift, or stock rows behind",
+    Object.values(afterReset.rows[0]).every((value) => Number(value) === 0),
+    JSON.stringify(afterReset.rows[0])
   );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);
