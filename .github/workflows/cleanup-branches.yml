@@ -1,0 +1,89 @@
+name: Keep branches clean
+
+# A stale branch list is not cosmetic: it makes `git branch -r` useless, hides
+# the one branch someone is actually reviewing, and tempts a reviewer into
+# re-opening work that already shipped. Branches are therefore deleted the
+# moment their pull request closes, and a weekly sweep catches anything that
+# slipped through (a merge done from the API, a branch whose PR was closed
+# while the workflow was failing).
+#
+# Only `main` and branches with an open pull request ever survive.
+
+on:
+  pull_request_target:
+    types: [closed]
+  schedule:
+    # Mondays, 02:00 UTC.
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  delete-closed-branch:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete the head branch of the closed pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -euo pipefail
+          # Never touch a fork's branch, and never delete the default branch.
+          if [ "$SAME_REPO" != "true" ] || [ "$HEAD_REF" = "main" ]; then
+            echo "Nothing to delete for $HEAD_REF."
+            exit 0
+          fi
+          gh api -X DELETE "repos/$REPO/git/refs/heads/$HEAD_REF" \
+            && echo "Deleted $HEAD_REF." \
+            || echo "Branch $HEAD_REF was already gone."
+
+  sweep:
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete every branch with no open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Branches a reviewer still needs: anything behind an open PR.
+          gh api "repos/$REPO/pulls?state=open&per_page=100" --paginate \
+            --jq '.[] | select(.head.repo.full_name == "'"$REPO"'") | .head.ref' \
+            | sort -u > keep.txt
+          echo "main" >> keep.txt
+
+          gh api "repos/$REPO/branches?per_page=100" --paginate --jq '.[].name' \
+            | sort -u > all.txt
+
+          comm -23 all.txt <(sort -u keep.txt) > candidates.txt
+          if [ ! -s candidates.txt ]; then
+            echo "Nothing to sweep — the branch list is already clean."
+            exit 0
+          fi
+
+          # Work in progress has no pull request yet. Give a branch two weeks
+          # of quiet before the sweep assumes it was abandoned, so an active
+          # session is never deleted out from under whoever is pushing to it.
+          cutoff=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          while read -r branch; do
+            [ -z "$branch" ] && continue
+            last=$(gh api "repos/$REPO/commits?sha=$branch&per_page=1" \
+                     --jq '.[0].commit.committer.date' 2>/dev/null || echo "")
+            if [ -n "$last" ] && [ "$last" \> "$cutoff" ]; then
+              echo "Keeping $branch — last commit $last is recent."
+              continue
+            fi
+            echo "Deleting $branch (last commit ${last:-unknown})"
+            gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" || true
+          done < candidates.txt

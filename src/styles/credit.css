@@ -1,0 +1,619 @@
+/* =====================================================================
+   Credit customers — the book, at a glance
+   =====================================================================
+
+   This screen answers three questions, in this order: how much is owed,
+   who has owed it longest, and where is one particular customer. The old
+   layout answered none of them well — three equal statistics, a wall of
+   filters, then rows that only had styling below 860px, so the desktop
+   list fell back to unstyled anchors.
+
+   Everything the list needs now lives here (one home, not split across a
+   media block in responsive.css), mobile-first with the wider layout added
+   on top. Nothing in this file changes behaviour or data: it is presentation
+   only, so reverting the screen is a file-level decision, not an archaeology
+   project.
+   ===================================================================== */
+
+.credit-screen {
+  --credit-row-radius: var(--radius-md);
+}
+
+/* ---------------- header actions ---------------- */
+
+.credit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Filter stacks (the activity drawer) keep one control per row on a phone. */
+.credit-filters {
+  display: grid;
+  gap: 10px;
+}
+
+.credit-filters input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* ---------------- the hero: what the book is worth ---------------- */
+
+.credit-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.credit-hero__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.credit-hero__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.credit-hero__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.credit-hero__value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(28px, 7vw, 38px);
+  font-weight: 750;
+  line-height: 1.1;
+  color: var(--ink-strong);
+}
+
+.credit-hero__value.neg {
+  color: var(--money-out);
+}
+
+.credit-hero__value.pos {
+  color: var(--money-in);
+}
+
+.credit-hero__sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* The one thing on this screen worth interrupting for: money that has sat
+   unpaid for two months. It is a statement, not a button, so it cannot be
+   dismissed by accident — the fix is to collect, not to tap. */
+.credit-flag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--money-out-soft);
+  color: var(--money-out);
+  border: 1px solid color-mix(in srgb, var(--money-out) 22%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ---------------- concentration bar ---------------- */
+
+.credit-hero__split {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.credit-bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.credit-bar__top {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    90deg,
+    var(--money-out) 0%,
+    color-mix(in srgb, var(--money-out) 55%, var(--money-credit)) 100%
+  );
+  transition: width var(--duration-fill, 760ms) var(--ease-out);
+}
+
+.credit-hero__note {
+  margin: 0;
+}
+
+/* ---------------- count pills ---------------- */
+
+.credit-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.credit-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.credit-pill b {
+  color: var(--ink-strong);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.credit-pill small {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.credit-pill--neg {
+  background: var(--money-out-soft);
+  border-color: color-mix(in srgb, var(--money-out) 18%, transparent);
+}
+
+.credit-pill--neg b {
+  color: var(--money-out);
+}
+
+.credit-pill--pos {
+  background: var(--money-in-soft);
+  border-color: color-mix(in srgb, var(--money-in) 18%, transparent);
+}
+
+.credit-pill--pos b {
+  color: var(--money-in);
+}
+
+.credit-pill--warn {
+  background: var(--money-credit-soft);
+  border-color: color-mix(in srgb, var(--money-credit) 20%, transparent);
+}
+
+.credit-pill--warn b {
+  color: var(--money-credit);
+}
+
+/* ---------------- today's activity ---------------- */
+
+.credit-activity__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.credit-activity__net {
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.credit-activity__net b {
+  margin-left: 4px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--ink-strong);
+}
+
+.credit-activity__net.neg b {
+  color: var(--money-out);
+}
+
+.credit-activity__net.pos b {
+  color: var(--money-in);
+}
+
+.credit-activity__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.credit-activity__subhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.credit-activity__subhead h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.credit-link {
+  border: 0;
+  padding: 6px 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.credit-link:hover {
+  text-decoration: underline;
+}
+
+/* A filter wall is noise until the moment it is needed. Collapsed by
+   default, it still announces how many filters are narrowing the list, so a
+   half-filtered view is never mistaken for the whole day. */
+.credit-drawer {
+  border-top: 1px solid var(--hairline);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.credit-drawer__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.credit-drawer__summary::-webkit-details-marker {
+  display: none;
+}
+
+.credit-drawer__summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.credit-drawer[open] .credit-drawer__summary::before {
+  transform: rotate(45deg);
+}
+
+.credit-drawer__badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.credit-drawer__body {
+  padding-top: 10px;
+}
+
+/* ---------------- toolbar: search, tabs, sort ---------------- */
+
+.credit-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.credit-search {
+  position: relative;
+  display: flex;
+}
+
+.credit-search input {
+  width: 100%;
+  min-width: 0;
+  padding-right: 40px;
+}
+
+.credit-search__clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.credit-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.credit-chips button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+/* The count is the point of the chip: it says what is behind the tab before
+   anyone pays the cost of switching to it. */
+.credit-chip__count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.credit-chips button.active .credit-chip__count {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.credit-sort {
+  max-width: 260px;
+}
+
+/* ---------------- the list ---------------- */
+
+.customer-list {
+  display: grid;
+  gap: 8px;
+}
+
+.customer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 11px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--credit-row-radius, var(--radius-md));
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+a.customer-row:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+a.customer-row:active {
+  transform: none;
+}
+
+.customer-row--archived {
+  background: var(--surface-sunken);
+  flex-wrap: wrap;
+}
+
+.customer-row__aside {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* A colour per name, derived from the name itself, so the same customer is
+   recognisable in the list before the text is read. */
+.customer-avatar {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: hsl(var(--avatar-hue, 215) 72% 94%);
+  color: hsl(var(--avatar-hue, 215) 68% 30%);
+  border: 1px solid hsl(var(--avatar-hue, 215) 60% 86%);
+  font-weight: 750;
+  font-size: 16px;
+}
+
+.customer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.customer-main b {
+  font-size: 14.5px;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-main__meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Age, not just amount. "No payment in 74 days" is the sentence that gets a
+   phone call made; the balance alone never did. */
+.credit-age {
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.credit-age--watch {
+  background: var(--money-credit-soft);
+  color: var(--money-credit);
+}
+
+.credit-age--late {
+  background: var(--money-out-soft);
+  color: var(--money-out);
+}
+
+.customer-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 0 0 auto;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.customer-balance b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.customer-balance small {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.customer-balance.neg b {
+  color: var(--money-out);
+}
+
+.credit-settled-pill {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--money-in-soft);
+  color: var(--money-in);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.customer-row .chev,
+.customer-row > svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+/* ---------------- wider screens ---------------- */
+
+@media (min-width: 861px) {
+  .customer-list {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 10px;
+  }
+
+  .credit-toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .credit-search {
+    flex: 1 1 260px;
+  }
+
+  .credit-sort {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .credit-sort > span {
+    margin: 0;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 860px) {
+  .credit-actions {
+    width: 100%;
+  }
+
+  .credit-actions > * {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+
+  /* Thumb-sized targets on a phone held one-handed at the counter. */
+  .credit-chips button {
+    min-height: 44px;
+  }
+
+  .customer-row {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .credit-hero {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .customer-main__meta {
+    font-size: 11px;
+  }
+
+  .customer-balance b {
+    font-size: 14px;
+  }
+}

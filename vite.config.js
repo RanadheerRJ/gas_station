@@ -2,6 +2,7 @@ import { copyFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { currentAppVersion } from "./scripts/appVersion.mjs";
 
 /**
  * GitHub Pages serves a project site from a subpath — https://user.github.io/gas_station/
@@ -31,9 +32,22 @@ function spaFallback() {
   };
 }
 
+/**
+ * The shipped version is the pull request number that produced the build (see
+ * scripts/appVersion.mjs). Baking it in at build time — rather than fetching
+ * it — keeps the About panel truthful on a forecourt with no signal, and means
+ * the number updates itself on every deploy with nothing to remember.
+ */
+const appVersion = currentAppVersion();
+
 export default defineConfig({
   base,
   plugins: [react(), spaFallback()],
+  define: {
+    __APP_PR__: JSON.stringify(appVersion.pr),
+    __APP_VERSION__: JSON.stringify(appVersion.version),
+    __APP_VERSION_LABEL__: JSON.stringify(appVersion.label),
+  },
   build: {
     rollupOptions: {
       output: {

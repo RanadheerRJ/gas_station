@@ -41,6 +41,9 @@ const DATE_CHIPS = [
   ["custom", "credit.periodCustom"],
 ];
 
+/** Entries shown before the list asks to be expanded. */
+const PREVIEW_ROWS = 6;
+
 const STATUS_CHIPS = [
   ["all", "credit.all"],
   ["active", "credit.statusActive"],
@@ -68,6 +71,7 @@ export default function CreditActivity({ stationId }) {
   const [status, setStatus] = useState("all");
   const [attendant, setAttendant] = useState("");
   const [shift, setShift] = useState("");
+  const [expanded, setExpanded] = useState(false);
 
   const range = useMemo(
     () => activityRange(dateKey, new Date(), custom),
@@ -118,10 +122,27 @@ export default function CreditActivity({ stationId }) {
     return [...seen.entries()];
   }, [rows]);
 
+  // How many filters are away from their default, so the collapsed control
+  // can say so rather than hiding a narrowed list behind a closed drawer.
+  const activeFilters =
+    (dateKey === "today" ? 0 : 1) +
+    (status === "all" ? 0 : 1) +
+    (attendant ? 1 : 0) +
+    (shift ? 1 : 0);
+
+  const shown = expanded ? rows : rows.slice(0, PREVIEW_ROWS);
+
   return (
     <section className="card card--flush credit-activity">
-      <div className="card__head">
+      <div className="card__head credit-activity__head">
         <h2>{t("credit.todayHeading")}</h2>
+        <span
+          className={`credit-activity__net ${
+            Number(summary?.netCredit || 0) > 0 ? "neg" : "pos"
+          }`}
+        >
+          {t("credit.netCredit")} <b>₹ {money(Number(summary?.netCredit || 0))}</b>
+        </span>
       </div>
       {error && (
         <div className="section-pad">
@@ -150,83 +171,116 @@ export default function CreditActivity({ stationId }) {
           prefix="₹ "
         />
       </div>
-      <p className="small muted section-pad">
-        {t("credit.entriesCount", { count: Number(summary?.entries || 0) })} ·{" "}
-        {t("credit.customersCount", { count: Number(summary?.customers || 0) })} ·{" "}
-        {t("credit.attendantsCount", { count: Number(summary?.attendants || 0) })}
+      <p className="credit-activity__counts section-pad small muted">
+        <span>{t("credit.entriesCount", { count: Number(summary?.entries || 0) })}</span>
+        <span>
+          {t("credit.customersCount", { count: Number(summary?.customers || 0) })}
+        </span>
+        <span>
+          {t("credit.attendantsCount", { count: Number(summary?.attendants || 0) })}
+        </span>
       </p>
 
-      <div className="credit-filters section-pad">
-        <div className="filter-chips" role="group" aria-label={t("credit.filterDate")}>
-          {DATE_CHIPS.map(([key, label]) => (
-            <button
-              type="button"
-              key={key}
-              className={dateKey === key ? "active" : ""}
-              onClick={() => setDateKey(key)}
-            >
-              {t(label)}
-            </button>
-          ))}
-        </div>
-        {dateKey === "custom" && (
-          <div className="statement__custom">
+      <details className="credit-drawer section-pad">
+        <summary className="credit-drawer__summary">
+          <span>{t("credit.filters")}</span>
+          {activeFilters > 0 && (
+            <span className="credit-drawer__badge">
+              {t("credit.filtersActive", { count: activeFilters })}
+            </span>
+          )}
+        </summary>
+        <div className="credit-filters credit-drawer__body">
+          <div className="filter-chips" role="group" aria-label={t("credit.filterDate")}>
+            {DATE_CHIPS.map(([key, label]) => (
+              <button
+                type="button"
+                key={key}
+                className={dateKey === key ? "active" : ""}
+                onClick={() => setDateKey(key)}
+              >
+                {t(label)}
+              </button>
+            ))}
+          </div>
+          {dateKey === "custom" && (
+            <div className="statement__custom">
+              <label className="field">
+                <span>{t("report.from")}</span>
+                <input
+                  type="date"
+                  className="mono"
+                  value={custom.from}
+                  onChange={(e) => setCustom({ ...custom, from: e.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span>{t("report.to")}</span>
+                <input
+                  type="date"
+                  className="mono"
+                  value={custom.to}
+                  onChange={(e) => setCustom({ ...custom, to: e.target.value })}
+                />
+              </label>
+            </div>
+          )}
+          <div
+            className="filter-chips"
+            role="group"
+            aria-label={t("credit.filterStatus")}
+          >
+            {STATUS_CHIPS.map(([key, label]) => (
+              <button
+                type="button"
+                key={key}
+                className={status === key ? "active" : ""}
+                onClick={() => setStatus(key)}
+              >
+                {t(label)}
+              </button>
+            ))}
+          </div>
+          <div className="credit-filters__selects">
             <label className="field">
-              <span>{t("report.from")}</span>
-              <input
-                type="date"
-                className="mono"
-                value={custom.from}
-                onChange={(e) => setCustom({ ...custom, from: e.target.value })}
-              />
+              <span>{t("credit.filterAttendant")}</span>
+              <select value={attendant} onChange={(e) => setAttendant(e.target.value)}>
+                <option value="">{t("credit.all")}</option>
+                {attendants.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="field">
-              <span>{t("report.to")}</span>
-              <input
-                type="date"
-                className="mono"
-                value={custom.to}
-                onChange={(e) => setCustom({ ...custom, to: e.target.value })}
-              />
+              <span>{t("credit.filterShift")}</span>
+              <select value={shift} onChange={(e) => setShift(e.target.value)}>
+                <option value="">{t("credit.all")}</option>
+                {shifts.map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
+        </div>
+      </details>
+
+      <div className="card__head credit-activity__subhead">
+        <h3>{t("credit.recentEntries")}</h3>
+        {rows.length > PREVIEW_ROWS && (
+          <button
+            type="button"
+            className="credit-link"
+            onClick={() => setExpanded((open) => !open)}
+          >
+            {expanded
+              ? t("credit.showFewer")
+              : t("credit.showAllEntries", { count: rows.length })}
+          </button>
         )}
-        <div className="filter-chips" role="group" aria-label={t("credit.filterStatus")}>
-          {STATUS_CHIPS.map(([key, label]) => (
-            <button
-              type="button"
-              key={key}
-              className={status === key ? "active" : ""}
-              onClick={() => setStatus(key)}
-            >
-              {t(label)}
-            </button>
-          ))}
-        </div>
-        <div className="credit-filters__selects">
-          <label className="field">
-            <span>{t("credit.filterAttendant")}</span>
-            <select value={attendant} onChange={(e) => setAttendant(e.target.value)}>
-              <option value="">{t("credit.all")}</option>
-              {attendants.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t("credit.filterShift")}</span>
-            <select value={shift} onChange={(e) => setShift(e.target.value)}>
-              <option value="">{t("credit.all")}</option>
-              {shifts.map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
       </div>
 
       {loading ? (
@@ -237,7 +291,7 @@ export default function CreditActivity({ stationId }) {
         <p className="small muted section-pad">{t("credit.noTransactionsInRange")}</p>
       ) : (
         <ul className="st-group__rows">
-          {rows.map((row) => {
+          {shown.map((row) => {
             const debit = row.type === "credit";
             const voided = row.status === "voided";
             return (

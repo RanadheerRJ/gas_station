@@ -44,6 +44,11 @@ export default [
       },
       globals: {
         ...globals.browser,
+        // Build-time constants substituted by Vite's `define` (see
+        // vite.config.js): the pull request number this build came from.
+        __APP_PR__: "readonly",
+        __APP_VERSION__: "readonly",
+        __APP_VERSION_LABEL__: "readonly",
       },
     },
     settings: {

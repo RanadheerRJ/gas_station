@@ -322,12 +322,54 @@ They are injected only during the Pages build. The deploy workflow fails early
 if either is missing or if Firebase code appears in `dist/`. In repository
 settings, set **Pages → Source** to **GitHub Actions**.
 
+## App version = pull request number
+
+Every change reaches `main` as one merged pull request, and `main` is what
+Pages deploys — so the PR number identifies a running build exactly. It is what
+the app calls its version: **Account → App version PR #49**.
+
+Nothing is maintained by hand. `scripts/appVersion.mjs` resolves the number at
+build time and `vite.config.js` bakes it into the bundle (so it is still
+correct offline), using the first source that answers:
+
+1. `APP_PR_NUMBER` — the deploy workflow asks the GitHub API which pull request
+   contains the commit being built.
+2. `GITHUB_REF` on a pull-request build (`refs/pull/47/merge`).
+3. The newest `Merge pull request #N` subject in the git history, so a plain
+   local `npm run build` reports the same number CI would.
+4. `package.json`’s `version`, shown as `v1.0.0`, when no PR is behind the build
+   (a local branch, a source tarball).
+
+Check what the current tree would report:
+
+```bash
+node scripts/appVersion.mjs          # PR #49
+node scripts/appVersion.mjs --json   # {"pr":49,"version":"49",…}
+```
+
+The deploy workflow fails if the built bundle does not contain the PR number it
+resolved, so the About panel can never quietly drift from the deployed build.
+
+## Branch hygiene
+
+`.github/workflows/cleanup-branches.yml` keeps the branch list readable:
+
+- a pull request’s head branch is deleted as soon as the PR closes (merged or
+  not; fork branches are never touched);
+- a weekly sweep removes any remaining branch that has no open pull request and
+  no commit in the last 14 days, so in-flight work without a PR survives.
+
+`main` is never deleted. Enabling **Settings → General → Automatically delete
+head branches** makes the first rule redundant, which is fine — the workflow is
+idempotent.
+
 ## Tests and checks
 
 ```bash
 npm test                 # unit tests: shift/tank maths, exports, translations, credentials
 npm run check:schema     # migration contract guard used by CI
 npm run check:sw-version # service worker cache version bumped with the built assets
+node scripts/appVersion.mjs --json # the version this build would report
 npm run test:rbac        # role matrix enforced against a real PostgreSQL instance
 npm run lint
 npm run format:check
