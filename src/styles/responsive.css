@@ -1393,6 +1393,7 @@
    * labelled button such as "Create login" on Staff & access is never pushed
    * off the edge or clipped by the title.
    */
+
   .screen-head__actions {
     width: 100%;
     margin-left: 0;
@@ -1477,4 +1478,156 @@
 .segmented-control button.active {
   background: var(--ink);
   color: var(--paper);
+}
+
+/* Credit ledger: compact, touch-friendly rows and sheet actions. */
+@media (max-width: 860px) {
+  .credit-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .credit-actions > * {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+  .customer-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 64px;
+    padding: 10px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--ink);
+    text-decoration: none;
+    min-width: 0;
+  }
+  .customer-row + .customer-row {
+    margin-top: 8px;
+  }
+  .customer-avatar {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-weight: 750;
+  }
+  .customer-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .customer-main b,
+  .customer-main span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .customer-main span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .customer-balance {
+    font-family: var(--mono);
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .credit-filters {
+    display: grid;
+    gap: 10px;
+  }
+  .credit-filters input {
+    width: 100%;
+    min-width: 0;
+  }
+  .filter-chips,
+  .quick-chips {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+  .filter-chips button,
+  .quick-chips button {
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline-strong);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .filter-chips button.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 700;
+  }
+  .credit-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+  .credit-action-buttons .cta {
+    min-height: 50px;
+    white-space: normal;
+  }
+  .credit-pay {
+    background: var(--green);
+  }
+  .credit-give {
+    background: var(--accent);
+  }
+  .amount-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 2px solid var(--accent);
+    font: 700 34px var(--mono);
+  }
+  .amount-field input {
+    border: 0;
+    padding: 4px 0;
+    font: inherit;
+    text-align: right;
+    min-width: 0;
+    width: 100%;
+    background: transparent;
+  }
+  .transaction-sheet input[type="date"] {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .date-toggle button {
+    border: 0;
+    background: none;
+    color: var(--accent);
+    padding: 8px 0;
+    min-height: 44px;
+  }
+  .sheet-preview {
+    font-weight: 700;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+  }
+  .note-chips button {
+    font-size: 12px;
+  }
+  .overflow-menu {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .overflow-menu button {
+    min-height: 44px;
+  }
 }

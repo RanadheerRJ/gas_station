@@ -881,5 +881,13 @@ export async function addCustomerTransaction(stationId, customerId, tx) {
   );
 }
 
+export async function archiveCustomer(customerId) {
+  return camelize(await rpc("archive_customer", { p_customer_id: customerId }));
+}
+
+export async function restoreCustomer(customerId) {
+  return camelize(await rpc("restore_customer", { p_customer_id: customerId }));
+}
+
 /** Client-side PIN validation, mirroring the accounts Edge Function. */
 export { pinProblem };
