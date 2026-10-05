@@ -19,13 +19,12 @@ every push to `main` that touches `supabase/functions/**`; to enable it, add
 a `SUPABASE_ACCESS_TOKEN` secret and a `SUPABASE_PROJECT_ID` variable or
 secret under **Settings → Secrets and variables → Actions**.
 
-**Migrations ship with it.** The same workflow also runs `supabase db push`,
-before the function deploys, on any push to `main` touching
-`supabase/migrations/**`. That ordering is deliberate: a schema ahead of the
-app is harmless, while a UI ahead of its schema is a live button with no RPC
-behind it. Applying migrations needs one more secret, `SUPABASE_DB_PASSWORD`
-(Settings → Database → Database password); the workflow fails early and says
-so if it is absent.
+**Migrations ship with it.** The same workflow applies migrations through the
+Supabase Management API before the function deploys, on any push to `main`
+touching `supabase/migrations/**`. That ordering is deliberate: a schema ahead
+of the app is harmless, while a UI ahead of its schema is a live button with no
+RPC behind it. It uses the existing `SUPABASE_ACCESS_TOKEN` and
+`SUPABASE_PROJECT_ID`; no database password is stored in GitHub Actions.
 
 You still need the manual commands above for the **first** setup, before the
 workflow has ever run, and `supabase db push` remains safe to run by hand at
