@@ -1,0 +1,520 @@
+/* =====================================================================
+   Credit customer: balance card + bank-statement ledger
+   =====================================================================
+
+   The screen is laid out so that the two money actions are reachable the
+   instant the screen opens: header, a ~120px balance card that carries the
+   buttons inside it, then a statement that takes whatever height is left and
+   scrolls inside itself. The page as a whole does not scroll on a phone.
+   ===================================================================== */
+
+.customer-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.customer-screen__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: 6px var(--content-gutter) 12px;
+}
+
+/* ---------------- balance card ---------------- */
+
+.balance-card {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.balance-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.balance-card__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.balance-card__label {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.balance-card__value {
+  font-family: var(--mono);
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.balance-card--due .balance-card__value {
+  color: var(--rust);
+}
+
+.balance-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.balance-card__actions .cta {
+  min-height: 46px;
+  padding-inline: 8px;
+  font-size: 14.5px;
+  white-space: normal;
+}
+
+.balance-card__actions .credit-pay {
+  background: var(--green);
+}
+
+.balance-card__actions .credit-give {
+  background: var(--accent);
+}
+
+/* ---------------- statement shell ---------------- */
+
+.statement {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--surface);
+  padding: 10px 10px 8px;
+}
+
+.statement__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.statement__head h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.tool-btn--compact {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+.statement__chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.statement__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.statement__chips button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 5px 11px;
+  font-size: 12.5px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.statement__chips button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.statement__custom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.statement__custom input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.statement__legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 11.5px;
+}
+
+.is-debit {
+  color: var(--rust);
+}
+
+.is-credit {
+  color: var(--green);
+}
+
+/* ---------------- the ledger itself ---------------- */
+
+.statement__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  border-top: 1px solid var(--hairline);
+}
+
+.statement__cols {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 2px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline-strong);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.statement__empty {
+  padding: 24px 4px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.st-group {
+  margin: 0;
+}
+
+.st-group__day {
+  position: sticky;
+  top: 25px;
+  z-index: 2;
+  margin: 0;
+  padding: 5px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.st-group__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.st-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 46px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.st-row__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.st-row__desc {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-row__sub {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-row__figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.st-row__amt {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.st-row__bal {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.st-balance {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--hairline-strong);
+}
+
+.st-balance small {
+  display: block;
+  font-weight: 500;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.st-balance__v {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.st-balance--closing {
+  border-bottom: 0;
+  border-top: 2px solid var(--hairline-strong);
+}
+
+.st-totals {
+  margin: 0;
+  padding: 6px 2px 2px;
+  display: grid;
+  gap: 3px;
+  border-top: 1px solid var(--hairline);
+}
+
+.st-totals > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.st-totals dt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.st-totals dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statement__more {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+/* ---------------- full-screen statement ---------------- */
+
+.statement-full {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.statement-full__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--content-gutter);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.statement-full__head .back-link {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.statement-full__titles {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.statement-full__titles h1 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.statement-full__titles .sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statement-full__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px var(--content-gutter) 12px;
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
+/* ---------------- breakpoints ---------------- */
+
+/*
+ * Phones and small tablets: the shell's scrolling column hands its height to
+ * this screen (CustomerDetail adds `main--fixed` while it is mounted), so the
+ * balance card and its buttons cannot be scrolled away and only the statement
+ * moves.
+ */
+@media (max-width: 860px) {
+  .main.main--fixed {
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .main.main--fixed > div[class^="route-"],
+  .main.main--fixed > div[class*=" route-"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .shell--tabs .main.main--fixed .customer-screen {
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .customer-screen {
+    flex: 1 1 auto;
+  }
+
+  .customer-screen .screen-head {
+    flex: 0 0 auto;
+    padding: 8px var(--content-gutter) 2px;
+  }
+
+  .customer-screen .screen-head h1 {
+    font-size: 17.5px;
+  }
+
+  .customer-screen .back-link {
+    width: 44px;
+    height: 44px;
+  }
+
+  .balance-card__value {
+    font-size: 26px;
+  }
+}
+
+@media (min-width: 861px) {
+  .statement__scroll {
+    max-height: 60vh;
+  }
+}
+
+@media (max-width: 380px) {
+  .balance-card__actions .cta {
+    font-size: 13.5px;
+  }
+
+  .balance-card__value {
+    font-size: 23px;
+  }
+}
+
+/* ---------------- amount sheet ---------------- */
+
+/*
+ * The confirm button rides the bottom of the sheet body, so an open keyboard
+ * (or the tab bar beneath the sheet) can never bury it: the body scrolls
+ * under it instead.
+ */
+.transaction-sheet__confirm {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 8px 0 2px;
+  background: var(--surface);
+}
+
+.transaction-sheet__confirm .cta {
+  width: 100%;
+  min-height: 50px;
+}

@@ -21,6 +21,7 @@
  */
 
 import { formatDate, formatStamp } from "./format.js";
+import { buildStatement } from "./statement.js";
 import { classifyFuel, SHIFT_STATUS, shiftTotals } from "./shiftMath.js";
 import { tankStatus } from "./tankMath.js";
 
@@ -338,6 +339,69 @@ export function shiftsReport({
         statusText(shift.status),
       ];
     }),
+  };
+}
+
+/**
+ * One customer's statement for one period: the same opening balance, entries,
+ * closing balance and totals the Statement screen is showing.
+ *
+ * It is built from `buildStatement`, which is also what the screen renders, so
+ * the download can never drift from the display. Rows are written oldest
+ * first, the way a bank statement is read, even though the screen lists them
+ * newest first.
+ */
+export function statementReport({
+  customer = {},
+  range = {},
+  filter = "all",
+  stationName = "",
+} = {}) {
+  const statement = buildStatement({
+    transactions: customer.transactions || [],
+    range,
+    filter,
+  });
+  const label = (entry) =>
+    entry.note || (entry.type === "credit" ? "Credit given" : "Payment received");
+  const rows = [
+    [isoDay(range.from), "", "Opening balance", "", "", "", decimal(statement.opening)],
+    ...statement.ascending.map((entry) => [
+      entry.day,
+      entry.time,
+      label(entry),
+      entry.recordedByName,
+      entry.type === "credit" ? decimal(entry.amount) : "",
+      entry.type === "payment" ? decimal(entry.amount) : "",
+      decimal(entry.balance),
+    ]),
+    [isoDay(range.to), "", "Closing balance", "", "", "", decimal(statement.closing)],
+    [
+      "",
+      "",
+      "Totals",
+      "",
+      decimal(statement.totals.creditGiven),
+      decimal(statement.totals.paymentsReceived),
+      decimal(statement.totals.net),
+    ],
+  ];
+  return {
+    columns: [
+      "Date",
+      "Time",
+      "Description",
+      "Recorded by",
+      "Debit (credit given)",
+      "Credit (payment received)",
+      "Balance",
+    ],
+    rows,
+    meta: {
+      station: stationName,
+      customer: customer.name || "",
+      phone: customer.phone || "",
+    },
   };
 }
 

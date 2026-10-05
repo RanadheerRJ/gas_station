@@ -49,3 +49,16 @@ export function formatStamp(value) {
     minute: "2-digit",
   });
 }
+
+/** "Mon, 5 Oct 2026" — the day header a bank statement groups entries under. */
+export function formatDayLabel(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
