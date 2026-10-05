@@ -295,22 +295,6 @@
     box-shadow: none;
   }
 
-  .responsive-table > tbody > tr > td.responsive-table__detail-cell {
-    display: block;
-    padding: 0;
-    border: 0;
-    background: transparent;
-  }
-
-  .responsive-table > tbody > tr > td.responsive-table__detail-cell::before {
-    display: none;
-  }
-
-  .responsive-table .nested-panel {
-    padding: 4px 0 0;
-    overflow-x: visible;
-  }
-
   .form-grid {
     grid-template-columns: 1fr;
   }

@@ -341,6 +341,24 @@ export function resetOwnPin(payload) {
   });
 }
 
+/**
+ * Delete a station outright — its data, the logins posted to it, and the
+ * station row.
+ *
+ * It goes through the Edge Function rather than straight to the RPC because
+ * only the service key can remove the Auth users behind those logins. The
+ * function calls `admin_delete_station` with the developer's own token
+ * first, so the database still decides whether the caller may do this.
+ */
+export function deleteStation(stationId) {
+  return accountRequest({ action: "delete_station", stationId });
+}
+
+/** Delete an owner, manager, or attendant login. Developer console only. */
+export function deleteAccount(uid) {
+  return accountRequest({ action: "delete_account", uid });
+}
+
 export async function addStation(payload) {
   return camelize(
     await rpc("add_station", { p_name: payload.name, p_address: payload.address })
@@ -538,7 +556,7 @@ export async function listNozzleOccupancy(stationId) {
 }
 
 /**
- * The station registry behind the developer portal: one row per station with
+ * The station registry behind the developer console: one row per station with
  * its id, name, address, state, and owner. Admin-only RPC, so it is the one
  * way a developer can count an owner's stations — the stations table itself
  * stays closed to them.
@@ -688,6 +706,56 @@ export async function setStationState(stationId, state) {
 
 export async function resetStationData(stationId) {
   return rpc("reset_station_data", { p_station_id: stationId });
+}
+
+/* ------------------------------------------------------------------ */
+/* Developer console: station registry administration                  */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The owner-facing calls above are scoped to the caller's own stations.
+ * These four are the developer's equivalents: admin-only RPCs that name the
+ * station (and its owner) explicitly, so a support request can be answered
+ * without SQL access. Each one re-checks is_admin() in the database.
+ */
+
+export async function adminCreateStation({ ownerId, name, address }) {
+  return camelize(
+    await rpc("admin_create_station", {
+      p_owner_id: ownerId,
+      p_name: name,
+      p_address: address,
+    })
+  );
+}
+
+export async function adminUpdateStation(stationId, { name, address, ownerId }) {
+  return camelize(
+    await rpc("admin_update_station", {
+      p_station_id: stationId,
+      p_name: name,
+      p_address: address,
+      // Null leaves the station where it is; a uuid transfers it.
+      p_owner_id: ownerId || null,
+    })
+  );
+}
+
+export async function adminSetStationState(stationId, state) {
+  return camelize(
+    await rpc("admin_set_station_state", { p_station_id: stationId, p_state: state })
+  );
+}
+
+/** Correct the name or phone on an owner, manager, or attendant profile. */
+export async function adminUpdateProfile(uid, { name, phone }) {
+  return mapProfile(
+    await rpc("admin_update_profile", {
+      p_uid: uid,
+      p_name: name,
+      p_phone: phone || "",
+    })
+  );
 }
 
 /* ------------------------------------------------------------------ */

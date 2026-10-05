@@ -2,8 +2,9 @@ import { Panel } from "../../components/ui";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /**
- * Where an account actually comes from, and why a PIN cannot be read back —
- * written next to the button that hands one out.
+ * Where an account actually comes from, why a PIN cannot be read back, and
+ * what deleting a station really does — written next to the buttons that do
+ * those things.
  */
 export default function HowItWorksPanel() {
   const { t } = useLanguage();
@@ -26,6 +27,16 @@ export default function HowItWorksPanel() {
           Owners create their own managers and attendants from their dashboard, and
           managers and owners can reset a forgotten staff PIN themselves — you only need
           to step in when an owner loses theirs.
+        </li>
+        <li>
+          <em>Reset data</em> empties a station but keeps it; <em>Delete station</em>{" "}
+          removes the station itself, everything recorded at it, and the manager and
+          attendant logins posted to it. Neither can be undone, and the owner account
+          survives both.
+        </li>
+        <li>
+          Every action here is checked again in the database against the signed-in
+          developer, so none of it depends on this screen hiding a button.
         </li>
       </ul>
     </Panel>

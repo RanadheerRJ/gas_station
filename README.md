@@ -18,8 +18,11 @@ have been removed. The source of truth is now:
   matrix: self-only attendant reads, owner/manager-only financial and stock
   reads, anonymous nozzle occupancy, and the attendant write guards.
 - `supabase/migrations/20260920120000_admin_registry_and_manager_staff.sql` —
-  the admin-only station registry RPC behind the developer portal's station
+  the admin-only station registry RPC behind the developer console's station
   counts, and manager visibility of their own station's staff.
+- `supabase/migrations/20261006000000_admin_station_crud.sql` — the rest of the
+  developer console's surface: create, rename, transfer, archive, and delete a
+  station, and correct the name or phone on an account. All admin-only.
 - `supabase/functions/accounts/index.ts` — privileged account provisioning and
   PIN reset Edge Function.
 - `src/lib/supabase.js` — browser client initialization.
@@ -140,17 +143,40 @@ are, so a hand-written PostgREST or RPC call is refused exactly like a click is.
 | Tanks & tank readings | ❌ | ✅ | ✅ | ❌ |
 | Review/approve shifts | ❌ | ✅ | ✅ | ❌ |
 | Station registry (names & counts) | ✅ admin-only RPC | own stations | own station | own station |
+| Create / rename / transfer a station | ✅ any station | own stations | ❌ | ❌ |
+| Archive or reactivate a station | ✅ any station | own stations | ❌ | ❌ |
+| Correct a name or phone on an account | ✅ any PIN account | ❌ | ❌ | ❌ |
 | Reset someone's PIN | ✅ any PIN account | own staff | own station's staff, not self | ❌ |
 | Reset own PIN | — (signs in with a password) | ✅ with current PIN | ✅ with current PIN | ✅ with current PIN |
 | Reset station data | ✅ any station | own stations | ❌ | ❌ |
+| Delete a station | ✅ any station | ❌ | ❌ | ❌ |
+| Delete a login | ✅ any PIN account | ❌ | ❌ | ❌ |
 
-A developer account provisions accounts and nothing else: it cannot read any
-station, shift, price, tank, or credit row. The one deliberate carve-out is
-`admin_station_registry()`, an admin-only RPC that returns the station
-*registry* — id, name, address, state, and owner — so the developer portal can
-show how many stations each owner has. It carries no operational, financial,
-or stock data, and `select * from stations` still returns nothing to a
-developer.
+A developer account administers accounts and the station registry, and nothing
+else: it cannot read any station, shift, price, tank, or credit row. The one
+deliberate carve-out is `admin_station_registry()`, an admin-only RPC that
+returns the station *registry* — id, name, address, state, owner, and how many
+logins are posted there — so the developer console can list and manage
+stations. It carries no operational, financial, or stock data, and
+`select * from stations` still returns nothing to a developer.
+
+The console's write surface is the same shape: `admin_create_station`,
+`admin_update_station`, `admin_set_station_state`, `admin_delete_station`, and
+`admin_update_profile` are `SECURITY DEFINER` and each re-checks `is_admin()`,
+so a hand-written call from an owner, manager, or attendant session is refused.
+A username is never editable — it is half of the Auth login — and a developer
+profile cannot be rewritten from the console.
+
+Deleting is the one irreversible action, and it is a two-stage job because
+only the service key can remove an Auth user. `admin_delete_station` runs in
+one transaction: it purges the station's operational history through
+`reset_station_data()` (the same delete order, not a second copy of it),
+removes the manager and attendant profiles posted to that station, drops the
+station row, and returns the orphaned profile ids. The `accounts` Edge
+Function then deletes the matching Auth users. The owner account and their
+other stations are untouched. An owner login can only be deleted once it holds
+no stations, and a login with recorded history is refused by the database
+rather than silently detached from it.
 
 ### PIN reset authority
 

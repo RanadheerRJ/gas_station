@@ -616,11 +616,9 @@ const te = {
   "staff.created": "సృష్టించినది",
   "staff.resetPin": "పిన్ రీసెట్",
 
-  "admin.title": "స్టేషన్ యజమానిని ఆహ్వానించండి",
-  "admin.subtitle":
-    "డెవలపర్ కన్సోల్ · యజమాని ఖాతా మరియు వారి మొదటి స్టేషన్‌ను సృష్టిస్తుంది",
+  "admin.title": "డెవలపర్ కన్సోల్",
+  "admin.subtitle": "యజమాని ఖాతాలు, స్టేషన్లు మరియు లాగిన్‌లు — అన్నీ ఒకే చోట",
   "admin.newOwnerCredentials": "కొత్త యజమాని ఆధారాలు",
-  "admin.ownerDetails": "యజమాని వివరాలు",
   "admin.ownerDetailsNote":
     "ఖాతా సర్వర్ వైపు సృష్టించబడుతుంది. * గుర్తించిన ఖాళీలు తప్పనిసరి. మీరు పిన్ ఎంచుకుంటారు; వినియోగదారు పేరు పేరు నుండి రూపొందించబడుతుంది.",
   "admin.ownerName": "యజమాని పేరు",
@@ -638,8 +636,6 @@ const te = {
   "admin.statArchived": "ఆర్కైవ్ చేసినవి",
   "admin.registryMissing":
     "స్టేషన్‌ల లెక్క కోసం తాజా డేటాబేస్ మైగ్రేషన్ అవసరం. supabase db push నడపండి, తర్వాత రీలోడ్ చేయండి.",
-  "admin.showStaff": "సిబ్బంది",
-  "admin.hideStaff": "సిబ్బందిని దాచు",
   "admin.noStaff": "ఈ యజమాని కింద ఇంకా మేనేజర్ లేదా అటెండెంట్ లాగిన్‌లు లేవు.",
   "admin.loadingStaff": "సిబ్బందిని లోడ్ చేస్తోంది…",
   "team.title": "జట్టు & యాక్సెస్",
@@ -652,6 +648,65 @@ const te = {
   "admin.stations": "స్టేషన్లు",
   "admin.stationsList": "స్టేషన్లు",
   "admin.howItWorks": "ఇది ఎలా పనిచేస్తుంది",
+  "admin.refresh": "రిఫ్రేష్",
+  "admin.tabOwners": "యజమానులు",
+  "admin.tabStations": "స్టేషన్లు",
+  "admin.newOwner": "కొత్త యజమాని",
+  "admin.newStation": "కొత్త స్టేషన్",
+  "admin.createStation": "స్టేషన్ సృష్టించు",
+  "admin.manage": "నిర్వహించు",
+  "admin.logins": "లాగిన్‌లు",
+  "admin.showDetail": "స్టేషన్లు & లాగిన్‌లు",
+  "admin.hideDetail": "వివరాలు దాచు",
+  "admin.ownerAccountsNote":
+    "ఈ కన్సోల్ సృష్టించిన ప్రతి యజమాని. వారి స్టేషన్లు, లాగిన్‌లు చూడటానికి తెరవండి.",
+  "admin.noOwnersHint": "మొదటి యజమాని ఖాతాను సృష్టించి ప్రారంభించండి.",
+  "admin.searchOwners": "పేరు, వినియోగదారు పేరు లేదా ఫోన్‌తో వెతకండి",
+  "admin.searchStations": "స్టేషన్, యజమాని లేదా చిరునామాతో వెతకండి",
+  "admin.showingCount": "{total}లో {shown}",
+  "admin.noMatches": "ఈ శోధనకు ఏదీ సరిపోలలేదు.",
+  "admin.stationsListNote": "ఎవరి ఆధీనంలో ఉన్నా, వేదికలోని ప్రతి స్టేషన్.",
+  "admin.noStationsHint": "కొత్త స్టేషన్ బటన్‌తో ఒక యజమానికి స్టేషన్ సృష్టించండి.",
+  "admin.filterAll": "అన్నీ",
+  "admin.filterActive": "క్రియాశీల",
+  "admin.filterArchived": "ఆర్కైవ్ చేసినవి",
+  "admin.stationCountOne": "{count} స్టేషన్",
+  "admin.stationCountMany": "{count} స్టేషన్లు",
+  "admin.stationsUnknown": "స్టేషన్లు తెలియవు",
+  "admin.transferHint": "స్టేషన్ మారితే దాని లాగిన్‌లూ మారతాయి",
+  "admin.reactivate": "మళ్ళీ క్రియాశీలం చేయి",
+  "admin.editAccountTitle": "{name} వివరాలు మార్చు",
+  "admin.deleteOwner": "యజమానిని తొలగించు",
+  "admin.deleteLogin": "లాగిన్ తొలగించు",
+  "admin.deleteStation": "స్టేషన్ తొలగించు",
+  "admin.deleteStationShort":
+    "స్టేషన్‌ను, దాని రికార్డులను, ఇక్కడి లాగిన్‌లను తొలగిస్తుంది.",
+  "admin.deleteStationTitle": "{name} తొలగించు",
+  "admin.deleteStationWarning":
+    "ఇది స్టేషన్‌ను, ఇక్కడ నమోదైన ప్రతిదీ — షిఫ్టులు, అమ్మకాలు, రీడింగులు, స్టాక్, క్రెడిట్ ఖాతాదారులు, ధరలు, పరికరాలు — శాశ్వతంగా తొలగిస్తుంది. దీన్ని వెనక్కి తీసుకోలేరు.",
+  "admin.deleteStationLoginOne":
+    "ఇక్కడి {count} మేనేజర్ లేదా అటెండెంట్ లాగిన్ కూడా తొలగించబడుతుంది.",
+  "admin.deleteStationLogins":
+    "ఇక్కడి {count} మేనేజర్ మరియు అటెండెంట్ లాగిన్‌లు కూడా తొలగించబడతాయి.",
+  "admin.deleteStationKeeps": "యజమాని ఖాతా మరియు వారి ఇతర స్టేషన్లు అలాగే ఉంటాయి.",
+  "admin.deleteStationAction": "ఈ స్టేషన్‌ను తొలగించు",
+  "admin.deleteAccountTitle": "{name} తొలగించు",
+  "admin.deleteAccountAction": "ఈ లాగిన్‌ను తొలగించు",
+  "admin.deleteOwnerWarning":
+    "ఇది యజమాని లాగిన్‌ను శాశ్వతంగా తొలగిస్తుంది. ముందుగా వారి స్టేషన్లను తొలగించాలి లేదా బదిలీ చేయాలి.",
+  "admin.deleteLoginWarning":
+    "ఇది లాగిన్‌ను శాశ్వతంగా తొలగిస్తుంది. ఇప్పటికే నమోదైన షిఫ్టులు, లెడ్జర్ నమోదులు వారి పేరుతోనే ఉంటాయి; చరిత్ర ఉన్న లాగిన్‌ను తొలగించలేరు.",
+  "admin.deleteOwnerBlocked":
+    "ఇంకా వారి వద్ద ఉన్నవి: {names}. ముందుగా ఈ స్టేషన్లను తొలగించండి లేదా బదిలీ చేయండి.",
+  "admin.confirmName": "నిర్ధారించడానికి “{name}” అని టైప్ చేయండి:",
+  "admin.deleting": "తొలగిస్తోంది…",
+  "admin.stationCreated": "{name} సృష్టించబడింది",
+  "admin.stationUpdated": "{name} సేవ్ చేయబడింది",
+  "admin.stationArchived": "{name} ఆర్కైవ్ చేయబడింది",
+  "admin.stationActivated": "{name} మళ్ళీ క్రియాశీలం అయ్యింది",
+  "admin.stationDeleted": "{name} తొలగించబడింది",
+  "admin.accountUpdated": "{name} సేవ్ చేయబడింది",
+  "admin.accountDeleted": "{name} తొలగించబడింది",
 
   /* ---- station reset ---- */
   "station.resetData": "స్టేషన్ డేటాను రీసెట్ చేయి",

@@ -681,18 +681,6 @@ label.field {
   font-weight: 650;
 }
 
-/* An inline panel dropped into an expanded table row: the developer portal's
-   per-owner staff list. */
-.nested-panel {
-  padding: 10px 14px 14px;
-  overflow-x: auto;
-}
-
-.nested-panel table {
-  background: var(--surface);
-  border-radius: var(--radius-sm);
-}
-
 input,
 select,
 textarea {

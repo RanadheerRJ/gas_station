@@ -254,6 +254,16 @@ export function TrashIcon(props) {
   );
 }
 
+/** Pencil, for editing a record in place. */
+export function PencilIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 20h4l10-10a2.1 2.1 0 0 0-3-3L5 17v3z" />
+      <path d="M14.5 6.5l3 3" />
+    </svg>
+  );
+}
+
 /** An envelope, for the developer's invite screen. */
 export function MailIcon(props) {
   return (
