@@ -43,6 +43,9 @@ const CUSTOMER = {
 
 vi.mock("../../lib/api", () => ({
   listCustomers: vi.fn(async () => [CUSTOMER]),
+  listCustomerTransactions: vi.fn(async () => []),
+  updateCustomerCredit: vi.fn(async () => ({ ok: true })),
+  voidCustomerCredit: vi.fn(async () => ({ ok: true })),
   addCustomerTransaction: vi.fn(async () => ({ ok: true })),
   archiveCustomer: vi.fn(async () => ({ ok: true })),
   readableError: (e) => String(e?.message || e),

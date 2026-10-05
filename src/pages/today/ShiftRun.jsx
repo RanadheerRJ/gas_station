@@ -13,6 +13,7 @@ import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
 import ExpensesSheet from "../shifts/ExpensesSheet.jsx";
 import { SettledShiftDetail } from "../shifts/ShiftDetail.jsx";
+import ShiftCreditCard from "./ShiftCreditCard.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /** A wall clock that ticks once every 30s — often enough that the elapsed
@@ -207,6 +208,10 @@ export default function ShiftRun() {
             ))}
           </div>
         </section>
+
+        {/* Fuel taken on credit, recorded as it happens rather than from a
+            paper docket at the close screen. */}
+        <ShiftCreditCard stationId={stationId} shiftId={shift.id} />
 
         {/* The drawer's story, written as it happens. */}
         <section className="card card--flush">

@@ -11,6 +11,7 @@ import MeterReadingsCard from "./MeterReadingsCard.jsx";
 import SettlementCard from "./SettlementCard.jsx";
 import ExpensesTestingCard from "./ExpensesTestingCard.jsx";
 import CreditSalesCard from "./CreditSalesCard.jsx";
+import CreditReviewCard from "./CreditReviewCard.jsx";
 import ReviewActionBar from "./ReviewActionBar.jsx";
 
 /**
@@ -26,6 +27,7 @@ export default function ShiftDetail() {
     station,
     shift,
     customers,
+    creditReview,
     loading,
     stationsLoading,
     loadError,
@@ -93,6 +95,7 @@ export default function ShiftDetail() {
         <SettledShiftDetail
           shift={shift}
           customers={customers}
+          creditReview={creditReview}
           canReview={canReview}
           canResubmit={canResubmit}
           correctionUrl={correctionUrl}
@@ -119,6 +122,7 @@ export default function ShiftDetail() {
 export function SettledShiftDetail({
   shift,
   customers = [],
+  creditReview = null,
   canReview = false,
   canResubmit = false,
   correctionUrl = "",
@@ -192,6 +196,8 @@ export function SettledShiftDetail({
         submitRevision={submitRevision}
         cancelEditing={cancelEditing}
       />
+
+      {canReview && <CreditReviewCard review={creditReview} />}
 
       {(shift.creditSales || []).length > 0 && (
         <CreditSalesCard creditSales={shift.creditSales} customers={customers} />

@@ -23,6 +23,7 @@ const api = vi.hoisted(() => ({
   rejectShift: vi.fn(),
   reviseShift: vi.fn(),
   reopenShiftForCorrection: vi.fn(),
+  shiftCreditReview: vi.fn(async () => null),
 }));
 
 vi.mock("../../lib/api", () => ({
@@ -32,6 +33,7 @@ vi.mock("../../lib/api", () => ({
   rejectShift: api.rejectShift,
   reviseShift: api.reviseShift,
   reopenShiftForCorrection: api.reopenShiftForCorrection,
+  shiftCreditReview: api.shiftCreditReview,
   readableError: (error) => String(error?.message || error),
 }));
 

@@ -107,11 +107,17 @@ function resetLoginFailures(username) {
 
 function mapCustomer(row) {
   const { customer_transactions: rawTransactions = [], ...customer } = row;
+  const all = rawTransactions
+    .map((tx) => ({ ...camelize(tx), date: tx.transaction_date }))
+    .sort((a, b) => String(b.recordedAt).localeCompare(String(a.recordedAt)));
+  // A voided entry keeps its row and its amount for audit, but its financial
+  // effect has already been reversed on the balance. Statements, running
+  // balances, and exports must therefore read the active entries only; the
+  // voided ones stay available separately so the ledger can still show them.
   return {
     ...camelize(customer),
-    transactions: rawTransactions
-      .map((tx) => ({ ...camelize(tx), date: tx.transaction_date }))
-      .sort((a, b) => String(b.recordedAt).localeCompare(String(a.recordedAt))),
+    transactions: all.filter((tx) => tx.status !== "voided"),
+    voidedTransactions: all.filter((tx) => tx.status === "voided"),
   };
 }
 
@@ -127,6 +133,13 @@ export function readableError(error) {
     return "Too many failed attempts. Try again later.";
   if (/jwt|token.*expired/i.test(message))
     return "Your session has expired. Please sign in again.";
+  // The credit RPCs raise sentences a cashier can act on ("This credit
+  // belongs to an approved shift…"), so those pass straight through. Only
+  // PostgreSQL's own refusals need a human translation.
+  if (/permission denied|violates row-level security/i.test(message))
+    return "You do not have permission to do that.";
+  if (/deadlock detected|could not serialize/i.test(message))
+    return "Someone else is editing this entry. Try again.";
   return String(message).replace(/^postgres(?:ql)?:\s*/i, "");
 }
 
@@ -879,6 +892,104 @@ export async function addCustomerTransaction(stationId, customerId, tx) {
       p_date: tx.date || null,
     })
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Shift-aware credit ledger                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Credit taken during a running shift. The RPC ties the entry to the station,
+ * the customer, the shift, and the caller, and answers without a balance when
+ * the caller is an attendant.
+ */
+export async function addShiftCredit(stationId, shiftId, entry) {
+  return camelize(
+    await rpc("add_shift_credit", {
+      p_station_id: stationId,
+      p_shift_id: shiftId,
+      p_customer_id: entry.customerId,
+      p_amount: Number(entry.amount),
+      p_note: entry.note || "",
+    })
+  );
+}
+
+/** Correct a recorded amount. The balance moves by the delta the RPC computes. */
+export async function updateCustomerCredit(transactionId, amount, reason, note) {
+  return camelize(
+    await rpc("update_customer_credit", {
+      p_transaction_id: transactionId,
+      p_amount: Number(amount),
+      p_reason: reason || "",
+      p_note: note ?? null,
+    })
+  );
+}
+
+/** Void an entry: its effect is reversed, the row and its history survive. */
+export async function voidCustomerCredit(transactionId, reason, note = "") {
+  return camelize(
+    await rpc("void_customer_credit", {
+      p_transaction_id: transactionId,
+      p_reason: reason || "",
+      p_note: note || "",
+    })
+  );
+}
+
+/**
+ * Credit entries on one shift. Balance-free, and the database returns only
+ * the caller's own rows when the caller is an attendant.
+ */
+export async function listShiftCredit(stationId, shiftId) {
+  const rows = await rpc("list_shift_credit", {
+    p_station_id: stationId,
+    p_shift_id: shiftId,
+  });
+  return (rows || []).map(camelize);
+}
+
+/** The owner/manager ledger read. Every filter is applied in SQL. */
+export async function listCustomerTransactions(stationId, filters = {}) {
+  const rows = await rpc("list_customer_transactions", {
+    p_station_id: stationId,
+    p_customer_id: filters.customerId || null,
+    p_recorded_by: filters.recordedBy || null,
+    p_shift_id: filters.shiftId || null,
+    p_status: filters.status || "all",
+    p_from: filters.from || null,
+    p_to: filters.to || null,
+    p_limit: filters.limit || 500,
+  });
+  return (rows || []).map((row) => ({ ...camelize(row), date: row.transaction_date }));
+}
+
+/** Today's credit given, payments, net, and counts — voided entries excluded. */
+export async function creditDaySummary(stationId, day = null) {
+  return camelize(
+    await rpc("credit_day_summary", { p_station_id: stationId, p_day: day })
+  );
+}
+
+/** Credit review indicators for one shift: entries, corrected, voided, detail. */
+export async function shiftCreditReview(stationId, shiftId) {
+  try {
+    return camelize(
+      await rpc("shift_credit_review", {
+        p_station_id: stationId,
+        p_shift_id: shiftId,
+      })
+    );
+  } catch (error) {
+    // A Pages deploy that lands before `supabase db push` degrades to "no
+    // indicators" rather than breaking the review screen.
+    if (isMissingFunction(error)) {
+      console.warn("shift_credit_review is missing — apply the latest migration.");
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function archiveCustomer(customerId) {
