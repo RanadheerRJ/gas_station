@@ -34,6 +34,7 @@ any time — migrations are forward-only and the follow-ups are idempotent.
 | --- | --- | --- |
 | "Unknown account action." | The hosted function is older than the app. | `supabase functions deploy accounts` |
 | "…needs a database update that has not been applied…" | A migration has not been pushed. | `supabase db push` |
+| `record "v_customer" has no field "archived_at"` when closing a shift or adding credit | The 20261005 credit-ledger migrations are live but `20260926020000_archive_credit_customers.sql` never ran on the project, so `close_shift` reads a column that does not exist. | `supabase db push`, or paste `scripts/hotfix_credit_customer_archive.sql` into the SQL Editor (then `supabase migration repair --status applied 20260926020000` if `supabase migration list` still shows it pending) |
 
 Either message means a deploy did not finish; check the `deploy-supabase`
 workflow run for the merge that shipped the feature.
