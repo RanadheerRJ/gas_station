@@ -16,6 +16,7 @@ import {
   listCustomerTransactions,
   listCustomers,
   readableError,
+  updateCustomer,
   updateCustomerCredit,
   voidCustomerCredit,
 } from "../../lib/api";
@@ -191,7 +192,9 @@ export default function CustomerDetail() {
   const [details, setDetails] = useState({}),
     [correct, setCorrect] = useState(null),
     [edit, setEdit] = useState({ amount: "", reason: "" }),
-    [voidForm, setVoidForm] = useState({ reason: "", note: "" });
+    [voidForm, setVoidForm] = useState({ reason: "", note: "" }),
+    [infoOpen, setInfoOpen] = useState(false),
+    [info, setInfo] = useState({ name: "", phone: "" });
   const [period, setPeriod] = useState("thisMonth"),
     [range, setRange] = useState(() => periodRange("thisMonth")),
     [filter, setFilter] = useState("all"),
@@ -300,6 +303,32 @@ export default function CustomerDetail() {
   // Corrections are the owner's: the RPC enforces it, this only decides
   // whether the buttons are worth drawing.
   const canCorrect = profile.role === "owner";
+  // The account details (name, phone) are owner/manager upkeep — the same
+  // gate the database applies in update_customer.
+  const canEditInfo = profile.role === "owner" || profile.role === "manager";
+  const infoChanged =
+    Boolean(customer) &&
+    (info.name.trim() !== customer.name || info.phone.trim() !== (customer.phone || ""));
+  const openInfo = () => {
+    setMenu(false);
+    setInfo({ name: customer?.name || "", phone: customer?.phone || "" });
+    setInfoOpen(true);
+  };
+  const saveInfo = async (e) => {
+    e.preventDefault();
+    if (!customer || !info.name.trim() || !infoChanged) return;
+    const ok = await run(() =>
+      updateCustomer(customer.id, {
+        name: info.name.trim(),
+        phone: info.phone.trim(),
+      })
+    );
+    if (ok) {
+      setInfoOpen(false);
+      setSuccess(t("credit.customerUpdated"));
+      setTimeout(() => setSuccess(""), 2800);
+    }
+  };
   const openCorrection = (kind) => (entry, detail) => {
     setCorrect({ kind, entry, detail });
     setEdit({ amount: String(entry.amount), reason: "" });
@@ -455,6 +484,11 @@ export default function CustomerDetail() {
         {success && <Notice kind="good">{success}</Notice>}
         {menu && (
           <div className="overflow-menu">
+            {canEditInfo && (
+              <button type="button" onClick={openInfo}>
+                {t("credit.editCustomer")}
+              </button>
+            )}
             <button type="button" onClick={archive}>
               {t("credit.archive")}
             </button>
@@ -654,6 +688,38 @@ export default function CustomerDetail() {
             )}
           </form>
         )}
+      </Sheet>
+
+      <Sheet
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+        title={t("credit.editCustomer")}
+      >
+        <form className="stack" onSubmit={saveInfo}>
+          <label className="field">
+            <span>{t("credit.customerName")}</span>
+            <input
+              autoFocus
+              value={info.name}
+              disabled={busy}
+              onChange={(e) => setInfo((v) => ({ ...v, name: e.target.value }))}
+            />
+          </label>
+          <label className="field">
+            <span>
+              {t("common.phone")} <small>{t("common.optional")}</small>
+            </span>
+            <input
+              inputMode="tel"
+              value={info.phone}
+              disabled={busy}
+              onChange={(e) => setInfo((v) => ({ ...v, phone: e.target.value }))}
+            />
+          </label>
+          <button className="cta" disabled={busy || !info.name.trim() || !infoChanged}>
+            {busy ? t("common.saving") : t("credit.saveChanges")}
+          </button>
+        </form>
       </Sheet>
 
       <Sheet

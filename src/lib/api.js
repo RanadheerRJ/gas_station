@@ -967,6 +967,21 @@ export async function createCustomer(stationId, payload) {
   );
 }
 
+/**
+ * Correct a customer's name or phone after the account exists. The balance
+ * and ledger history are untouched — this fixes who the account belongs to,
+ * never what is owed.
+ */
+export async function updateCustomer(customerId, payload) {
+  return camelize(
+    await rpc("update_customer", {
+      p_customer_id: customerId,
+      p_name: payload.name,
+      p_phone: payload.phone || "",
+    })
+  );
+}
+
 export async function addCustomerTransaction(stationId, customerId, tx) {
   return camelize(
     await rpc("record_customer_transaction", {
