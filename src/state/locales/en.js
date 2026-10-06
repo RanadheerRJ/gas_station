@@ -77,6 +77,8 @@ const en = {
   /* ---- reporting / export ---- */
   "shifts.statement": "Daily Sales Statement",
   "shifts.monthToDate": "Month to date",
+  "shifts.showStatement": "Show statement",
+  "shifts.hideStatement": "Hide statement",
 
   "report.title": "Report & export",
   "report.fuel": "Fuel",

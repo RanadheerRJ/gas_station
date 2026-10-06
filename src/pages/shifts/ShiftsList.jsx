@@ -19,6 +19,8 @@ import ExpensesSheet from "./ExpensesSheet.jsx";
 import { shiftPaths } from "./paths.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
+const STATEMENT_CORE_COLUMNS = new Set([0, 1, 4, 7, 13, 21]);
+
 /**
  * The shifts list for managers and owners: open shifts as live cards at the
  * top, everything handed in below as compact rows that tap through to the
@@ -43,6 +45,7 @@ export default function ShiftsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expenseFor, setExpenseFor] = useState(null);
+  const [showStatement, setShowStatement] = useState(false);
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -83,15 +86,21 @@ export default function ShiftsList() {
       }),
     [settled, station]
   );
+  const statementShifts = useMemo(
+    () => filterByRange(settled, defaultRange()),
+    [settled]
+  );
+  const statementAvailable = profile.role === "owner" && statementShifts.length > 0;
   const statement = useMemo(
     () =>
-      shiftStatementReport({
-        shifts: filterByRange(settled, defaultRange()),
-        stationName: station?.name || "",
-      }),
-    [settled, station]
+      showStatement
+        ? shiftStatementReport({
+            shifts: statementShifts,
+            stationName: station?.name || "",
+          })
+        : null,
+    [showStatement, statementShifts, station?.name]
   );
-  const statementCore = new Set([0, 1, 4, 7, 13, 21]);
 
   if (stationsLoading) {
     return (
@@ -187,53 +196,6 @@ export default function ShiftsList() {
               </section>
             )}
 
-            {profile.role === "owner" && statement.rows.length > 0 && (
-              <section className="stack" style={{ gap: 10 }}>
-                <div className="section-label">
-                  <h2>{t("shifts.statement")}</h2>
-                  <span className="small muted">{t("shifts.monthToDate")}</span>
-                </div>
-                <div className="statement-table-wrap">
-                  <table className="responsive-table statement-table">
-                    <thead>
-                      <tr>
-                        {statement.columns.map((column, index) => (
-                          <th
-                            key={column}
-                            className={statementCore.has(index) ? "statement-core" : ""}
-                          >
-                            {column}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {statement.rows.map((row, rowIndex) => (
-                        <tr
-                          key={`${row[0]}-${row[1]}-${rowIndex}`}
-                          className={
-                            row[1] === "Day total" || row[1] === "GRAND TOTAL"
-                              ? "statement-total"
-                              : ""
-                          }
-                        >
-                          {row.map((cell, index) => (
-                            <td
-                              key={index}
-                              data-label={statement.columns[index]}
-                              className={statementCore.has(index) ? "statement-core" : ""}
-                            >
-                              <span>{cell}</span>
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-
             <section className="stack" style={{ gap: 10 }}>
               <div className="section-label">
                 <h2>{t("shifts.closedShifts")}</h2>
@@ -304,6 +266,75 @@ export default function ShiftsList() {
                 </div>
               )}
             </section>
+
+            {statementAvailable && (
+              <section className="statement-preview stack" style={{ gap: 10 }}>
+                <div className="section-label statement-preview__head">
+                  <div className="statement-preview__title">
+                    <h2>{t("shifts.statement")}</h2>
+                    <span className="small muted">{t("shifts.monthToDate")}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="quiet small statement-preview__toggle"
+                    aria-expanded={showStatement}
+                    aria-controls="shift-statement-table"
+                    onClick={() => setShowStatement((value) => !value)}
+                  >
+                    <ChevronIcon size={14} />
+                    {showStatement
+                      ? t("shifts.hideStatement")
+                      : t("shifts.showStatement")}
+                  </button>
+                </div>
+                {showStatement && statement?.rows.length > 0 && (
+                  <div className="statement-table-wrap" id="shift-statement-table">
+                    <table className="responsive-table statement-table">
+                      <thead>
+                        <tr>
+                          {statement.columns.map((column, index) => (
+                            <th
+                              key={column}
+                              className={
+                                STATEMENT_CORE_COLUMNS.has(index) ? "statement-core" : ""
+                              }
+                            >
+                              {column}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {statement.rows.map((row, rowIndex) => (
+                          <tr
+                            key={`${row[0]}-${row[1]}-${rowIndex}`}
+                            className={
+                              row[1] === "Day total" || row[1] === "GRAND TOTAL"
+                                ? "statement-total"
+                                : ""
+                            }
+                          >
+                            {row.map((cell, index) => (
+                              <td
+                                key={index}
+                                data-label={statement.columns[index]}
+                                className={
+                                  STATEMENT_CORE_COLUMNS.has(index)
+                                    ? "statement-core"
+                                    : ""
+                                }
+                              >
+                                <span>{cell}</span>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </div>
