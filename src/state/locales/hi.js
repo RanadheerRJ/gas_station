@@ -74,6 +74,8 @@ const hi = {
 
   "shifts.statement": "दैनिक बिक्री विवरण",
   "shifts.monthToDate": "माह से आज तक",
+  "shifts.showStatement": "विवरण दिखाएँ",
+  "shifts.hideStatement": "विवरण छिपाएँ",
 
   "report.title": "रिपोर्ट और निर्यात",
   "report.fuel": "ईंधन",

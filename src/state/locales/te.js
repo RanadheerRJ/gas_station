@@ -74,6 +74,8 @@ const te = {
 
   "shifts.statement": "రోజువారీ అమ్మకాల స్టేట్‌మెంట్",
   "shifts.monthToDate": "ఈ నెల ఇప్పటివరకు",
+  "shifts.showStatement": "స్టేట్‌మెంట్ చూపు",
+  "shifts.hideStatement": "స్టేట్‌మెంట్ దాచు",
 
   "report.title": "నివేదిక & ఎగుమతి",
   "report.fuel": "ఇంధనం",

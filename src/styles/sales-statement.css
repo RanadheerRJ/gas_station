@@ -1,3 +1,35 @@
+.statement-preview {
+  padding-top: 2px;
+}
+
+.statement-preview__head {
+  align-items: center;
+}
+
+.statement-preview__title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.statement-preview__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.statement-preview__toggle svg {
+  transition: transform 0.16s ease;
+  transform-origin: center;
+}
+
+.statement-preview__toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
 .statement-table-wrap {
   width: 100%;
   overflow-x: auto;
