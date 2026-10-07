@@ -129,8 +129,12 @@ export function paymentsTotal(payments = {}) {
  *   testing   = fuel run through the meter for calibration, not sold
  *   net       = gross − testing − expenses   (what should reach the owner)
  *   collected = cash + card + upi + credit + other
- *   variance  = collected − net              (negative = short)
- *   handover  = net − (card + upi + credit)  (physical cash owed to owner)
+ *   handover  = net − (card + upi + credit + other) (physical cash owed)
+ *   variance  = counted cash − handover      (negative = short)
+ *
+ * Variance stays undeclared until the operator has actually entered a cash
+ * count. Entering card, UPI, or credit first must not make the still-uncounted
+ * handover look like a cash shortage.
  */
 export function shiftTotals(shift) {
   const lines = nozzleLines(shift?.nozzles);
@@ -155,14 +159,17 @@ export function shiftTotals(shift) {
     (m) => payments[m] !== "" && payments[m] != null
   );
   const declared = anyDeclared ? paymentsTotal(payments) : null;
-  const variance = declared == null ? null : round2(declared - net);
 
   // Non-cash modes are already settled elsewhere; only the remainder is
-  // physically handed over.
+  // physically handed over. Keep the cash comparison tied to this figure,
+  // not to all collected modes: it is the amount actually counted against
+  // the drawer's expected cash.
   const nonCash = round2(
     num(payments.card) + num(payments.upi) + num(payments.credit) + num(payments.other)
   );
   const handover = round2(net - nonCash);
+  const cashCounted = payments.cash !== "" && payments.cash != null;
+  const variance = cashCounted ? round2(num(payments.cash) - handover) : null;
 
   return {
     lines,

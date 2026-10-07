@@ -283,6 +283,23 @@ describe("the cash verdict", () => {
     expect(pill.textContent).toContain("Cash not counted yet");
   });
 
+  it("keeps an uncounted 1,122.46 handover out of the short variance", async () => {
+    await mountClose();
+    await type(readingInput("P1 · N1"), "1100");
+    await type(readingInput("P1 · N2"), "2050");
+    await type(paymentInput("Card"), "13337.54");
+
+    const handover = container.querySelector(".handover__cash .money");
+    const verdict = container.querySelector(".handover__verdict");
+    expect(handover.textContent).toContain("1,122.46");
+    expect(verdict.textContent).toContain("Cash not counted yet");
+    expect(verdict.textContent).not.toContain("Short by");
+
+    await type(paymentInput("Cash"), "1122.46");
+    expect(verdict.textContent).toContain("Counted 1,122.46 against 1,122.46 due");
+    expect(verdict.textContent).toContain("Balanced");
+  });
+
   it("says Matches when the count equals the handover figure", async () => {
     // gross 14,500 − expenses 40 = net 14,460 to hand over.
     const pill = await typeReadingsAndCash("14460");
