@@ -73,10 +73,12 @@ export default function HandoverSection({ preview }) {
       </table>
       <div className="between handover__verdict">
         <span className="small muted">
-          {t("shifts.countedAgainst", {
-            counted: money(preview.declared ?? 0),
-            due: money(preview.net),
-          })}
+          {preview.payments.cash === "" || preview.payments.cash == null
+            ? t("close.notCountedYet")
+            : t("shifts.countedAgainst", {
+                counted: money(preview.payments.cash),
+                due: money(preview.handover),
+              })}
         </span>
         <Verdict totals={preview} />
       </div>
@@ -86,6 +88,8 @@ export default function HandoverSection({ preview }) {
 
 export function Verdict({ totals }) {
   const { t } = useLanguage();
+  if (totals.variance == null) return null;
+
   const short = num(totals.variance) < -VARIANCE_TOLERANCE;
   const over = num(totals.variance) > VARIANCE_TOLERANCE;
   return (

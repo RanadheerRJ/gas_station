@@ -120,6 +120,32 @@ describe("shiftTotals", () => {
     expect(shiftTotals(base).handover).toBe(6000);
   });
 
+  it("does not call the expected handover short before cash is counted", () => {
+    const pendingCount = shiftTotals({
+      nozzles: [nozzle({ openingReading: 0, closingReading: 1, price: 1222.46 })],
+      payments: { cash: "", card: "", upi: "", credit: "100", other: "" },
+    });
+
+    expect(pendingCount.handover).toBe(1122.46);
+    expect(pendingCount.declared).toBe(100);
+    expect(pendingCount.variance).toBeNull();
+  });
+
+  it("compares the cash count directly with the handover amount", () => {
+    const counted = shiftTotals({
+      nozzles: [nozzle({ openingReading: 0, closingReading: 1, price: 1222.46 })],
+      payments: { cash: "1122.46", card: "", upi: "", credit: "100", other: "" },
+    });
+    const short = shiftTotals({
+      nozzles: [nozzle({ openingReading: 0, closingReading: 1, price: 1222.46 })],
+      payments: { cash: "1100", card: "", upi: "", credit: "100", other: "" },
+    });
+
+    expect(counted.handover).toBe(1122.46);
+    expect(counted.variance).toBe(0);
+    expect(short.variance).toBe(-22.46);
+  });
+
   it("reports a short drawer as a negative variance", () => {
     const short = shiftTotals({
       ...base,

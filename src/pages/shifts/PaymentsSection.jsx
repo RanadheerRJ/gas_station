@@ -72,7 +72,11 @@ export default function PaymentsSection({
             label={t("shifts.cashToHandOver")}
           />
         </div>
-        <VariancePill variance={payments.cash === "" ? null : preview.variance} />
+        <VariancePill
+          variance={
+            payments.cash === "" || payments.cash == null ? null : preview.variance
+          }
+        />
       </div>
     </section>
   );
