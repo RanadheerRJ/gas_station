@@ -163,7 +163,8 @@ export default function CreditList() {
     [search, setSearch] = useState(""),
     [sort, setSort] = useState("balance"),
     [addOpen, setAddOpen] = useState(false),
-    [newCustomer, setNewCustomer] = useState({ name: "", phone: "" });
+    [newCustomer, setNewCustomer] = useState({ name: "", phone: "" }),
+    [addedNotice, setAddedNotice] = useState("");
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -222,14 +223,19 @@ export default function CreditList() {
 
   const add = async (e) => {
     e.preventDefault();
-    if (
-      await run(() =>
-        createCustomer(stationId, {
-          name: newCustomer.name.trim(),
-          phone: newCustomer.phone.trim(),
-        })
-      )
-    ) {
+    let saved = null;
+    const ok = await run(async () => {
+      saved = await createCustomer(stationId, {
+        name: newCustomer.name.trim(),
+        phone: newCustomer.phone.trim(),
+      });
+    });
+    if (ok) {
+      // The database reuses the existing account for a repeated name and
+      // phone; say so instead of leaving the save silent.
+      setAddedNotice(
+        saved && saved.created === false ? t("credit.customerExistsNotice") : ""
+      );
       setNewCustomer({ name: "", phone: "" });
       setAddOpen(false);
     }
@@ -281,6 +287,7 @@ export default function CreditList() {
       />
       <div className="content stack credit-screen">
         {(error || runError) && <Notice kind="error">{error || runError}</Notice>}
+        {addedNotice && <Notice kind="attention">{addedNotice}</Notice>}
         {loading ? (
           <LoadingPanels count={3} lines={2} label={t("common.loading")} />
         ) : (

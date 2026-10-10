@@ -445,6 +445,11 @@ const en = {
   "credit.addCredit": "Add credit",
   "credit.searchCustomer": "Search customer",
   "credit.newCustomerShort": "New customer",
+  "credit.customerExists":
+    "This customer already exists — the credit will be added to {name}.",
+  "credit.useExisting": "Use {name}",
+  "credit.customerExistsNotice":
+    "This customer already exists — the existing account was used.",
   "credit.saveCredit": "Save credit",
   "credit.noCreditYet": "No credit recorded on this shift yet.",
   "credit.shiftCreditHelp":

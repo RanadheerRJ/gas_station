@@ -434,6 +434,11 @@ const hi = {
   "credit.addCredit": "उधार जोड़ें",
   "credit.searchCustomer": "ग्राहक खोजें",
   "credit.newCustomerShort": "नया ग्राहक",
+  "credit.customerExists":
+    "यह ग्राहक पहले से मौजूद है — उधार {name} के खाते में जोड़ा जाएगा।",
+  "credit.useExisting": "{name} का उपयोग करें",
+  "credit.customerExistsNotice":
+    "यह ग्राहक पहले से मौजूद है — मौजूदा खाता उपयोग किया गया।",
   "credit.saveCredit": "उधार सहेजें",
   "credit.noCreditYet": "इस शिफ्ट में अभी कोई उधार दर्ज नहीं है।",
   "credit.shiftCreditHelp":

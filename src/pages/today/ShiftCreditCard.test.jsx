@@ -173,6 +173,31 @@ describe("attendant credit on a running shift", () => {
     );
   });
 
+  it("reuses the existing account when the typed phone matches the directory", async () => {
+    await render();
+    await click(byText("add credit"));
+    await click(byText("new customer"));
+    const [name, phone] = sheet().querySelectorAll(".field input");
+    await type(name, "Ramesh Kumar");
+    // Same digits as the directory entry, typed with spaces — the duplicate
+    // the database used to insert as a second customer.
+    await type(phone, "9988 000 001");
+    expect(sheet().textContent).toMatch(/already exists/i);
+    await click(byText("use ramesh kumar"));
+    await type(sheet().querySelector(".amount-field input"), "400");
+    await act(async () => {
+      sheet()
+        .querySelector("form")
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(api.createCustomer).not.toHaveBeenCalled();
+    expect(api.addShiftCredit).toHaveBeenCalledWith("s1", "sh-1", {
+      customerId: "c1",
+      amount: 400,
+      note: "",
+    });
+  });
+
   it("sends the corrected amount and a reason, never a balance", async () => {
     await render();
     await click(

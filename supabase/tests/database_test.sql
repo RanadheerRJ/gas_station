@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(43);
+select plan(45);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -94,6 +94,10 @@ select has_function('public', 'update_customer_credit', array['uuid', 'numeric',
 select has_function('public', 'void_customer_credit', array['uuid', 'text', 'text'], 'credit void RPC exists');
 select has_function('public', 'list_shift_credit', array['uuid', 'uuid'], 'balance-free shift credit list exists');
 select has_function('public', 'credit_day_summary', array['uuid', 'date'], 'credit day summary RPC exists');
+-- One resolver backs every credit entry path, so a repeat name+phone can never
+-- insert a second credit_customers row.
+select has_function('public', 'find_or_create_customer', array['uuid', 'text', 'text', 'uuid'], 'one customer resolver backs every credit entry path');
+select has_function('public', 'normalize_customer_phone', array['text'], 'customer phones are compared as digits');
 
 /* Developer console: the admin-only account and registry surface ------ */
 -- Support work — a mistyped station name, a station filed under the wrong

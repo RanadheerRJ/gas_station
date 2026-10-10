@@ -17,6 +17,9 @@ import {
 import { money, num } from "../../lib/format";
 import { entryTime } from "../../lib/statement.js";
 
+/** A phone number reduced to its digits — the form customers are matched in. */
+const digits = (value) => String(value || "").replace(/\D/g, "");
+
 const VOID_REASONS = [
   "credit.voidReasonWrongAmount",
   "credit.voidReasonWrongCustomer",
@@ -92,6 +95,23 @@ export default function ShiftCreditCard({ stationId, shiftId }) {
     return pool.slice(0, 8);
   }, [customers, search]);
 
+  /**
+   * The directory account this create-form entry would duplicate, if any —
+   * the same guard the database applies, so the attendant sees it before
+   * saving instead of after.
+   */
+  const existingMatch = useMemo(() => {
+    if (!form.creating || form.customerId) return null;
+    const phone = digits(form.phone);
+    if (phone) return customers.find((c) => digits(c.phone) === phone) || null;
+    const name = form.name.trim().toLowerCase();
+    if (!name) return null;
+    return (
+      customers.find((c) => !digits(c.phone) && c.name.trim().toLowerCase() === name) ||
+      null
+    );
+  }, [customers, form.creating, form.customerId, form.name, form.phone]);
+
   const closeSheet = () => {
     setSheet(null);
     setActive(null);
@@ -115,7 +135,9 @@ export default function ShiftCreditCard({ stationId, shiftId }) {
     const amount = num(form.amount);
     if (amount <= 0) return;
     const ok = await run(async () => {
-      let customerId = form.customerId;
+      // The database dedupes as well; resolving the match here just saves
+      // the round trip and makes the reuse explicit to the attendant.
+      let customerId = form.customerId || existingMatch?.id;
       if (!customerId) {
         // Reuses the existing create_customer RPC rather than a second
         // customer-creation path.
@@ -305,6 +327,26 @@ export default function ShiftCreditCard({ stationId, shiftId }) {
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 />
               </label>
+              {existingMatch && (
+                <Notice kind="attention">
+                  {t("credit.customerExists", { name: existingMatch.name })}{" "}
+                  <button
+                    type="button"
+                    className="small"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        creating: false,
+                        customerId: existingMatch.id,
+                        name: existingMatch.name,
+                        phone: existingMatch.phone || "",
+                      }))
+                    }
+                  >
+                    {t("credit.useExisting", { name: existingMatch.name })}
+                  </button>
+                </Notice>
+              )}
             </>
           )}
           <label className="amount-field">

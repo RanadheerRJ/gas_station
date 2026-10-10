@@ -437,6 +437,9 @@ const te = {
   "credit.addCredit": "అరువు చేర్చండి",
   "credit.searchCustomer": "కస్టమర్‌ను వెతకండి",
   "credit.newCustomerShort": "కొత్త కస్టమర్",
+  "credit.customerExists": "ఇది కస్టమర్ ముందుగా ఉంది — అరువు {name} ఖాతాలో చేర్చండి",
+  "credit.useExisting": "చేర్చండి కస్టమర్ {name}",
+  "credit.customerExistsNotice": "ఇది కస్టమర్ ముందుగా ఉంది — కాకముందే ఖాతా చేర్చండి",
   "credit.saveCredit": "అరువు సేవ్ చేయండి",
   "credit.noCreditYet": "ఈ షిఫ్ట్‌లో ఇంకా అరువు నమోదు కాలేదు.",
   "credit.shiftCreditHelp":
