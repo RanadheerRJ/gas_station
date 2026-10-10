@@ -357,6 +357,74 @@ async function main() {
   );
   await asUser(IDS.owner, "select public.restore_customer($1) as r", [lakshmi]);
 
+  console.log("\n== the same customer entered twice is one account ==");
+  const dupPhone = await asUser(
+    IDS.ravi,
+    "select public.create_customer($1, 'Ramesh Kumar', ' 9988 000 001 ') as r",
+    [IDS.station]
+  );
+  check(
+    "re-entering a known phone returns the existing account",
+    !dupPhone.error &&
+      dupPhone.rows?.[0]?.r?.id === ramesh &&
+      dupPhone.rows?.[0]?.r?.created === false,
+    dupPhone.error?.message || JSON.stringify(dupPhone.rows?.[0]?.r)
+  );
+  const dupRows = await asUser(
+    IDS.owner,
+    `select count(*) c from public.credit_customers
+      where station_id = $1 and regexp_replace(phone, '[^0-9]', '', 'g') = '9988000001'`,
+    [IDS.station]
+  );
+  check(
+    "the repeated phone did not insert a second row",
+    Number(dupRows.rows?.[0]?.c) === 1,
+    `saw ${dupRows.rows?.[0]?.c}`
+  );
+
+  const firstAnon = await asUser(
+    IDS.owner,
+    "select public.create_customer($1, 'Anon Enterprises', '') as r",
+    [IDS.station]
+  );
+  const dupName = await asUser(
+    IDS.owner,
+    "select public.create_customer($1, '  anon enterprises ', '') as r",
+    [IDS.station]
+  );
+  check(
+    "a phone-less customer repeats by exact name",
+    firstAnon.rows?.[0]?.r?.created === true &&
+      dupName.rows?.[0]?.r?.id === firstAnon.rows?.[0]?.r?.id &&
+      dupName.rows?.[0]?.r?.created === false,
+    JSON.stringify(dupName.rows?.[0]?.r)
+  );
+
+  const otherPhone = await asUser(
+    IDS.owner,
+    "select public.create_customer($1, 'Ramesh Kumar', '9988000099') as r",
+    [IDS.station]
+  );
+  check(
+    "the same name on a different phone is a different customer",
+    otherPhone.rows?.[0]?.r?.created === true && otherPhone.rows?.[0]?.r?.id !== ramesh,
+    JSON.stringify(otherPhone.rows?.[0]?.r)
+  );
+
+  await asUser(IDS.owner, "select public.archive_customer($1) as r", [lakshmi]);
+  const afterArchive = await asUser(
+    IDS.owner,
+    "select public.create_customer($1, 'Lakshmi Traders', '9988000002') as r",
+    [IDS.station]
+  );
+  check(
+    "an archived account is not matched — a repeat entry opens a fresh account",
+    afterArchive.rows?.[0]?.r?.created === true &&
+      afterArchive.rows?.[0]?.r?.id !== lakshmi,
+    JSON.stringify(afterArchive.rows?.[0]?.r)
+  );
+  await asUser(IDS.owner, "select public.restore_customer($1) as r", [lakshmi]);
+
   console.log("\n== the attendant stays blind to the ledger ==");
   const blind = await asUser(
     IDS.ravi,
@@ -809,6 +877,60 @@ async function main() {
     "the close ignored the client-supplied credit payment and did not move the balance",
     (await balanceOf(lakshmi)) === 200,
     `balance ${await balanceOf(lakshmi)}`
+  );
+
+  console.log("\n== close resolves repeat customers through the same guard ==");
+  const sureshShift2 = (
+    await asUser(IDS.suresh, "select public.open_shift($1, $2, 'Suresh') as id", [
+      IDS.station,
+      [n2],
+    ])
+  ).rows[0].id;
+  const closeDup = await asUser(
+    IDS.suresh,
+    `select public.close_shift($1, $2, $3::jsonb, '{}'::jsonb, '{}'::jsonb, '', $4::jsonb) as r`,
+    [
+      IDS.station,
+      sureshShift2,
+      JSON.stringify({ [n2]: "2200" }),
+      JSON.stringify([
+        { name: "Ramesh Kumar", phone: "9988-000-001", amount: "300" },
+        { name: "Ramesh Kumar", phone: "9988000001", amount: "200" },
+        { name: "Anon Enterprises", amount: "100" },
+      ]),
+    ]
+  );
+  check(
+    "closing with repeat customers succeeds",
+    !closeDup.error,
+    closeDup.error?.message
+  );
+  check(
+    "both phone formats land on the one existing account",
+    (await balanceOf(ramesh)) === 1500,
+    `balance ${await balanceOf(ramesh)}`
+  );
+  const stillOne = await asUser(
+    IDS.owner,
+    `select count(*) c from public.credit_customers
+      where station_id = $1 and regexp_replace(phone, '[^0-9]', '', 'g') = '9988000001'`,
+    [IDS.station]
+  );
+  check(
+    "the close inserted no duplicate customer rows",
+    Number(stillOne.rows?.[0]?.c) === 1,
+    `saw ${stillOne.rows?.[0]?.c}`
+  );
+  const anonBal = await asUser(
+    IDS.owner,
+    `select outstanding_balance b from public.credit_customers
+      where station_id = $1 and phone = '' and lower(btrim(name)) = 'anon enterprises'`,
+    [IDS.station]
+  );
+  check(
+    "the phone-less walk-in reused the existing account",
+    anonBal.rows?.length === 1 && Number(anonBal.rows?.[0]?.b) === 100,
+    JSON.stringify(anonBal.rows)
   );
 
   console.log("\n== rejected shift resubmission preserves audited credit ==");
