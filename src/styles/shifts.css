@@ -135,6 +135,13 @@
   gap: 14px;
 }
 
+/* The same board inside a sheet: one column, because the sheet is a phone's
+   width by design and two 290px cards would never fit side by side. */
+.pick-board--sheet {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
 .pick-card {
   background: var(--surface);
   border: 1px solid var(--hairline);
@@ -177,6 +184,16 @@
   cursor: pointer;
   font-family: var(--sans);
   color: var(--ink);
+}
+
+/* A nozzle the running shift already holds: not a choice to make, but a row
+   that carries the way to give it back. */
+.nozzle-row--held {
+  cursor: default;
+}
+
+.nozzle-row--held > .nozzle-row__state {
+  border-color: var(--hairline-strong);
 }
 
 .nozzle-row:last-child {

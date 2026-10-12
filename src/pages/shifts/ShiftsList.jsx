@@ -15,6 +15,7 @@ import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
 import { defaultRange, filterByRange, shiftStatementReport } from "../../lib/export.js";
 import { StatusTag } from "./parts.jsx";
+import AddNozzlesSheet from "./AddNozzlesSheet.jsx";
 import ExpensesSheet from "./ExpensesSheet.jsx";
 import { shiftPaths } from "./paths.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -45,6 +46,7 @@ export default function ShiftsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expenseFor, setExpenseFor] = useState(null);
+  const [nozzlesFor, setNozzlesFor] = useState(null);
   const [showStatement, setShowStatement] = useState(false);
 
   const load = useCallback(async () => {
@@ -183,6 +185,15 @@ export default function ShiftsList() {
                         onClick={() => setExpenseFor(shift)}
                       >
                         {t("shifts.addExpense")}
+                      </button>
+                      {/* A running shift is not frozen: a free nozzle can still
+                          join it, and one taken by mistake be given back. */}
+                      <button
+                        type="button"
+                        className="small"
+                        onClick={() => setNozzlesFor(shift)}
+                      >
+                        {t("shifts.addNozzle")}
                       </button>
                       <Link
                         className="small primary-link"
@@ -343,6 +354,14 @@ export default function ShiftsList() {
         open={!!expenseFor}
         onClose={() => setExpenseFor(null)}
         shift={expenseFor}
+        stationId={stationId}
+        onChange={load}
+      />
+
+      <AddNozzlesSheet
+        open={!!nozzlesFor}
+        onClose={() => setNozzlesFor(null)}
+        shift={nozzlesFor}
         stationId={stationId}
         onChange={load}
       />

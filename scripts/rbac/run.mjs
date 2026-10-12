@@ -267,6 +267,12 @@ async function main() {
     await sqlFile(
       resolve(REPO, "supabase/migrations/20261006000000_admin_station_crud.sql")
     );
+    // Taking a free nozzle onto a running shift, and giving back one taken by
+    // mistake. Self-contained, and it is the newest word on who may touch an
+    // open shift's nozzle list.
+    await sqlFile(
+      resolve(REPO, "supabase/migrations/20261012000000_nozzles_on_running_shift.sql")
+    );
   } else {
     console.log("\n!! negative control: follow-up RBAC migration NOT applied\n");
   }
@@ -353,6 +359,169 @@ async function main() {
     "list_nozzle_occupancy exposes only nozzle ids",
     occ.rows?.length > 0 && Object.keys(occ.rows[0]).join(",") === "nozzle_id",
     Object.keys(occ.rows?.[0] || {}).join(",")
+  );
+
+  console.log("\n== a running shift can take and give back a nozzle ==");
+  // A free nozzle of its own, because both seeded nozzles are held by now.
+  const pumpRow = await asOwner("select id from public.pumps limit 1");
+  const nozzle3 = await asOwner(
+    "select public.add_nozzle($1, $2, 'N3', 'Petrol', 3000) as r",
+    [IDS.station, pumpRow.id]
+  );
+  const n3 = nozzle3.r.id;
+
+  const foreignAdd = await asUser(
+    IDS.att1,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, benShift, [n3]]
+  );
+  check(
+    "attendant cannot add a nozzle to a co-worker's shift",
+    !!foreignAdd.error,
+    foreignAdd.error?.message || "no error raised"
+  );
+  const anonAdd = await asUser(null, "select public.add_shift_nozzles($1, $2, $3) as r", [
+    IDS.station,
+    benShift,
+    [n3],
+  ]);
+  check(
+    "anonymous callers cannot add a nozzle",
+    !!anonAdd.error,
+    anonAdd.error?.message || "no error raised"
+  );
+  const crossAdd = await asUser(
+    IDS.owner2,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, benShift, [n3]]
+  );
+  check(
+    "another owner cannot add a nozzle to this station's shift",
+    !!crossAdd.error,
+    crossAdd.error?.message || "no error raised"
+  );
+
+  // Ben's shift holds just n2 here, which is the emptied-shift case: the last
+  // nozzle of a running shift stays, because a shift with none is a record of
+  // nothing. Close it and open the shift actually being worked.
+  const lastNozzle = await asUser(
+    IDS.att2,
+    "select public.remove_shift_nozzle($1, $2, $3) as r",
+    [IDS.station, benShift, n2]
+  );
+  check(
+    "a running shift cannot be emptied of its last nozzle",
+    !!lastNozzle.error,
+    lastNozzle.error?.message || "no error raised"
+  );
+  const stillHeld = await asUser(
+    IDS.att2,
+    "select count(*)::int as held from public.shift_nozzles where shift_id = $1",
+    [benShift]
+  );
+  check(
+    "the refused release left the nozzle on the shift",
+    Number(stillHeld.rows?.[0]?.held) === 1,
+    stillHeld.error?.message || JSON.stringify(stillHeld.rows?.[0])
+  );
+
+  const ownAdd = await asUser(
+    IDS.att2,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, benShift, [n3]]
+  );
+  check(
+    "an operator can add a free nozzle to their own running shift",
+    !ownAdd.error,
+    ownAdd.error?.message
+  );
+  const added = await asUser(
+    IDS.att2,
+    "select label, opening_reading, price, is_open from public.shift_nozzles where shift_id = $1 and nozzle_id = $2",
+    [benShift, n3]
+  );
+  check(
+    "the added nozzle opens on the meter's reading now, at the rate now",
+    added.rows?.length === 1 &&
+      added.rows[0].label === "Pump 1 · N3" &&
+      Number(added.rows[0].opening_reading) === 3000 &&
+      Number(added.rows[0].price) === 105.5 &&
+      added.rows[0].is_open === true,
+    added.error?.message || JSON.stringify(added.rows)
+  );
+
+  const duplicateAdd = await asUser(
+    IDS.att2,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, benShift, [n3]]
+  );
+  check(
+    "a nozzle cannot join the same shift twice",
+    !!duplicateAdd.error,
+    duplicateAdd.error?.message || "no error raised"
+  );
+  const takenAdd = await asUser(
+    IDS.att2,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, benShift, [n1]]
+  );
+  check(
+    "a nozzle held by another open shift cannot be taken",
+    !!takenAdd.error,
+    takenAdd.error?.message || "no error raised"
+  );
+
+  const foreignRemove = await asUser(
+    IDS.att1,
+    "select public.remove_shift_nozzle($1, $2, $3) as r",
+    [IDS.station, benShift, n3]
+  );
+  check(
+    "attendant cannot release a nozzle from a co-worker's shift",
+    !!foreignRemove.error,
+    foreignRemove.error?.message || "no error raised"
+  );
+  const missingRemove = await asUser(
+    IDS.att2,
+    "select public.remove_shift_nozzle($1, $2, $3) as r",
+    [IDS.station, benShift, n1]
+  );
+  check(
+    "a nozzle that is not on the shift cannot be released",
+    !!missingRemove.error,
+    missingRemove.error?.message || "no error raised"
+  );
+
+  const ownRemove = await asUser(
+    IDS.att2,
+    "select public.remove_shift_nozzle($1, $2, $3) as r",
+    [IDS.station, benShift, n3]
+  );
+  check(
+    "an operator can give back the nozzle they took by mistake",
+    !ownRemove.error,
+    ownRemove.error?.message
+  );
+  const released = await asUser(
+    IDS.att2,
+    `select (select count(*) from public.shift_nozzles where shift_id = $1) held,
+            (select last_reading from public.nozzles where id = $2) meter`,
+    [benShift, n3]
+  );
+  check(
+    "the released nozzle leaves no row and keeps its meter where it was",
+    Number(released.rows?.[0]?.held) === 1 && Number(released.rows?.[0]?.meter) === 3000,
+    released.error?.message || JSON.stringify(released.rows?.[0])
+  );
+  const secondRemove = await asUser(
+    IDS.att2,
+    "select public.remove_shift_nozzle($1, $2, $3) as r",
+    [IDS.station, benShift, n3]
+  );
+  check(
+    "releasing the same nozzle twice is refused",
+    !!secondRemove.error,
+    secondRemove.error?.message || "no error raised"
   );
 
   console.log("\n== attendant writes are refused ==");
@@ -576,6 +745,39 @@ async function main() {
     const r = await asUser(IDS.manager, sql, params);
     check(`manager can ${label}`, !r.error, r.error?.message);
   }
+
+  console.log("\n== an owner or manager can help a running shift ==");
+  // Amy has closed by now, so n1 is free again for the manager to hand to Ben.
+  const mgrAdd = await asUser(
+    IDS.manager,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, benShift, [n1]]
+  );
+  check(
+    "a manager can add a free nozzle to a shift running at their station",
+    !mgrAdd.error,
+    mgrAdd.error?.message
+  );
+  const ownerRemove = await asUser(
+    IDS.owner,
+    "select public.remove_shift_nozzle($1, $2, $3) as r",
+    [IDS.station, benShift, n1]
+  );
+  check(
+    "the owner can give that nozzle back",
+    !ownerRemove.error,
+    ownerRemove.error?.message
+  );
+  const closedAdd = await asUser(
+    IDS.manager,
+    "select public.add_shift_nozzles($1, $2, $3) as r",
+    [IDS.station, amyShift, [n1]]
+  );
+  check(
+    "a closed shift cannot take another nozzle",
+    !!closedAdd.error,
+    closedAdd.error?.message || "no error raised"
+  );
 
   console.log("\n== the manager can support their own station's staff ==");
   const mgrTeam = await asUser(IDS.manager, "select id, role from public.profiles");

@@ -861,6 +861,22 @@
   color: var(--ink-strong);
 }
 
+/* The chip row is the shift's nozzle list, so the way to take another one
+   sits with it — the same pill, dashed to say it is not a nozzle yet. */
+.nozzle-chip--add {
+  cursor: pointer;
+  border-style: dashed;
+  background: var(--surface);
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+.nozzle-chip--add:hover {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .history-card__nozzles {
   display: flex;
   align-items: center;
