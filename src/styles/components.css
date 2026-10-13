@@ -740,6 +740,19 @@ input[inputmode="numeric"] {
   gap: 10px;
 }
 
+/* A sheet's primary action with its running count beside it — the pinned
+   action bar's arrangement, inside a sheet instead of over a screen. */
+.sheet-submit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheet-submit .cta {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ---------------- buttons ---------------- */
 
 button {

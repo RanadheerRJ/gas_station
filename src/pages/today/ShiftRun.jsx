@@ -11,6 +11,7 @@ import { listShifts, readableError } from "../../lib/api";
 import { formatDate, formatStamp, money } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
+import AddNozzlesSheet from "../shifts/AddNozzlesSheet.jsx";
 import ExpensesSheet from "../shifts/ExpensesSheet.jsx";
 import { SettledShiftDetail } from "../shifts/ShiftDetail.jsx";
 import ShiftCreditCard from "./ShiftCreditCard.jsx";
@@ -55,6 +56,7 @@ export default function ShiftRun() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [nozzleOpen, setNozzleOpen] = useState(false);
   const now = useNow();
 
   const load = useCallback(async () => {
@@ -172,6 +174,17 @@ export default function ShiftRun() {
                 {nozzle.label}
               </span>
             ))}
+            {/* The forecourt is not fixed at the start: a free nozzle can be
+                taken onto the shift while it runs, and one taken by mistake
+                given back. */}
+            <button
+              type="button"
+              className="nozzle-chip nozzle-chip--add"
+              onClick={() => setNozzleOpen(true)}
+            >
+              <PlusIcon size={13} />
+              {t("shifts.addNozzle")}
+            </button>
           </div>
         </section>
 
@@ -261,6 +274,14 @@ export default function ShiftRun() {
       <ExpensesSheet
         open={expenseOpen}
         onClose={() => setExpenseOpen(false)}
+        shift={shift}
+        stationId={stationId}
+        onChange={load}
+      />
+
+      <AddNozzlesSheet
+        open={nozzleOpen}
+        onClose={() => setNozzleOpen(false)}
         shift={shift}
         stationId={stationId}
         onChange={load}

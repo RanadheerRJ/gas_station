@@ -6,13 +6,20 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(45);
+select plan(48);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
 select has_table('public', 'shift_nozzles', 'open nozzle ownership is relational');
 select has_table('public', 'customer_transactions', 'customer balance changes are auditable');
 select has_function('public', 'open_shift', array['uuid', 'uuid[]', 'text'], 'open_shift RPC exists');
+-- A running shift is not frozen: a free nozzle can join it, and one taken by
+-- mistake can be released. Both are RPCs with their own authority check.
+select has_function('public', 'add_shift_nozzles', array['uuid', 'uuid', 'uuid[]'], 'nozzles can join a running shift');
+select has_function('public', 'remove_shift_nozzle', array['uuid', 'uuid', 'uuid'], 'a mis-picked nozzle can be released');
+-- The authority rule lives once, in a guard both doors call: it locks the open
+-- shift and answers who may change its nozzle list.
+select has_function('public', 'lock_editable_shift', array['uuid', 'uuid'], 'one shared guard answers who may edit a running shift');
 select has_function('public', 'close_shift', array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text', 'jsonb'], 'close_shift RPC exists');
 select has_function('public', 'resubmit_rejected_shift', array['uuid', 'uuid', 'jsonb', 'jsonb', 'jsonb', 'text', 'jsonb', 'jsonb'], 'attendant rejected-shift resubmission RPC exists');
 -- Reopening is the owner's alone, works on any closed shift (approved

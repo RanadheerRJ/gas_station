@@ -14,6 +14,9 @@ import ShiftRun from "./ShiftRun.jsx";
 
 const api = vi.hoisted(() => ({
   listShifts: vi.fn(),
+  listPumps: vi.fn(),
+  listNozzleOccupancy: vi.fn(),
+  addShiftNozzles: vi.fn(),
 }));
 
 vi.mock("../../lib/api", async (importOriginal) => {
@@ -21,6 +24,9 @@ vi.mock("../../lib/api", async (importOriginal) => {
   return {
     ...actual,
     listShifts: api.listShifts,
+    listPumps: api.listPumps,
+    listNozzleOccupancy: api.listNozzleOccupancy,
+    addShiftNozzles: api.addShiftNozzles,
     readableError: (error) => String(error?.message || error),
   };
 });
@@ -105,6 +111,20 @@ async function click(element) {
 
 beforeEach(() => {
   api.listShifts.mockResolvedValue([OPEN_SHIFT]);
+  api.listPumps.mockResolvedValue({
+    pumps: [{ id: "p1", name: "Pump 1" }],
+    nozzles: [
+      {
+        id: "n3",
+        pumpId: "p1",
+        name: "N3",
+        fuelType: "Petrol",
+        lastReading: "3000",
+        state: "active",
+      },
+    ],
+  });
+  api.listNozzleOccupancy.mockResolvedValue(["n1", "n2"]);
 });
 
 afterEach(async () => {
@@ -162,5 +182,21 @@ describe("the running shift screen", () => {
     expect(primary[0].textContent.trim()).toBe("Close shift");
     await click(primary[0]);
     expect(container.querySelector('[data-testid="close"]')).toBeTruthy();
+  });
+
+  it("offers a way to take another nozzle onto the running shift", async () => {
+    await mountRun();
+    // The chip row is the shift's nozzle list, so adding one sits with it.
+    const add = [...container.querySelectorAll("button.nozzle-chip--add")].find(
+      (button) => button.textContent.trim() === "Add nozzle"
+    );
+    expect(add).toBeTruthy();
+
+    await click(add);
+    expect(document.body.querySelector(".sheet__head h2").textContent).toBe(
+      "Add nozzles to this shift"
+    );
+    // The free nozzle on the forecourt is the one on offer.
+    expect(document.body.querySelector("button.nozzle-row").textContent).toContain("N3");
   });
 });

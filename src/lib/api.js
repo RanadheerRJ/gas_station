@@ -607,6 +607,61 @@ export async function openShift(stationId, payload) {
   return { shiftId };
 }
 
+/**
+ * The refusal a browser meets when the database has not caught up with the
+ * bundle yet. A generic "could not find the function" is not something an
+ * attendant can act on, and the fix is always the same one.
+ */
+function nozzleChangeUnavailable(error) {
+  return isMissingFunction(error)
+    ? new Error("Adding or removing nozzles needs the latest update for this station.")
+    : error;
+}
+
+/**
+ * Take more nozzles onto a shift that is already running.
+ *
+ * The forecourt does not always match the start of the shift: a second pump
+ * goes into service when the queue builds, or a nozzle was forgotten when the
+ * shift was opened. Each added nozzle starts from the reading on its meter
+ * now, at the rate in force now — the same snapshot rule `open_shift` uses,
+ * taken when the nozzle really starts. The database refuses a nozzle that is
+ * retired, already in an open shift, or on a shift that has been closed.
+ */
+export async function addShiftNozzles(stationId, shiftId, nozzleIds) {
+  try {
+    return camelize(
+      await rpc("add_shift_nozzles", {
+        p_station_id: stationId,
+        p_shift_id: shiftId,
+        p_nozzle_ids: nozzleIds,
+      })
+    );
+  } catch (error) {
+    throw nozzleChangeUnavailable(error);
+  }
+}
+
+/**
+ * Release a nozzle taken onto a running shift by mistake. The claim goes and
+ * the meter is left where it was, so only a nozzle nothing has been drawn
+ * through should be released — fuel already dispensed belongs in the close,
+ * where its litres are counted and reconciled.
+ */
+export async function removeShiftNozzle(stationId, shiftId, nozzleId) {
+  try {
+    return camelize(
+      await rpc("remove_shift_nozzle", {
+        p_station_id: stationId,
+        p_shift_id: shiftId,
+        p_nozzle_id: nozzleId,
+      })
+    );
+  } catch (error) {
+    throw nozzleChangeUnavailable(error);
+  }
+}
+
 export async function closeShift(stationId, shiftId, payload) {
   return camelize(
     await rpc("close_shift", {

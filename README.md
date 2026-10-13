@@ -23,6 +23,10 @@ have been removed. The source of truth is now:
 - `supabase/migrations/20261006000000_admin_station_crud.sql` — the rest of the
   developer console's surface: create, rename, transfer, archive, and delete a
   station, and correct the name or phone on an account. All admin-only.
+- `supabase/migrations/20261012000000_nozzles_on_running_shift.sql` — a running
+  shift is not frozen: `add_shift_nozzles` and `remove_shift_nozzle` change the
+  nozzle list of an OPEN shift, for its own operator or an owner/manager of
+  that station.
 - `supabase/functions/accounts/index.ts` — privileged account provisioning and
   PIN reset Edge Function.
 - `src/lib/supabase.js` — browser client initialization.
@@ -215,6 +219,35 @@ owner/manager, so an attendant still cannot open accounts, record payments, or
 move balances outside a shift close, and the credit ledger (balances, history)
 remains unreadable to them.
 
+### A running shift's nozzle list
+
+A shift is not fixed at the moment it starts. `add_shift_nozzles` claims a free
+nozzle for a shift that is still open; `remove_shift_nozzle` gives one back.
+Both go through `lock_editable_shift`, which locks the shift row in the order
+`close_shift` uses, refuses a shift that is already closed, and accepts exactly
+two sorts of caller: the shift's own operator, or an owner/manager of that
+station.
+
+- An added nozzle starts at the reading on its meter **now**, at the rate in
+  force **now** — the same snapshot rule `open_shift` applies, taken at the
+  moment the nozzle really starts rather than when the shift did. A nozzle that
+  is retired, out of a price, or already in an open shift is refused by the
+  database, not by the button.
+- A released nozzle takes its claim row with it and leaves the meter exactly
+  where it was, so a release is only safe for a nozzle nothing has been drawn
+  through. Fuel already dispensed belongs in the close, where its litres are
+  counted and reconciled; the sheet says so in plain words and asks twice.
+- `shift_nozzles_one_open_shift` is still the last word: two simultaneous
+  requests cannot put one nozzle into two open shifts, whichever door they
+  came through.
+
+The attendant's running-shift screen carries the way in as a chip beside the
+shift's own nozzles, and the manager/owner open-shift card as an action beside
+"Add expense". Both open the same sheet,
+`src/pages/shifts/AddNozzlesSheet.jsx`, which shows availability exactly as the
+start-shift screen does — anonymously to an attendant, with operator names to
+someone who may already read the station's shifts.
+
 ### Database access
 
 All application tables have RLS enabled. An authenticated user can read only
@@ -228,6 +261,7 @@ The financial and operational critical paths are one transaction each:
 | RPC | Atomic work |
 | --- | --- |
 | `open_shift` | verifies station/nozzle/price access, snapshots price and meter, and claims each nozzle using a partial unique index |
+| `add_shift_nozzles` / `remove_shift_nozzle` | locks a running shift, checks who may edit its nozzle list, then claims a free nozzle from its meter and the current rate — or releases one, leaving the meter where it was |
 | `close_shift` | locks the open shift, advances every nozzle meter, creates/matches walk-in credit customers, posts credit transactions, updates balances, and submits the shift |
 | `record_customer_transaction` | locks a customer, prevents overpayment, updates the balance, and appends an audit transaction |
 | `record_dip` / `record_delivery` | locks the tank, validates capacity/state, writes the reading, and updates current stock |
