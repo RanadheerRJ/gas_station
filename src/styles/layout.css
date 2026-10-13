@@ -560,3 +560,75 @@
 .account-panel__signout:hover:not(:disabled) {
   background: rgba(220, 38, 38, 0.08);
 }
+
+/* =====================================================================
+   SBI YONO reskin — navy chrome
+   ---------------------------------------------------------------------
+   Solid-navy top bar and side nav with a white wordmark and a white-wash
+   active item, plus a repainted white-on-navy brand mark so PÉTRAV stays
+   visible against the deep blue. No markup or behaviour changes.
+   ===================================================================== */
+
+/* Repaint the PÉTRAV mark white-on-navy whenever it sits on a deep blue
+   surface (top bar, side nav, login header). The pump/ring go white, the
+   display window and clock hand stay navy so the ₹ and hands still read. */
+.appbar,
+.sidebar .brand,
+.login-card .head {
+  --petrav-pump: #ffffff;
+  --petrav-base: #ffffff;
+  --petrav-display: var(--navy);
+  --petrav-rupee: #ffffff;
+  --petrav-clock-face: #ffffff;
+  --petrav-clock-ring: #ffffff;
+  --petrav-clock-hour: var(--navy);
+  --petrav-nozzle: #ff6b75;
+  --petrav-drop: #ffce6b;
+  --petrav-red: #ff6b75;
+}
+
+/* Mobile top bar: solid navy, white lockup, translucent-white account chip. */
+.appbar {
+  color: var(--on-navy-ink);
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
+.appbar .brand-lockup {
+  color: var(--on-navy-ink);
+}
+
+.appbar__account {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+}
+
+.appbar__account:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* Desktop side nav: white wordmark and role pills on the navy panel. */
+.sidebar .brand .brand-lockup {
+  color: var(--on-navy-ink);
+}
+
+.sidebar .who {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.sidebar .role-pill {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+/* Bottom tab bar: a soft navy wash under the active destination. */
+.tab.active {
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+}

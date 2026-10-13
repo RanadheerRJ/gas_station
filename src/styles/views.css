@@ -616,3 +616,67 @@
   opacity: 0.45;
   border-style: dashed;
 }
+
+/* =====================================================================
+   SBI YONO reskin — login & hero
+   ---------------------------------------------------------------------
+   The login opens on a navy gradient with a navy header band carrying the
+   white mark; the day's sales read as a navy "balance" hero. Visual only.
+   ===================================================================== */
+
+.login-wrap {
+  background: var(--navy-grad);
+}
+
+.login-card {
+  border-color: transparent;
+}
+
+.login-card .head {
+  background: var(--navy-grad);
+  color: #ffffff;
+  position: relative;
+}
+
+.login-card .head p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.login-brand {
+  color: #ffffff;
+}
+
+/* The day's sales as a navy hero card — the YONO "account balance" moment. */
+.sales-hero {
+  background: var(--navy-grad);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.sales-hero::after {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sales-hero__eyebrow {
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.09em;
+}
+
+.sales-hero__amount {
+  color: #ffffff;
+}
+
+/* The ₹ figure is a semantic blue by default; force it white on navy. */
+.sales-hero .money {
+  color: #ffffff;
+}
+
+.sales-hero__support strong {
+  color: #ffffff;
+}
+
+.sales-hero__support span,
+.sales-hero__meta,
+.sales-hero__empty > span:last-child {
+  color: rgba(255, 255, 255, 0.82);
+}
