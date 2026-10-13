@@ -201,6 +201,13 @@ const en = {
   /* ---- shifts ---- */
   "shifts.title": "Shifts",
   "shifts.pumpsFree": "{free} pumps free · {busy} busy",
+  "common.all": "All",
+  "common.search": "Search",
+  "shifts.whoIsWorking": "Who is working this shift?",
+  "shifts.yourself": "You",
+  "shifts.selectAllFree": "Select all free",
+  "shifts.filterFuel": "Filter by fuel",
+  "setup.goSetup": "Set up pumps",
   "shifts.startShift": "Start shift",
   "shifts.forecourt": "Forecourt right now",
   "shifts.forecourtNote": "A pump is busy while any of its nozzles is in an open shift.",

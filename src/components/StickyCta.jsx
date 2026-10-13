@@ -19,6 +19,7 @@ import { Link } from "react-router-dom";
 export default function StickyCta({
   summary,
   hint,
+  liveSummary = false,
   ctaLabel,
   onCta,
   ctaTo,
@@ -62,7 +63,12 @@ export default function StickyCta({
         <div className="sticky-cta__inner">
           <div className="sticky-cta__summary">
             {summary != null && summary !== "" && (
-              <span className="sticky-cta__summary-main">{summary}</span>
+              <span
+                className="sticky-cta__summary-main"
+                aria-live={liveSummary ? "polite" : undefined}
+              >
+                {summary}
+              </span>
             )}
             {hint && <span className="sticky-cta__hint">{hint}</span>}
           </div>

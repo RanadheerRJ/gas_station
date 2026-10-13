@@ -194,6 +194,13 @@ const te = {
   "history.title": "గత షిఫ్టులు",
   "shifts.title": "షిఫ్టులు",
   "shifts.pumpsFree": "{free} పంపులు ఖాళీ · {busy} బిజీ",
+  "common.all": "అన్నీ",
+  "common.search": "వెతకండి",
+  "shifts.whoIsWorking": "ఈ షిఫ్ట్ ఎవరు చేస్తున్నారు?",
+  "shifts.yourself": "మీరు",
+  "shifts.selectAllFree": "ఖాళీ వాటిన్నీ ఎంచుకోండి",
+  "shifts.filterFuel": "ఇంధనం ద్వారా వడకట్టండి",
+  "setup.goSetup": "పంపులను సెటప్ చేయండి",
   "shifts.startShift": "షిఫ్ట్ ప్రారంభించు",
   "shifts.forecourt": "ప్రస్తుత ఫోర్‌కోర్ట్",
   "shifts.forecourtNote":
