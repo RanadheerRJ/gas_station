@@ -48,6 +48,7 @@ const hi = {
   "common.remove": "हटाएँ",
   "common.edit": "संपादित करें",
   "common.close": "बंद करें",
+  "common.moreActions": "और विकल्प",
   "common.open": "खोलें",
   "common.hide": "छिपाएँ",
   "common.detail": "विवरण",

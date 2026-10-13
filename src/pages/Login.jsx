@@ -5,7 +5,8 @@ import { supabaseConfigured } from "../lib/supabase";
 import { Notice } from "../components/ui";
 import { useOneShot } from "../components/motion.jsx";
 import { PetravMark, PetravWordmark } from "../components/branding.jsx";
-import { RefreshIcon } from "../components/icons.jsx";
+import { MoonIcon, RefreshIcon, SunIcon } from "../components/icons.jsx";
+import OverflowMenu from "../components/OverflowMenu.jsx";
 import { hardRefreshApp } from "../lib/pwa.js";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
@@ -127,6 +128,7 @@ export default function Login() {
                   className="mono"
                   autoCapitalize="none"
                   autoCorrect="off"
+                  autoComplete="username"
                   spellCheck="false"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -140,6 +142,7 @@ export default function Login() {
                   className={`pin-input ${shake}`.trim()}
                   inputMode="numeric"
                   type="password"
+                  autoComplete="current-password"
                   maxLength={4}
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
@@ -209,24 +212,29 @@ export default function Login() {
           )}
           <div className="login-prefs">
             <LanguageSelect compact />
-            <button type="button" className="theme-toggle" onClick={toggleTheme}>
-              {theme === "dark"
-                ? `☀ ${t("chrome.lightMode")}`
-                : `☾ ${t("chrome.darkMode")}`}
-            </button>
-            <button
-              type="button"
-              className="theme-toggle"
-              onClick={async () => {
-                setRefreshing(true);
-                await hardRefreshApp();
-              }}
-              title={t("chrome.hardRefreshHint")}
-              disabled={refreshing}
-            >
-              <RefreshIcon size={13} className={refreshing ? "spin" : ""} />
-              {refreshing ? t("chrome.refreshing") : t("chrome.hardRefresh")}
-            </button>
+            {/* Language stays visible; theme and the support-only hard refresh
+                are tucked into a menu so the card is not crowded. */}
+            <OverflowMenu
+              placement="up"
+              items={[
+                {
+                  key: "theme",
+                  label: theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode"),
+                  icon: theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />,
+                  onClick: toggleTheme,
+                },
+                {
+                  key: "refresh",
+                  label: refreshing ? t("chrome.refreshing") : t("chrome.hardRefresh"),
+                  icon: <RefreshIcon size={16} />,
+                  disabled: refreshing,
+                  onClick: async () => {
+                    setRefreshing(true);
+                    await hardRefreshApp();
+                  },
+                },
+              ]}
+            />
           </div>
         </div>
       </div>

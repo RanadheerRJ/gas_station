@@ -50,6 +50,7 @@ const en = {
   "common.remove": "remove",
   "common.edit": "Edit",
   "common.close": "close",
+  "common.moreActions": "More actions",
   "common.open": "open",
   "common.hide": "hide",
   "common.detail": "detail",

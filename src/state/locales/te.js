@@ -48,6 +48,7 @@ const te = {
   "common.remove": "తొలగించు",
   "common.edit": "సవరించు",
   "common.close": "మూసివేయి",
+  "common.moreActions": "మరిన్ని చర్యలు",
   "common.open": "తెరువు",
   "common.hide": "దాచు",
   "common.detail": "వివరాలు",
