@@ -1553,3 +1553,20 @@
     min-height: 44px;
   }
 }
+
+/* Closed-shift figures (Litres, Net, Variance) share equal columns from
+   tablet widths up. Content-sized figures started at a different x on every
+   card, so the values could not be compared down the list. Phones keep the
+   two-column layout above. */
+@media (min-width: 601px) {
+  .list-card__row--figures {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .list-card__chev {
+    margin-left: 0;
+  }
+}

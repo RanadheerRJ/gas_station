@@ -510,9 +510,51 @@
 }
 
 .open-card__nozzles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 55%;
+}
+
+/* Closing a shift is the card's one decisive action, so it is a filled
+   button, pinned to the right. Add expense and Add nozzle stay outlined. */
+.open-card__close {
+  margin-left: auto;
   display: inline-flex;
-  gap: 5px;
-  padding-top: 4px;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-strong);
+  background: var(--accent-strong);
+  color: var(--accent-ink);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.open-card__close:hover {
+  background: var(--cta-bg-hover);
+  border-color: var(--cta-bg-hover);
+  color: #fff;
+  text-decoration: none;
+}
+
+.open-card__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+:root[data-theme="dark"] .open-card__close {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+:root[data-theme="dark"] .open-card__close:hover {
+  color: var(--cta-ink);
 }
 
 .open-card__actions {
