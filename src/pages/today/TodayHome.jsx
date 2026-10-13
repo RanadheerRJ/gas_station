@@ -1,22 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import StationIdentity from "../../components/StationIdentity.jsx";
 import Money from "../../components/Money.jsx";
-import { ActionBar, Notice } from "../../components/ui.jsx";
-import { LoadingPanels } from "../../components/motion.jsx";
-import { LanguageSelect, useLanguage } from "../../state/LanguageContext.jsx";
+import { Notice, Stat } from "../../components/ui.jsx";
+import { Card } from "../../components/Card.jsx";
+import { Chip, ChipRow } from "../../components/Chip.jsx";
+import ListRow from "../../components/ListRow.jsx";
+import StickyCta from "../../components/StickyCta.jsx";
+import Skeleton from "../../components/Skeleton.jsx";
+import EmptyState from "../../components/EmptyState.jsx";
+import { useNow } from "../../state/useNow.js";
+import { elapsedLabel } from "../../lib/elapsed.js";
+import { useLanguage } from "../../state/LanguageContext.jsx";
 import {
   CheckIcon,
-  ChevronIcon,
+  HistoryIcon,
   PlusIcon,
   PumpIcon,
+  RefreshIcon,
   ShiftIcon,
 } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listNozzleOccupancy, listPumps, listShifts, readableError } from "../../lib/api";
-import { formatDate, formatStamp, litres, todayISO } from "../../lib/format";
+import { formatDate, formatStamp, litres, money, todayISO } from "../../lib/format";
 import { takeFlash } from "../../lib/flash.js";
 import { scopeShiftsToViewer } from "../../lib/export.js";
 import {
@@ -30,15 +37,24 @@ import { StatusTag } from "../shifts/parts.jsx";
 import { shiftPaths } from "../shifts/paths.js";
 import ExpensesSheet from "../shifts/ExpensesSheet.jsx";
 
+function greetingKey(hour) {
+  if (hour < 12) return "today.goodMorning";
+  if (hour < 17) return "today.goodAfternoon";
+  return "today.goodEvening";
+}
+
 /**
- * The attendant's morning board, drawn for someone standing at a forecourt
- * counter with one hand free: what needs doing first (a sent-back shift), a
- * single status card that says what is running right now, today's own
- * numbers, and the latest few shifts. The one primary action is always in
- * the pinned bar — start, or continue.
+ * The attendant's home feed, drawn like a delivery app's: a greeting that
+ * says where you are and what is live, one hero card tinted by the state of
+ * your shift, a scrolling row of today's numbers, the free nozzles as fuel
+ * chips, and your latest shifts as rows. The one primary action — start, or
+ * continue — is always the same pinned pill above the tab bar.
  *
  * Backed only by the attendant's own shift data (RLS sees to it) plus the
- * anonymous busy-nozzle list; every figure shown already exists.
+ * anonymous busy-nozzle list; every figure shown already exists. A running
+ * shift's litres and sales are deliberately not guessed here: the close
+ * screen enters closing readings, so "so far" would be invented numbers.
+ * The hero shows what is honestly live — elapsed time, expenses, nozzles.
  */
 export default function TodayHome() {
   const { t, tn } = useLanguage();
@@ -46,6 +62,7 @@ export default function TodayHome() {
   const navigate = useNavigate();
   const { station, stationId, loading: stationsLoading } = useStation();
   const paths = shiftPaths(profile.role);
+  const now = useNow(30_000);
 
   const [shifts, setShifts] = useState([]);
   const [pumps, setPumps] = useState([]);
@@ -124,34 +141,57 @@ export default function TodayHome() {
         .slice(0, 3),
     [shifts, profile]
   );
+  // Free nozzles grouped by fuel, as tappable chips: picking a fuel goes
+  // straight into the picker with that fuel preselected.
+  const freeByFuel = useMemo(() => {
+    const groups = new Map();
+    nozzles.forEach((nozzle) => {
+      if (nozzleBusy[nozzle.id]) return;
+      const key = nozzle.fuelType || "MS";
+      groups.set(key, (groups.get(key) || 0) + 1);
+    });
+    return [...groups.entries()];
+  }, [nozzles, nozzleBusy]);
 
-  if (stationsLoading) {
-    return (
-      <>
-        <ScreenHeader title={t("today.title")} />
-        <div className="content">
-          <LoadingPanels count={2} lines={2} label={t("common.loading")} />
-        </div>
-      </>
-    );
-  }
-
+  const elapsedMs = myShift
+    ? Math.max(0, now - new Date(myShift.startTime).getTime())
+    : 0;
+  const greeting = `${t(greetingKey(new Date().getHours()))}, ${profile.name}`;
   const canStart = pumps.length > 0 && freeNozzleCount > 0;
+
+  const statusChip = sentBack ? (
+    <Chip label={t("shifts.sentBack")} tone="credit" />
+  ) : myShift ? (
+    <Chip label={t("today.shiftRunning")} tone="ok" />
+  ) : (
+    <Chip label={t("today.noShift")} />
+  );
 
   return (
     <>
-      <ScreenHeader title={t("today.title")} />
+      <ScreenHeader
+        title={greeting}
+        sub={
+          station?.name
+            ? `${station.name} · ${formatDate(todayISO())}`
+            : formatDate(todayISO())
+        }
+        actions={
+          <>
+            {statusChip}
+            <button
+              type="button"
+              className="tool-btn"
+              onClick={load}
+              aria-label={t("common.refresh")}
+              disabled={loading}
+            >
+              <RefreshIcon size={16} />
+            </button>
+          </>
+        }
+      />
       <div className="content today-dashboard">
-        <StationIdentity stationName={station?.name || ""} />
-
-        <div className="today-meta">
-          <span className="today-meta__date">
-            <ShiftIcon size={14} />
-            {formatDate(todayISO())}
-          </span>
-          <LanguageSelect compact />
-        </div>
-
         {error && (
           <Notice kind="error">
             {error}{" "}
@@ -161,8 +201,8 @@ export default function TodayHome() {
           </Notice>
         )}
 
-        {loading ? (
-          <LoadingPanels count={3} lines={2} label={t("common.loading")} />
+        {loading || stationsLoading ? (
+          <Skeleton shape="card" count={3} />
         ) : (
           <>
             {justSent && (
@@ -209,6 +249,8 @@ export default function TodayHome() {
               </section>
             )}
 
+            {/* The hero card: tinted by the state of the shift, one big live
+                figure, and the whole card continues into the shift. */}
             <section className="dashboard-section" aria-labelledby="shift-status-title">
               <div className="section-label">
                 <h2 id="shift-status-title">{t("nav.shift")}</h2>
@@ -223,7 +265,9 @@ export default function TodayHome() {
                       <span className="live-dot" aria-hidden="true" />
                       {t("today.runningSince", { time: formatStamp(myShift.startTime) })}
                     </span>
-                    <ChevronIcon size={18} />
+                    <span className="status-card__elapsed">
+                      <span className="figure-hero">{elapsedLabel(elapsedMs, t)}</span>
+                    </span>
                   </div>
                   <div className="status-card__operator">
                     <strong>{profile.name}</strong>
@@ -281,118 +325,132 @@ export default function TodayHome() {
               )}
             </section>
 
-            <section className="sales-hero" aria-labelledby="today-sales-title">
-              <div className="sales-hero__eyebrow" id="today-sales-title">
-                {t("today.sales")}
+            {/* Today's numbers as a scrolling row of stat cards. */}
+            <section className="dashboard-section" aria-labelledby="today-numbers-title">
+              <div className="section-label">
+                <h2 id="today-numbers-title">{t("today.sales")}</h2>
               </div>
-              {settledToday.length > 0 ? (
-                <>
-                  <div className="sales-hero__amount">
-                    <Money
-                      kind="neutral"
-                      size="lg"
-                      value={todayTotals.gross}
-                      label={t("today.sales")}
-                    />
-                  </div>
-                  <div className="sales-hero__support">
-                    <strong className="mono">{litres(todayTotals.litres)} L</strong>
-                    <span>{t("today.fuelDispensed")}</span>
-                  </div>
-                  <div className="sales-hero__meta">
-                    {tn(
-                      settledToday.length,
-                      "today.closedShiftOne",
-                      "today.closedShifts"
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="sales-hero__empty">
-                  <span className="sales-hero__amount mono">—</span>
-                  <span>{t("today.noCompletedSales")}</span>
-                </div>
-              )}
+              <div className="quick-stat-row">
+                <Card className="quick-stat">
+                  <Stat
+                    label={t("today.sales")}
+                    amount={todayTotals.gross}
+                    format={money}
+                    prefix="₹ "
+                  />
+                </Card>
+                <Card className="quick-stat">
+                  <Stat
+                    label={t("today.fuelDispensed")}
+                    amount={todayTotals.litres}
+                    format={(n) => `${litres(n)} L`}
+                  />
+                </Card>
+                <Card className="quick-stat">
+                  <Stat
+                    label={t("today.expensesSoFar")}
+                    amount={expensesSoFar}
+                    format={money}
+                    prefix="₹ "
+                    tone={expensesSoFar > 0 ? "neg" : ""}
+                  />
+                </Card>
+              </div>
             </section>
 
-            {recent.length > 0 && (
-              <section
-                className="dashboard-section"
-                aria-labelledby="recent-shifts-title"
-              >
+            {/* Free nozzles by fuel: a chip starts the picker on that fuel. */}
+            {freeByFuel.length > 0 && !myShift && (
+              <section className="dashboard-section" aria-labelledby="free-nozzles-title">
                 <div className="section-label">
-                  <h2 id="recent-shifts-title">{t("today.recentShifts")}</h2>
-                  <Link to={paths.list} className="see-all">
-                    {t("today.seeAll")}
-                    <ChevronIcon size={14} />
-                  </Link>
+                  <h2 id="free-nozzles-title">{t("today.availableNozzles")}</h2>
                 </div>
-                <div className="history-list">
+                <ChipRow label={t("today.availableNozzles")}>
+                  {freeByFuel.map(([fuel, count]) => (
+                    <Chip
+                      key={fuel}
+                      label={fuel}
+                      count={count}
+                      onClick={() =>
+                        navigate(`${paths.start}?fuel=${encodeURIComponent(fuel)}`)
+                      }
+                    />
+                  ))}
+                </ChipRow>
+              </section>
+            )}
+
+            <section className="dashboard-section" aria-labelledby="recent-shifts-title">
+              <div className="section-label">
+                <h2 id="recent-shifts-title">{t("today.recentShifts")}</h2>
+                <Link to={paths.list} className="see-all">
+                  {t("today.seeAll")}
+                </Link>
+              </div>
+              {recent.length > 0 ? (
+                <div className="stack">
                   {recent.map((shift) => {
                     const totals = shiftTotals(shift);
                     return (
-                      <Link
+                      <ListRow
                         key={shift.id}
-                        to={paths.detail(shift.id)}
-                        className="history-card history-card--recent"
-                      >
-                        <div className="history-card__head">
-                          <div>
-                            <strong>{formatDate(shift.date)}</strong>
-                            <span>
-                              {t("shifts.started")} {formatStamp(shift.startTime)}
-                            </span>
-                          </div>
-                          <StatusTag status={shift.status} />
-                        </div>
-                        <div className="history-card__financial">
-                          <div>
-                            <span>{t("shifts.net")}</span>
+                        icon={ShiftIcon}
+                        title={formatDate(shift.date)}
+                        subtitle={`${t("shifts.started")} ${formatStamp(shift.startTime)} · ${litres(totals.totalLitres)} L`}
+                        trailing={
+                          <>
+                            <StatusTag status={shift.status} />
                             <Money
                               kind="neutral"
                               value={totals.net}
                               label={`${formatDate(shift.date)} · ${t("shifts.net")}`}
                             />
-                          </div>
-                          <ChevronIcon size={18} />
-                        </div>
-                      </Link>
+                          </>
+                        }
+                        to={paths.detail(shift.id)}
+                      />
                     );
                   })}
                 </div>
-              </section>
-            )}
+              ) : (
+                <Card>
+                  <EmptyState
+                    icon={HistoryIcon}
+                    headline={t("today.noHistoryTitle")}
+                    body={t("today.noHistoryBody")}
+                  />
+                </Card>
+              )}
+            </section>
 
             {myShift ? (
-              <ActionBar>
-                <button
-                  type="button"
-                  className="action-bar__with-icon"
-                  onClick={() => setExpenseFor(myShift)}
-                >
-                  <PlusIcon size={16} />
-                  {t("shifts.addExpense")}
-                </button>
-                <button
-                  type="button"
-                  className="cta"
-                  onClick={() => navigate(paths.run(myShift.id))}
-                >
-                  {t("today.continueShift")}
-                </button>
-              </ActionBar>
+              <StickyCta
+                summary={`${t("today.shiftRunning")} · ${elapsedLabel(elapsedMs, t)}`}
+                ctaLabel={t("today.continueShift")}
+                onCta={() => navigate(paths.run(myShift.id))}
+                secondary={
+                  <button
+                    type="button"
+                    className="tool-btn"
+                    onClick={() => setExpenseFor(myShift)}
+                  >
+                    <PlusIcon size={16} />
+                    {t("shifts.addExpense")}
+                  </button>
+                }
+              />
             ) : (
-              <ActionBar>
-                <button
-                  type="button"
-                  className="cta"
-                  disabled={!canStart}
-                  onClick={() => navigate(paths.start)}
-                >
-                  <ShiftIcon size={17} />
-                  {t("shifts.startShift")}
-                </button>
-              </ActionBar>
+              <StickyCta
+                summary={
+                  pumps.length === 0
+                    ? t("shifts.noPumps")
+                    : freeNozzleCount > 0
+                      ? tn(freeNozzleCount, "today.freeNozzleOne", "today.freeNozzles")
+                      : t("today.allBusy")
+                }
+                ctaLabel={t("shifts.startShift")}
+                onCta={() => navigate(paths.start)}
+                disabled={!canStart}
+              />
             )}
           </>
         )}
