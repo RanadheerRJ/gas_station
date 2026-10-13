@@ -61,7 +61,7 @@
   }
 
   .screen-head h1 {
-    font-size: 19.5px;
+    font-size: 24px;
   }
 
   /* The actions wrap onto their own line when the title needs the width. */
@@ -91,6 +91,37 @@
 
   .action-bar__spacer {
     height: calc(var(--actionbar-h) + var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* The StickyCta bar follows the same rule as the action bar: pinned above
+     the tab bar on phones, and flush to the bottom edge on screens with no
+     tab bar of their own. */
+  .sticky-cta {
+    left: 0;
+    padding: 10px 16px;
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sticky-cta__spacer {
+    height: calc(var(--actionbar-h) + var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sticky-cta__btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sticky-cta__summary {
+    flex: 0 1 auto;
+  }
+
+  .shell:not(.shell--tabs) .sticky-cta {
+    bottom: 0;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell:not(.shell--tabs) .sticky-cta__spacer {
+    height: calc(var(--actionbar-h) + env(safe-area-inset-bottom, 0px));
   }
 
   .action-bar__spacer.action-bar--review__spacer {

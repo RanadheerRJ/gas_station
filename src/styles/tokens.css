@@ -11,17 +11,19 @@
 
 :root {
   /* ---- brand + semantic colour, light theme ---- */
-  --bg: #f2f4f7;
-  --paper: #f2f4f7;
+  /* Surfaces are near-white rather than grey so the cards that sit on them
+     read as raised paper; separation comes from --shadow-card. */
+  --bg: #f7f8fa;
+  --paper: #f7f8fa;
   --surface: #ffffff;
   --panel: #ffffff;
   --surface-raised: #ffffff;
-  --surface-sunken: #eef1f5;
+  --surface-sunken: #f1f3f7;
   --ink: #101828;
   --ink-strong: #0a1120;
   --muted: #667085;
-  --hairline: #e5e9ef;
-  --hairline-strong: #d6dce5;
+  --hairline: #eef1f5;
+  --hairline-strong: #dfe4ec;
 
   --accent: #0b5bc6;
   --accent-strong: #063b8f;
@@ -65,11 +67,28 @@
   --petrav-red: #e31b23;
 
   /* The checkout button. Deliberately its own pair of tokens: it must stay
-     legible and confident in both themes whatever happens to --accent. */
-  --cta-bg: #063b8f;
-  --cta-bg-hover: #052f70;
+     legible and confident in both themes whatever happens to --accent.
+     Near-black on white in the light theme, white on near-black in the dark
+     one — the neutral, final "place order" of a delivery app, not a brand
+     statement. */
+  --cta-bg: #111827;
+  --cta-bg-hover: #1f2937;
   --cta-ink: #ffffff;
-  --cta-shadow: 0 8px 20px -8px rgba(6, 59, 143, 0.55);
+  --cta-shadow: 0 10px 24px -10px rgba(17, 24, 39, 0.45);
+
+  /* Filter chips: the horizontal scrollers every list is filtered with.
+     Selected echoes the checkout button (near-black here, white in dark
+     mode) so "this is the active filter" reads the same as "this is the
+     action". Tinted status chips use the money/accent soft colours. */
+  --chip-bg: #eef1f6;
+  --chip-ink: #364152;
+  --chip-border: transparent;
+  --chip-active-bg: #111827;
+  --chip-active-ink: #ffffff;
+  --chip-count-bg: #ffffff;
+  --chip-count-ink: #111827;
+  --chip-active-count-bg: rgba(255, 255, 255, 0.18);
+  --chip-active-count-ink: #ffffff;
 
   /* legacy names kept so component code and inline styles do not need to
      change — they resolve to the system's semantic colours. */
@@ -95,6 +114,12 @@
     0 4px 12px -3px rgba(16, 24, 40, 0.09), 0 2px 5px -2px rgba(16, 24, 40, 0.05);
   --shadow-lg:
     0 16px 34px -10px rgba(16, 24, 40, 0.2), 0 6px 14px -6px rgba(16, 24, 40, 0.1);
+  /* The resting and pinned-card shadows of the card-first layout: a card is
+     separated from the near-white page by --shadow-card alone, and a sticky
+     bar lifts its content off the page with --shadow-sticky. */
+  --shadow-card:
+    0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -14px rgba(16, 24, 40, 0.14);
+  --shadow-sticky: 0 -12px 32px -16px rgba(16, 24, 40, 0.28);
   /* A solid two-tone ring: the surface gap keeps it visible on any
      background and the accent band clears 3:1 against it. */
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
@@ -103,7 +128,11 @@
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 24px;
+  /* The card-first radius: every list card, row and sheet-sized surface. */
+  --radius-card: 20px;
   --radius-pill: 999px;
+  /* Nothing a thumb is meant to hit is smaller than this. */
+  --tap-min: 44px;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -196,10 +225,20 @@
   --petrav-base: #3e6fbf;
   --petrav-clock-ring: #5b9bf0;
 
-  --cta-bg: #1e6fd9;
-  --cta-bg-hover: #3480e4;
-  --cta-ink: #ffffff;
-  --cta-shadow: 0 8px 22px -8px rgba(30, 111, 217, 0.5);
+  --cta-bg: #f2f5fa;
+  --cta-bg-hover: #ffffff;
+  --cta-ink: #0b0f16;
+  --cta-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65);
+
+  --chip-bg: #1c2635;
+  --chip-ink: #c6cfdd;
+  --chip-border: transparent;
+  --chip-active-bg: #eef2f8;
+  --chip-active-ink: #0b0f16;
+  --chip-count-bg: #0e141d;
+  --chip-count-ink: #e8edf4;
+  --chip-active-count-bg: rgba(11, 15, 22, 0.14);
+  --chip-active-count-ink: #0b0f16;
 
   --graphite: #0a0e17;
   --petrol: var(--accent);
@@ -221,5 +260,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px -2px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 18px 36px -10px rgba(0, 0, 0, 0.55), 0 6px 14px -6px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -16px rgba(0, 0, 0, 0.55);
+  --shadow-sticky: 0 -12px 34px -14px rgba(0, 0, 0, 0.7);
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }

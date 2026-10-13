@@ -98,14 +98,13 @@ export function Empty({ children }) {
  * A bare card: the Panel's body without its header chrome. Most screens in
  * the app-shell world are one card each, and a titled bar above every one of
  * them would be noise.
+ *
+ * The card itself now lives in Card.jsx, which adds the pressable variant
+ * (renders as a Link or a button with hover/pressed/focus states); it is
+ * re-exported here so every existing `import { Card } from "ui.jsx"` keeps
+ * working and new code can import from either place.
  */
-export function Card({ children, className = "", flush = false }) {
-  return (
-    <section className={`card${flush ? " card--flush" : ""} ${className}`.trim()}>
-      {children}
-    </section>
-  );
-}
+export { Card } from "./Card.jsx";
 
 /**
  * The checkout bar. One screen, one primary action, always in the same place

@@ -877,5 +877,31 @@ const en = {
   "shifts.emptyReviewTitle": "All caught up",
   "shifts.emptyReviewBody": "Every closed shift has been reviewed and signed off.",
   "shifts.emptyClosedBody": "Approved shifts will be filed here once signed off.",
+
+  /* ---- dev-only component kit (/__kit) ---- */
+  "kit.title": "Component kit",
+  "kit.devOnly": "Dev-only preview — never included in a production build.",
+  "kit.buttons": "Buttons",
+  "kit.chips": "Chips",
+  "kit.cards": "Cards",
+  "kit.pressable": "Tappable card",
+  "kit.pressableHint": "The whole card is one tap target.",
+  "kit.sticky": "Sticky action bar",
+  "kit.stickySummary": "{count} selected",
+  "kit.stickyHint": "Pinned above the tab bar on phones.",
+  "kit.rows": "List rows",
+  "kit.skeletons": "Loading skeletons",
+  "kit.empty": "Empty state",
+  "kit.emptyTitle": "Nothing here yet",
+  "kit.emptyBody": "Start a shift and it will appear here.",
+  "kit.segmented": "Segmented control",
+  "kit.panels": "Panels and figures",
+  "kit.money": "Money figures",
+  "kit.notices": "Notices",
+  "kit.sheets": "Bottom sheet",
+  "kit.openSheet": "Open the demo sheet",
+  "kit.sheetBody":
+    "A sheet holds one quick action over the screen and dismisses back to where you were.",
+  "kit.steps": "Step progress",
 };
 export default en;

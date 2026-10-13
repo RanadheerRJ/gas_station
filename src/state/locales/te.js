@@ -862,5 +862,31 @@ const te = {
   "shifts.emptyReviewTitle": "అన్నీ పూర్తయ్యాయి",
   "shifts.emptyReviewBody": "ముగిసిన ప్రతి షిఫ్ట్ సమీక్షించి ఆమోదించబడింది.",
   "shifts.emptyClosedBody": "ఆమోదించబడిన షిఫ్టులు ఇక్కడ నిల్వ చేయబడతాయి.",
+
+  /* ---- dev-only component kit (/__kit) ---- */
+  "kit.title": "కాంపోనెంట్ కిట్",
+  "kit.devOnly": "డెవ్-మాత్రమే ప్రివ్యూ — ప్రొడక్షన్ బిల్డ్‌లో ఎప్పుడూ చేరదు.",
+  "kit.buttons": "బటన్లు",
+  "kit.chips": "చిప్స్",
+  "kit.cards": "కార్డులు",
+  "kit.pressable": "నొక్కగల కార్డు",
+  "kit.pressableHint": "మొత్తం కార్డే ఒకే టాప్ లక్ష్యం.",
+  "kit.sticky": "స్టిక్కీ యాక్షన్ బార్",
+  "kit.stickySummary": "{count} ఎంపిక",
+  "kit.stickyHint": "ఫోన్‌లో ట్యాబ్ బార్ పైన స్థిరంగా ఉంటుంది.",
+  "kit.rows": "జాబితా వరుసలు",
+  "kit.skeletons": "లోడ్ అవుతున్న స్కెలెటన్లు",
+  "kit.empty": "ఖాళీ స్థితి",
+  "kit.emptyTitle": "ఇక్కడ ఇంకా ఏమీ లేదు",
+  "kit.emptyBody": "షిఫ్ట్ ప్రారంభిస్తే ఇక్కడ కనిపిస్తుంది.",
+  "kit.segmented": "సెగ్మెంటెడ్ కంట్రోల్",
+  "kit.panels": "ప్యానల్స్ మరియు అంకెలు",
+  "kit.money": "రూపాయల అంకెలు",
+  "kit.notices": "నోటీసులు",
+  "kit.sheets": "కింది షీట్",
+  "kit.openSheet": "డెమో షీట్ తెరవండి",
+  "kit.sheetBody":
+    "షీట్ స్క్రీన్ మీద ఒక త్వరిత పనిని ఉంచుతుంది, తెరిచిన చోటికే తిరిగి మూసుకుంటుంది.",
+  "kit.steps": "దశ పురోగతి",
 };
 export default te;

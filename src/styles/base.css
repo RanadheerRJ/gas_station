@@ -22,7 +22,9 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 14px;
-  line-height: 1.5;
+  /* Tighter body copy: cards carry the air now, so the type does not have
+     to. Headings and figures set their own leading. */
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -38,9 +40,11 @@ h4 {
   color: var(--ink-strong);
 }
 
+/* The delivery-app screen title: big and confident, one per screen. */
 h1 {
-  font-size: 22px;
-  letter-spacing: -0.02em;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
 }
 h2 {
   font-size: 15px;

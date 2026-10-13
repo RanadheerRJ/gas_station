@@ -360,6 +360,26 @@ button:focus-visible {
   }
 }
 
+/* A busy button's spinner. It inherits currentColor, so it rides inside the
+   near-black checkout pill or a plain secondary without a second colour. The
+   reduced-motion block above freezes it into a quiet partial ring. */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .skeleton-line {
   height: 10px;
   margin: 8px 0;

@@ -1,6 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+// Dev-only component gallery. The route (and this chunk) never exist in a
+// production build: DEV is statically false there, so the lazy import is
+// dead code the bundler drops.
+const Kit = import.meta.env.DEV ? lazy(() => import("./pages/Kit.jsx")) : null;
 const Login = lazy(() => import("./pages/Login"));
 const DeveloperConsole = lazy(() => import("./pages/DeveloperConsole"));
 const OwnerHome = lazy(() => import("./pages/OwnerHome"));
@@ -122,6 +126,7 @@ export default function App() {
       <Suspense fallback={<PetravBoot />}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {Kit && <Route path="/__kit" element={<Kit />} />}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
@@ -135,6 +140,9 @@ export default function App() {
           path="/login"
           element={<Navigate to={HOME[profile.role] || "/"} replace />}
         />
+        {/* The component kit stands outside the shell so it renders signed
+            out too; the theme and language providers wrap the whole app. */}
+        {Kit && <Route path="/__kit" element={<Kit />} />}
         <Route element={<Layout />}>
           {/* ---- developer ---- */}
           <Route

@@ -856,5 +856,31 @@ const hi = {
   "shifts.emptyReviewTitle": "सब निपटा दिया गया",
   "shifts.emptyReviewBody": "हर बंद शिफ्ट की समीक्षा और मंज़ूरी हो चुकी है।",
   "shifts.emptyClosedBody": "मंज़ूर की गई शिफ्टें यहाँ दर्ज होंगी।",
+
+  /* ---- dev-only component kit (/__kit) ---- */
+  "kit.title": "कंपोनेंट किट",
+  "kit.devOnly": "केवल डेव पूर्वावलोकन — प्रोडक्शन बिल्ड में कभी शामिल नहीं होता।",
+  "kit.buttons": "बटन",
+  "kit.chips": "चिप",
+  "kit.cards": "कार्ड",
+  "kit.pressable": "टैप करने योग्य कार्ड",
+  "kit.pressableHint": "पूरा कार्ड एक ही टैप लक्ष्य है।",
+  "kit.sticky": "स्थिर एक्शन बार",
+  "kit.stickySummary": "{count} चयनित",
+  "kit.stickyHint": "फ़ोन पर टैब बार के ठीक ऊपर रहता है।",
+  "kit.rows": "सूची पंक्तियाँ",
+  "kit.skeletons": "लोड होते स्केलेटन",
+  "kit.empty": "खाली स्थिति",
+  "kit.emptyTitle": "अभी यहाँ कुछ नहीं है",
+  "kit.emptyBody": "शिफ्ट शुरू करें और वह यहाँ दिखाई देगी।",
+  "kit.segmented": "सेगमेंटेड कंट्रोल",
+  "kit.panels": "पैनल और आँकड़े",
+  "kit.money": "रुपये के आँकड़े",
+  "kit.notices": "सूचनाएँ",
+  "kit.sheets": "नीचे की शीट",
+  "kit.openSheet": "डेमो शीट खोलें",
+  "kit.sheetBody":
+    "शीट स्क्रीन के ऊपर एक त्वरित काम रखती है और वहीं बंद होती है जहाँ से खोली गई थी।",
+  "kit.steps": "चरण की प्रगति",
 };
 export default hi;
