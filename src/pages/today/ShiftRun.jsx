@@ -16,25 +16,8 @@ import ExpensesSheet from "../shifts/ExpensesSheet.jsx";
 import { SettledShiftDetail } from "../shifts/ShiftDetail.jsx";
 import ShiftCreditCard from "./ShiftCreditCard.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
-
-/** A wall clock that ticks once every 30s — often enough that the elapsed
- *  figure never reads stale, rarely enough that it flickers. */
-function useNow(intervalMs = 30000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
-
-/** Elapsed time in whole minutes, as "2h 15m" / "45m" in the UI language. */
-function elapsedLabel(elapsedMs, translate) {
-  const minutes = Math.max(0, Math.floor(elapsedMs / 60000));
-  const hours = Math.floor(minutes / 60);
-  if (hours > 0) return translate("shifts.elapsedHm", { hours, minutes: minutes % 60 });
-  return translate("shifts.elapsedM", { minutes });
-}
+import { elapsedLabel } from "../../lib/elapsed.js";
+import { useNow } from "../../state/useNow.js";
 
 /**
  * The running shift, on its own screen: how long you have been on it, what

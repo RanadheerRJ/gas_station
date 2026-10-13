@@ -1,32 +1,48 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import Money from "../../components/Money.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
-import { ChevronIcon } from "../../components/icons.jsx";
+import { HistoryIcon } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
-import { formatDate, formatStamp, litres } from "../../lib/format";
-import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
-import { fuelClass } from "../../lib/fuel.js";
+import { formatDate } from "../../lib/format";
+import { SHIFT_STATUS } from "../../lib/shiftMath";
 import { scopeShiftsToViewer, shiftsReport, filterByRange } from "../../lib/export.js";
-import { StatusTag } from "../shifts/parts.jsx";
+import { ShiftCard } from "../shifts/ShiftCards.jsx";
+import ShiftTabs, {
+  SHIFT_TAB,
+  bucketCounts,
+  filterShifts,
+  shiftTabDefs,
+} from "../shifts/ShiftTabs.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
+function emptyForTab(tab, t) {
+  if (tab === SHIFT_TAB.REVIEW) {
+    return {
+      title: t("shifts.emptyReviewTitle"),
+      body: t("shifts.emptyReviewBody"),
+    };
+  }
+  return {
+    title: t("shifts.noneClosed"),
+    body: t("shifts.emptyClosedBody"),
+  };
+}
+
 /**
- * The attendant's own shifts as tappable cards: date, nozzles, where the
- * shift stands in review, and the money in the shared colour language.
- * Scoping stays exactly as it was — the viewer's own shifts only, enforced
- * again here on top of RLS.
+ * The attendant's own closed shifts: split into All, Review and Closed in the
+ * same card language as the station shift list. Scoping stays as it was —
+ * the viewer's own shifts only, enforced again here on top of RLS.
  */
 export default function TodayHistory() {
-  const { t, tn } = useLanguage();
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const { station, stationId, loading: stationsLoading } = useStation();
   const [shifts, setShifts] = useState([]);
+  const [tab, setTab] = useState(SHIFT_TAB.ALL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -54,6 +70,10 @@ export default function TodayHistory() {
       ),
     [shifts, profile]
   );
+  const counts = useMemo(() => bucketCounts(mine), [mine]);
+  const tabs = useMemo(() => shiftTabDefs(t, counts, { showLive: false }), [t, counts]);
+  const visible = useMemo(() => filterShifts(mine, tab), [mine, tab]);
+
   const buildReport = useCallback(
     (range) =>
       shiftsReport({
@@ -73,6 +93,8 @@ export default function TodayHistory() {
       </>
     );
   }
+
+  const tabEmpty = emptyForTab(tab, t);
 
   return (
     <>
@@ -102,73 +124,42 @@ export default function TodayHistory() {
           <LoadingPanels count={3} lines={3} label={t("common.loading")} />
         ) : mine.length === 0 ? (
           <div className="empty-card empty-card--compact">
+            <div className="empty-card__icon" aria-hidden="true">
+              <HistoryIcon size={26} />
+            </div>
             <h2>{t("history.emptyTitle")}</h2>
             <p className="small muted">{t("history.emptyBody")}</p>
           </div>
         ) : (
-          <div className="history-list">
-            {mine.map((shift) => {
-              const totals = shiftTotals(shift);
-              return (
-                <Link
-                  key={shift.id}
-                  to={`/today/history/${shift.id}`}
-                  className="history-card"
-                >
-                  <div className="history-card__head">
-                    <div>
-                      <strong>{formatDate(shift.date)}</strong>
-                      <span>{shift.employeeName || profile.name}</span>
-                    </div>
-                    <StatusTag status={shift.status} />
+          <>
+            <ShiftTabs
+              tabs={tabs}
+              value={tab}
+              onChange={setTab}
+              label={t("history.title")}
+            />
+            {visible.length === 0 ? (
+              <div className="empty-card empty-card--compact">
+                <div className="empty-card__icon" aria-hidden="true">
+                  <HistoryIcon size={26} />
+                </div>
+                <h2>{tabEmpty.title}</h2>
+                <p className="small muted">{tabEmpty.body}</p>
+              </div>
+            ) : (
+              <div className="shift-feed">
+                {visible.map((shift) => (
+                  <div key={shift.id} className="row-enter">
+                    <ShiftCard
+                      shift={shift}
+                      to={`/today/history/${shift.id}`}
+                      title={formatDate(shift.date)}
+                    />
                   </div>
-                  <div className="history-card__nozzles">
-                    {(shift.nozzles || []).map((nozzle) => (
-                      <span
-                        key={nozzle.nozzleId}
-                        className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
-                        title={nozzle.label}
-                      />
-                    ))}
-                    {tn(shift.nozzles.length, "shifts.nozzle", "shifts.nozzles")}
-                  </div>
-                  <div className="history-card__financial">
-                    <div>
-                      <span>{t("shifts.net")}</span>
-                      <Money
-                        kind="neutral"
-                        value={totals.net}
-                        label={`${formatDate(shift.date)} · ${t("shifts.net")}`}
-                      />
-                    </div>
-                    <ChevronIcon size={18} />
-                  </div>
-                  <div className="history-card__metrics">
-                    <div>
-                      <span>{t("shifts.litres")}</span>
-                      <strong className="mono">{litres(totals.totalLitres)} L</strong>
-                    </div>
-                    <div>
-                      <span>{t("shifts.variance")}</span>
-                      {totals.variance == null ? (
-                        <strong className="mono muted">—</strong>
-                      ) : (
-                        <Money
-                          kind="variance"
-                          value={totals.variance}
-                          label={`${formatDate(shift.date)} · ${t("shifts.variance")}`}
-                        />
-                      )}
-                    </div>
-                    <div className="history-card__time">
-                      <span>{t("shifts.started")}</span>
-                      <strong>{formatStamp(shift.startTime)}</strong>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

@@ -850,5 +850,17 @@ const te = {
   "shifts.runningFor": "నడుస్తున్న సమయం",
   "shifts.elapsedHm": "{hours} గం {minutes} ని",
   "shifts.elapsedM": "{minutes} ని",
+  "shifts.tabAll": "అన్నీ",
+  "shifts.tabLive": "లైవ్",
+  "shifts.tabReview": "సమీక్ష",
+  "shifts.tabClosed": "ముగిసినవి",
+  "shifts.liveNow": "లైవ్",
+  "shifts.closedAt": "{time} కు ముగిసింది",
+  "shifts.litresValue": "{litres} లీ.",
+  "shifts.emptyLiveTitle": "ఏ షిఫ్ట్ నడవడం లేదు",
+  "shifts.emptyLiveBody": "ఫోర్‌కోర్ట్‌లో నడుస్తున్న షిఫ్టులు ఇక్కడ కనిపిస్తాయి.",
+  "shifts.emptyReviewTitle": "అన్నీ పూర్తయ్యాయి",
+  "shifts.emptyReviewBody": "ముగిసిన ప్రతి షిఫ్ట్ సమీక్షించి ఆమోదించబడింది.",
+  "shifts.emptyClosedBody": "ఆమోదించబడిన షిఫ్టులు ఇక్కడ నిల్వ చేయబడతాయి.",
 };
 export default te;

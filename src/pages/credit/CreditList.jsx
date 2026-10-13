@@ -20,7 +20,10 @@ import {
 } from "../../lib/api";
 import { formatDayLabel, money } from "../../lib/format";
 import { creditReport } from "../../lib/export.js";
+import { avatarHue } from "../../lib/avatar.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
+
+export { avatarHue };
 
 export function creditBase(role) {
   return role === "owner" ? "/owner/credit" : "/station/credit";
@@ -133,14 +136,6 @@ export function sortCustomers(rows, sort) {
   return copy.sort(
     (a, b) => Number(b.outstandingBalance || 0) - Number(a.outstandingBalance || 0)
   );
-}
-
-/** A stable colour per customer, so the same person looks the same every time. */
-export function avatarHue(name) {
-  const text = String(name || "");
-  let hash = 0;
-  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) % 360;
-  return hash;
 }
 
 export default function CreditList() {

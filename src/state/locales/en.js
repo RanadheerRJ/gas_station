@@ -865,5 +865,17 @@ const en = {
   "shifts.runningFor": "Running for",
   "shifts.elapsedHm": "{hours}h {minutes}m",
   "shifts.elapsedM": "{minutes}m",
+  "shifts.tabAll": "All",
+  "shifts.tabLive": "Live",
+  "shifts.tabReview": "Review",
+  "shifts.tabClosed": "Closed",
+  "shifts.liveNow": "Live",
+  "shifts.closedAt": "Closed {time}",
+  "shifts.litresValue": "{litres} L",
+  "shifts.emptyLiveTitle": "No shifts running",
+  "shifts.emptyLiveBody": "Active shifts on the forecourt will appear here in real time.",
+  "shifts.emptyReviewTitle": "All caught up",
+  "shifts.emptyReviewBody": "Every closed shift has been reviewed and signed off.",
+  "shifts.emptyClosedBody": "Approved shifts will be filed here once signed off.",
 };
 export default en;

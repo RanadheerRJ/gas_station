@@ -1,57 +1,75 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import Money from "../../components/Money.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
-import { ChevronIcon, PlusIcon } from "../../components/icons.jsx";
+import { ChevronIcon, PlusIcon, ShiftIcon } from "../../components/icons.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
+import { useNow } from "../../state/useNow.js";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
-import { formatDate, formatStamp, money, todayISO } from "../../lib/format";
+import { elapsedLabel } from "../../lib/elapsed.js";
+import { money, todayISO } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
-import { fuelClass } from "../../lib/fuel.js";
 import { defaultRange, filterByRange, shiftStatementReport } from "../../lib/export.js";
-import { StatusTag } from "./parts.jsx";
 import AddNozzlesSheet from "./AddNozzlesSheet.jsx";
 import ExpensesSheet from "./ExpensesSheet.jsx";
+import { LiveShiftCard, ShiftCard, nozzleGroups } from "./ShiftCards.jsx";
+import ShiftTabs, {
+  SHIFT_TAB,
+  bucketCounts,
+  filterShifts,
+  shiftBucket,
+  shiftTabDefs,
+} from "./ShiftTabs.jsx";
 import { shiftPaths } from "./paths.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
+export { nozzleGroups };
+
 const STATEMENT_CORE_COLUMNS = new Set([0, 1, 4, 7, 13, 21]);
 
-/**
- * One chip per fuel product on a running shift, e.g. "2 × MS". Nozzles group
- * by the fuel name printed on the dispenser, so the chip reads the way the
- * pump does, and the word carries the meaning rather than colour alone.
- */
-function nozzleGroups(nozzles) {
-  const groups = new Map();
-  for (const nozzle of nozzles) {
-    const fuelType = nozzle.fuelType || "";
-    const group = groups.get(fuelType) || {
-      fuelType,
-      cls: fuelClass(fuelType),
-      count: 0,
+function shiftElapsed(shift, now, translate) {
+  const raw = shift?.startTime;
+  const started = raw?.toDate ? raw.toDate() : new Date(raw);
+  const ms = started?.getTime?.();
+  if (!Number.isFinite(ms)) return "";
+  return elapsedLabel(now - ms, translate);
+}
+
+function emptyCopy(tab, t) {
+  if (tab === SHIFT_TAB.LIVE) {
+    return {
+      title: t("shifts.emptyLiveTitle"),
+      body: t("shifts.emptyLiveBody"),
     };
-    group.count += 1;
-    groups.set(fuelType, group);
   }
-  return [...groups.values()];
+  if (tab === SHIFT_TAB.REVIEW) {
+    return {
+      title: t("shifts.emptyReviewTitle"),
+      body: t("shifts.emptyReviewBody"),
+    };
+  }
+  return {
+    title: t("shifts.noneClosed"),
+    body: t("shifts.emptyClosedBody"),
+  };
 }
 
 /**
- * The shifts list for managers and owners: open shifts as live cards at the
- * top, everything handed in below as compact rows that tap through to the
- * full breakdown. The station choice is a header filter, not a panel, and it
- * follows the viewer between shifts, stock, ledger and credit.
+ * The shifts list for managers and owners.
+ *
+ * Four shelves — All, Live, Review, Closed — keep what is running, what is
+ * waiting on a sign-off, and what is already locked out of each other's way,
+ * with the count on each tab so the queue is visible before it is opened.
  */
 export default function ShiftsList() {
-  const { t, tn } = useLanguage();
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const now = useNow();
   const {
     stations,
     station,
@@ -63,6 +81,7 @@ export default function ShiftsList() {
   const paths = shiftPaths(profile.role);
 
   const [shifts, setShifts] = useState([]);
+  const [tab, setTab] = useState(SHIFT_TAB.ALL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expenseFor, setExpenseFor] = useState(null);
@@ -86,9 +105,13 @@ export default function ShiftsList() {
     load();
   }, [load]);
 
-  const open = shifts.filter((s) => s.status === SHIFT_STATUS.OPEN);
-  const settled = shifts.filter((s) => s.status !== SHIFT_STATUS.OPEN);
-  const awaiting = settled.filter((s) => s.status !== SHIFT_STATUS.APPROVED);
+  const settled = useMemo(
+    () => shifts.filter((s) => s.status !== SHIFT_STATUS.OPEN),
+    [shifts]
+  );
+  const counts = useMemo(() => bucketCounts(shifts), [shifts]);
+  const tabs = useMemo(() => shiftTabDefs(t, counts), [t, counts]);
+  const visible = useMemo(() => filterShifts(shifts, tab), [shifts, tab]);
 
   const todayLine = useMemo(() => {
     const todays = settled.filter((s) => s.date === todayISO());
@@ -135,6 +158,8 @@ export default function ShiftsList() {
     );
   }
 
+  const empty = emptyCopy(tab, t);
+
   return (
     <>
       <ScreenHeader
@@ -169,132 +194,45 @@ export default function ShiftsList() {
           <LoadingPanels count={3} lines={2} label={t("common.loading")} />
         ) : (
           <>
-            {open.length > 0 && (
-              <section className="stack" style={{ gap: 10 }}>
-                <div className="section-label">
-                  <h2>{t("shifts.openShifts")}</h2>
-                  <span className="live-pill">
-                    <span className="live-dot" aria-hidden="true" />
-                    {t("shifts.openCount", { count: open.length })}
-                  </span>
-                </div>
-                {open.map((shift) => (
-                  <div key={shift.id} className="open-card">
-                    <div className="open-card__head">
-                      <div>
-                        <div className="open-card__name">{shift.employeeName}</div>
-                        <div className="small muted">
-                          {t("shifts.started")} {formatStamp(shift.startTime)} ·{" "}
-                          {tn(shift.nozzles.length, "shifts.nozzle", "shifts.nozzles")}
-                        </div>
-                      </div>
-                      <span className="open-card__nozzles">
-                        {nozzleGroups(shift.nozzles).map((group) => (
-                          <span
-                            key={group.fuelType || "unknown"}
-                            className={`fuel-tag fuel-tag--${group.cls}`}
-                          >
-                            {group.count} × {group.fuelType || "—"}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                    <div className="open-card__actions">
-                      <button
-                        type="button"
-                        className="small"
-                        onClick={() => setExpenseFor(shift)}
-                      >
-                        {t("shifts.addExpense")}
-                      </button>
-                      {/* A running shift is not frozen: a free nozzle can still
-                          join it, and one taken by mistake be given back. */}
-                      <button
-                        type="button"
-                        className="small"
-                        onClick={() => setNozzlesFor(shift)}
-                      >
-                        {t("shifts.addNozzle")}
-                      </button>
-                      <Link className="open-card__close" to={link(paths.close(shift.id))}>
-                        {t("shifts.closeShift")}
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </section>
-            )}
+            <ShiftTabs
+              tabs={tabs}
+              value={tab}
+              onChange={setTab}
+              label={t("shifts.title")}
+            />
 
-            <section className="stack" style={{ gap: 10 }}>
-              <div className="section-label">
-                <h2>{t("shifts.closedShifts")}</h2>
-                <span className="small muted">
-                  {awaiting.length
-                    ? t("shifts.awaiting", { count: awaiting.length })
-                    : t("shifts.allSignedOff")}
-                </span>
+            {visible.length === 0 ? (
+              <div className="empty-card empty-card--compact">
+                <div className="empty-card__icon" aria-hidden="true">
+                  <ShiftIcon size={26} />
+                </div>
+                <h2>{empty.title}</h2>
+                <p className="small muted">{empty.body}</p>
               </div>
-              {settled.length === 0 ? (
-                <div className="empty-card">
-                  <h2>{t("shifts.noneClosed")}</h2>
-                </div>
-              ) : (
-                <div className="list-stack">
-                  {settled.map((shift) => {
-                    const totals = shiftTotals(shift);
+            ) : (
+              <div className="shift-feed">
+                {visible.map((shift) => {
+                  if (shiftBucket(shift) === SHIFT_TAB.LIVE) {
                     return (
-                      <Link
-                        key={shift.id}
-                        to={link(paths.detail(shift.id))}
-                        className="list-card"
-                      >
-                        <div className="list-card__row">
-                          <span className="list-card__title">
-                            {shift.employeeName}
-                            <span className="list-card__date mono small">
-                              {formatDate(shift.date)}
-                            </span>
-                          </span>
-                          <StatusTag
-                            status={shift.status}
-                            reopened={Boolean(shift.approvedAt)}
-                          />
-                        </div>
-                        <div className="list-card__row list-card__row--figures">
-                          <span className="list-card__figure">
-                            <span className="k">{t("shifts.litres")}</span>
-                            <span className="v mono">{money(totals.totalLitres)} L</span>
-                          </span>
-                          <span className="list-card__figure">
-                            <span className="k">{t("shifts.net")}</span>
-                            <span className="v">
-                              <Money
-                                kind="neutral"
-                                value={totals.net}
-                                label={t("shifts.net")}
-                              />
-                            </span>
-                          </span>
-                          <span className="list-card__figure">
-                            <span className="k">{t("shifts.variance")}</span>
-                            <span className="v">
-                              <Money
-                                kind="variance"
-                                value={totals.variance}
-                                label={t("shifts.variance")}
-                              />
-                            </span>
-                          </span>
-                          <span className="list-card__chev">
-                            <ChevronIcon size={17} />
-                          </span>
-                        </div>
-                      </Link>
+                      <div key={shift.id} className="row-enter">
+                        <LiveShiftCard
+                          shift={shift}
+                          closeHref={link(paths.close(shift.id))}
+                          onAddExpense={setExpenseFor}
+                          onAddNozzle={setNozzlesFor}
+                          elapsed={shiftElapsed(shift, now, t)}
+                        />
+                      </div>
                     );
-                  })}
-                </div>
-              )}
-            </section>
+                  }
+                  return (
+                    <div key={shift.id} className="row-enter">
+                      <ShiftCard shift={shift} to={link(paths.detail(shift.id))} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {statementAvailable && (
               <section className="statement-preview stack" style={{ gap: 10 }}>

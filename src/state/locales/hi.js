@@ -844,5 +844,17 @@ const hi = {
   "shifts.runningFor": "चल रहा है",
   "shifts.elapsedHm": "{hours}घं {minutes}मि",
   "shifts.elapsedM": "{minutes}मि",
+  "shifts.tabAll": "सभी",
+  "shifts.tabLive": "चालू",
+  "shifts.tabReview": "समीक्षा",
+  "shifts.tabClosed": "बंद",
+  "shifts.liveNow": "चालू",
+  "shifts.closedAt": "{time} पर बंद",
+  "shifts.litresValue": "{litres} ली.",
+  "shifts.emptyLiveTitle": "कोई शिफ्ट चालू नहीं है",
+  "shifts.emptyLiveBody": "फोरकोर्ट पर चल रही शिफ्टें यहाँ तुरंत दिखेंगी।",
+  "shifts.emptyReviewTitle": "सब निपटा दिया गया",
+  "shifts.emptyReviewBody": "हर बंद शिफ्ट की समीक्षा और मंज़ूरी हो चुकी है।",
+  "shifts.emptyClosedBody": "मंज़ूर की गई शिफ्टें यहाँ दर्ज होंगी।",
 };
 export default hi;
