@@ -133,12 +133,26 @@ export default function DeveloperConsole() {
           value={tab}
           onChange={setTab}
           options={[
+            { value: "overview", label: t("admin.tabOverview") },
             { value: "owners", label: t("admin.tabOwners") },
             { value: "stations", label: t("admin.tabStations") },
+            { value: "how", label: t("admin.tabHow") },
           ]}
         />
 
-        {tab === "owners" ? (
+        {tab === "overview" ? (
+          <>
+            <ConsoleStats
+              owners={owners}
+              loadingOwners={admin.loadingOwners}
+              registry={admin.registry}
+              activeStations={admin.activeStations}
+            />
+            <HowItWorksPanel />
+          </>
+        ) : tab === "how" ? (
+          <HowItWorksPanel />
+        ) : tab === "owners" ? (
           <>
             <OwnersPanel
               owners={owners}
@@ -154,7 +168,6 @@ export default function DeveloperConsole() {
               onManageStation={(station) => setStationSheet({ station })}
               onNewOwner={() => setNewOwnerOpen(true)}
             />
-            <HowItWorksPanel />
           </>
         ) : (
           <StationsPanel

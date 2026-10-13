@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import { ActionBar, Notice, Segmented, Stat } from "../../components/ui.jsx";
+import { Notice, Segmented, Stat } from "../../components/ui.jsx";
+import StickyCta from "../../components/StickyCta.jsx";
+import ListRow from "../../components/ListRow.jsx";
+import { Chip } from "../../components/Chip.jsx";
+import { tankHealth } from "./StockList.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
@@ -13,8 +17,9 @@ import {
   recordDip,
   setTankState,
 } from "../../lib/api";
-import { formatStamp, money, num } from "../../lib/format";
+import { formatDayLabel, formatStamp, money, num } from "../../lib/format";
 import { REFERENCE_TEMP_C, tankStatus } from "../../lib/tankMath";
+import { fuelClass } from "../../lib/fuel.js";
 import TankVessel from "./TankVessel.jsx";
 import { DipForm, DeliveryForm } from "./forms.jsx";
 import { stockBase } from "./StockList.jsx";
@@ -40,6 +45,7 @@ export default function TankDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("dip");
+  const [view, setView] = useState("activity");
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -115,6 +121,28 @@ export default function TankDetail() {
               <span className="v mono">{money(tank.physicalStock ?? st.stock)}</span>
               <span className="k">L {t("stock.physicalStock")}</span>
             </div>
+            {(() => {
+              const health = tankHealth(tank);
+              return (
+                <span>
+                  <Chip label={t(health.labelKey)} tone={health.tone} />{" "}
+                  <span className="small muted">
+                    {Math.round(st.fillPercent)}% · {money(st.stock)} L {t("stock.of")}{" "}
+                    {money(st.capacity)} L
+                  </span>
+                </span>
+              );
+            })()}
+            <div
+              className="tank-level tank-level--lg"
+              role="img"
+              aria-label={`${t("stock.levelLabel")}: ${Math.round(st.fillPercent)}%`}
+            >
+              <span
+                className={`tank-level__bar tank-fill--${fuelClass(tank.fuelType)}`}
+                style={{ width: `${st.fillPercent}%` }}
+              />
+            </div>
             <div className="row" style={{ gap: 28, flexWrap: "wrap" }}>
               <Stat label={t("stock.bookStock")} value={`${money(st.stock)} L`} />
               <Stat
@@ -188,63 +216,73 @@ export default function TankDetail() {
           <section className="card card--flush">
             <div className="card__head">
               <h2>{t("stock.logTitle")}</h2>
+              <Segmented
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: "activity", label: t("stock.activity") },
+                  { value: "deliveries", label: t("stock.deliveries") },
+                  { value: "dips", label: t("stock.dips") },
+                ]}
+              />
             </div>
-            <table className="responsive-table">
-              <thead>
-                <tr>
-                  <th>{t("stock.when")}</th>
-                  <th>{t("stock.entry")}</th>
-                  <th className="num">{t("stock.change")}</th>
-                  <th className="num">{t("stock.stockAfter")}</th>
-                  <th className="num">{t("stock.temp")}</th>
-                  <th className="num">{t("stock.water")}</th>
-                  <th>{t("stock.by")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.slice(0, 20).map((entry) => {
-                  const up = num(entry.change) > 0;
-                  return (
-                    <tr key={entry.id}>
-                      <td data-label={t("stock.when")} className="mono small">
-                        {formatStamp(entry.recordedAt)}
-                      </td>
-                      <td data-label={t("stock.entry")}>
-                        {entry.kind === "delivery" ? (
-                          <span className="tag green">{t("stock.delivery")}</span>
-                        ) : (
-                          <span className="tag">{t("stock.dip")}</span>
-                        )}
-                        {entry.note && <div className="small muted">{entry.note}</div>}
-                      </td>
-                      <td
-                        data-label={t("stock.change")}
-                        className="num mono"
-                        style={{ color: up ? "var(--green)" : "var(--rust)" }}
-                      >
-                        {entry.change == null
-                          ? "—"
-                          : `${up ? "+" : ""}${money(entry.change)}`}
-                      </td>
-                      <td data-label={t("stock.stockAfter")} className="num mono">
-                        {money(entry.stockLitres)}
-                      </td>
-                      <td data-label={t("stock.temp")} className="num mono">
-                        {entry.temperatureC == null
-                          ? "—"
-                          : `${num(entry.temperatureC).toFixed(1)}°`}
-                      </td>
-                      <td data-label={t("stock.water")} className="num mono">
-                        {entry.waterCm == null ? "—" : `${num(entry.waterCm).toFixed(1)}`}
-                      </td>
-                      <td data-label={t("stock.by")} className="small">
-                        {entry.recordedByName || "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {(() => {
+              const shown = entries.filter((e) =>
+                view === "activity"
+                  ? true
+                  : view === "deliveries"
+                    ? e.kind === "delivery"
+                    : e.kind !== "delivery"
+              );
+              const groups = new Map();
+              shown.slice(0, 20).forEach((e) => {
+                const day = String(e.recordedAt || "").slice(0, 10);
+                if (!groups.has(day)) groups.set(day, []);
+                groups.get(day).push(e);
+              });
+              if (shown.length === 0)
+                return (
+                  <div className="card__pad">
+                    <p className="small muted">{t("stock.noReadings")}</p>
+                  </div>
+                );
+              return [...groups.entries()].map(([day, items]) => (
+                <div key={day || "undated"} className="stock-entry-group">
+                  <h3 className="stock-entry-group__title">
+                    {day ? formatDayLabel(day) : "—"}
+                  </h3>
+                  {items.map((entry) => (
+                    <ListRow
+                      key={entry.id}
+                      chevron={false}
+                      title={
+                        entry.kind === "delivery" ? t("stock.delivery") : t("stock.dip")
+                      }
+                      subtitle={[
+                        formatStamp(entry.recordedAt),
+                        entry.recordedByName || "",
+                        entry.note || "",
+                        entry.temperatureC == null
+                          ? ""
+                          : `${num(entry.temperatureC).toFixed(1)}°C`,
+                        entry.waterCm == null
+                          ? ""
+                          : `${t("stock.water")} ${num(entry.waterCm).toFixed(1)} cm`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      trailing={
+                        <span className="mono">
+                          {entry.change == null
+                            ? `${money(entry.stockLitres)} L`
+                            : `${num(entry.change) > 0 ? "+" : ""}${money(entry.change)} L`}
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
+              ));
+            })()}
           </section>
         )}
 
@@ -280,16 +318,21 @@ export default function TankDetail() {
         {/* The active form's submit, pinned. The button belongs to the form
             via its id, so validation and the busy state behave exactly as
             they would inside the card. */}
-        <ActionBar>
-          <button
-            type="submit"
-            className="cta"
-            disabled={busy}
-            form={mode === "dip" ? "tank-dip-form" : "tank-delivery-form"}
-          >
-            {mode === "dip" ? t("stock.saveDip") : t("stock.bookDelivery")}
-          </button>
-        </ActionBar>
+        <StickyCta
+          summary={`${money(tank.physicalStock ?? st.stock)} L · ${Math.round(st.fillPercent)}%`}
+          hint={
+            tank.lastDipAt
+              ? `${t("stock.dipped")} ${formatStamp(tank.lastDipAt)}`
+              : t("stock.checkDip")
+          }
+          busy={busy}
+          ctaLabel={mode === "dip" ? t("stock.saveDip") : t("stock.bookDelivery")}
+          onCta={() =>
+            document
+              .getElementById(mode === "dip" ? "tank-dip-form" : "tank-delivery-form")
+              ?.requestSubmit()
+          }
+        />
       </div>
     </>
   );

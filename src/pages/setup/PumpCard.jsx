@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Field } from "../../components/ui";
 import { NozzleIcon, PumpIcon } from "../../components/icons";
 import { fuelClass } from "../../lib/fuel.js";
@@ -26,6 +27,7 @@ export default function PumpCard({
   onAssignTank,
 }) {
   const { t, tn } = useLanguage();
+  const [expanded, setExpanded] = useState(false);
   const mine = nozzles.filter((n) => n.pumpId === pump.id);
 
   return (
@@ -37,13 +39,19 @@ export default function PumpCard({
           background: "var(--surface-sunken)",
         }}
       >
-        <span className="row" style={{ gap: 7, alignItems: "center" }}>
+        <button
+          type="button"
+          className="quiet pump-card__toggle"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
           <PumpIcon size={16} />
           <strong>{pump.name}</strong>
           <span className="tag">
             {tn(mine.length, "setup.nozzleCountOne", "setup.nozzleCount")}
           </span>
-        </span>
+          <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+        </button>
         <span className="row" style={{ gap: 4 }}>
           <button
             type="button"
@@ -60,7 +68,7 @@ export default function PumpCard({
         </span>
       </div>
 
-      {nozzleFor === pump.id && (
+      {expanded && nozzleFor === pump.id && (
         <div
           className="body"
           style={{
@@ -117,7 +125,7 @@ export default function PumpCard({
         </div>
       )}
 
-      {mine.length > 0 && (
+      {expanded && mine.length > 0 && (
         <table>
           <thead>
             <tr>

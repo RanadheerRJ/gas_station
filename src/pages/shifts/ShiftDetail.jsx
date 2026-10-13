@@ -1,7 +1,11 @@
 import { ScreenHeader } from "../../components/Layout.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
-import { formatDate } from "../../lib/format";
+import { formatDate, formatStamp, money } from "../../lib/format";
+import Money from "../../components/Money.jsx";
+import VariancePill from "../../components/VariancePill.jsx";
+import { elapsedLabel } from "../../lib/elapsed.js";
+import { StatusTag } from "./parts.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 import { useShiftDetail } from "./useShiftDetail.js";
 import { useSettledShiftDetail } from "./useSettledShiftDetail.js";
@@ -111,6 +115,76 @@ export default function ShiftDetail() {
   );
 }
 
+/** One receipt section: a card behind a native, keyboard-safe disclosure. */
+export function CollapsibleSection({ title, children, testId }) {
+  return (
+    <details className="shift-collapse" open data-testid={testId}>
+      <summary className="shift-collapse__summary">
+        <span>{title}</span>
+        <span className="shift-collapse__chev" aria-hidden="true">
+          ▾
+        </span>
+      </summary>
+      <div className="shift-collapse__body">{children}</div>
+    </details>
+  );
+}
+
+/** Receipt hero: who, how long, and the figures the rest of the page proves. */
+export function ShiftHero({ shift, totals }) {
+  const { t } = useLanguage();
+  const start = shift.startTime?.toDate
+    ? shift.startTime.toDate()
+    : new Date(shift.startTime);
+  const end = shift.endTime
+    ? shift.endTime?.toDate
+      ? shift.endTime.toDate()
+      : new Date(shift.endTime)
+    : null;
+  const duration =
+    end && Number.isFinite(start?.getTime?.()) && Number.isFinite(end?.getTime?.())
+      ? elapsedLabel(end - start, t)
+      : "";
+  return (
+    <section className="card shift-hero" data-testid="shift-hero">
+      <div className="shift-hero__head">
+        <div>
+          <h2>{shift.employeeName}</h2>
+          <p className="small muted">
+            {formatStamp(shift.startTime)}
+            {shift.endTime ? ` → ${formatStamp(shift.endTime)}` : ""}
+            {duration ? ` · ${t("shifts.duration")}: ${duration}` : ""}
+          </p>
+        </div>
+        <StatusTag status={shift.status} reopened={Boolean(shift.approvedAt)} />
+      </div>
+      <div className="shift-hero__figures">
+        <span>
+          <span className="k">{t("shifts.litres")}</span>
+          <strong className="mono">{money(totals.totalLitres)} L</strong>
+        </span>
+        <span>
+          <span className="k">{t("shifts.gross")}</span>
+          <Money
+            kind="neutral"
+            value={totals.gross}
+            label={t("shifts.gross")}
+            size="lg"
+          />
+        </span>
+        <span>
+          <span className="k">{t("shifts.net")}</span>
+          <Money kind="neutral" value={totals.net} label={t("shifts.net")} size="lg" />
+        </span>
+        <span>
+          <span className="k">{t("shifts.variance")}</span>
+          <VariancePill variance={totals.variance} />
+        </span>
+      </div>
+    </section>
+  );
+}
+
 /**
  * The read-only (and, for a reviewer, correctable) breakdown of a handed-in
  * shift: meter readings, product totals, the settlement walk from gross to
@@ -156,9 +230,12 @@ export function SettledShiftDetail({
     submitReopen,
     cancelEditing,
   } = useSettledShiftDetail({ shift, onRevise, onReject, onReopen });
+  const { t } = useLanguage();
 
   return (
     <>
+      <ShiftHero shift={shift} totals={totals} />
+
       {canReview && <ReviewSummaryCard totals={draft} shift={shift} />}
 
       <ReviewBanners
@@ -176,35 +253,48 @@ export function SettledShiftDetail({
       />
 
       <div className="detail-grid">
-        <MeterReadingsCard totals={totals} />
-        <SettlementCard shift={shift} draft={draft} />
+        <CollapsibleSection title={t("shifts.meterReadings")}>
+          <MeterReadingsCard totals={totals} />
+        </CollapsibleSection>
+        <CollapsibleSection title={t("shifts.settlement")}>
+          <SettlementCard shift={shift} draft={draft} />
+        </CollapsibleSection>
       </div>
 
-      <ExpensesTestingCard
-        shift={shift}
-        totals={totals}
-        draft={draft}
-        canReview={canReview}
-        locked={locked}
-        editing={editing}
-        setEditing={setEditing}
-        expenses={expenses}
-        setExpenses={setExpenses}
-        testing={testing}
-        setTesting={setTesting}
-        busy={busy}
-        submitRevision={submitRevision}
-        cancelEditing={cancelEditing}
-      />
+      <CollapsibleSection title={t("shifts.expensesAndTesting")}>
+        <ExpensesTestingCard
+          shift={shift}
+          totals={totals}
+          draft={draft}
+          canReview={canReview}
+          locked={locked}
+          editing={editing}
+          setEditing={setEditing}
+          expenses={expenses}
+          setExpenses={setExpenses}
+          testing={testing}
+          setTesting={setTesting}
+          busy={busy}
+          submitRevision={submitRevision}
+          cancelEditing={cancelEditing}
+        />
+      </CollapsibleSection>
 
-      {canReview && <CreditReviewCard review={creditReview} />}
-
-      {(shift.creditSales || []).length > 0 && (
-        <CreditSalesCard creditSales={shift.creditSales} customers={customers} />
+      {canReview && creditReview && (
+        <CollapsibleSection title={t("shifts.creditReview")}>
+          <CreditReviewCard review={creditReview} />
+        </CollapsibleSection>
       )}
 
-      {canReview && !locked && (
+      {(shift.creditSales || []).length > 0 && (
+        <CollapsibleSection title={t("shifts.creditSalesHeading")}>
+          <CreditSalesCard creditSales={shift.creditSales} customers={customers} />
+        </CollapsibleSection>
+      )}
+
+      {canReview && (
         <ReviewActionBar
+          locked={locked}
           totals={draft}
           busy={busy}
           rejecting={rejecting}

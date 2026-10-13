@@ -33,9 +33,9 @@
 .statement-table-wrap {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--border, #ddd);
+  border: 1px solid var(--hairline);
   border-radius: 10px;
-  background: var(--surface, #fff);
+  background: var(--surface);
 }
 .statement-table {
   width: max-content;
@@ -47,7 +47,7 @@
 .statement-table th,
 .statement-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid var(--border, #ddd);
+  border-bottom: 1px solid var(--hairline);
   text-align: right;
 }
 .statement-table th:first-child,
@@ -59,7 +59,7 @@
 .statement-table th {
   position: sticky;
   top: 0;
-  background: var(--surface, #fff);
+  background: var(--surface);
 }
 .statement-total {
   font-weight: 700;

@@ -4,19 +4,35 @@ import { ScreenHeader } from "../../components/Layout.jsx";
 import { Empty, Notice, Stat } from "../../components/ui.jsx";
 import { LoadingPanels, NumberRoll, useAnimatedList } from "../../components/motion.jsx";
 import { ChevronIcon, PlusIcon } from "../../components/icons.jsx";
+import { Chip, ChipRow } from "../../components/Chip.jsx";
+import Skeleton from "../../components/Skeleton.jsx";
+import EmptyState from "../../components/EmptyState.jsx";
+import ListRow from "../../components/ListRow.jsx";
+import { TankIcon } from "../../components/icons.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import Sheet from "../../components/Sheet.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { useRunner } from "../../state/useRunner.js";
-import { addTank, listTanks, readableError } from "../../lib/api";
+import {
+  addTank,
+  listTanks,
+  readableError,
+  recordDelivery,
+  recordDip,
+} from "../../lib/api";
 import { formatStamp, money, num } from "../../lib/format";
-import { stockByProduct, tankStatus, WATER_LIMIT_CM } from "../../lib/tankMath";
+import {
+  stockByProduct,
+  tankGroup,
+  tankStatus,
+  WATER_LIMIT_CM,
+} from "../../lib/tankMath";
 import { fuelClass } from "../../lib/fuel.js";
 import { stockReport } from "../../lib/export.js";
 import TankVessel from "./TankVessel.jsx";
-import { AddTankForm } from "./forms.jsx";
+import { AddTankForm, DeliveryForm, DipForm } from "./forms.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 /** Where this role's stock screens live. */
@@ -24,6 +40,30 @@ export function stockBase(role) {
   if (role === "owner") return "/owner/stock";
   if (role === "attendant") return "/today/stock";
   return "/station/stock";
+}
+
+/** Fuel family a tank belongs to, for the filter chips (MS / HSD / CNG / Other). */
+export function fuelFamily(tank) {
+  const f = String(tank?.fuelType || "").toLowerCase();
+  if (f.includes("cng")) return "CNG";
+  const group = tankGroup(tank?.fuelType);
+  return group === "MS" || group === "HSD" ? group : "OTHER";
+}
+
+/**
+ * The one status a tank card states, colour plus marker plus words — never
+ * colour alone. A tank with water over the limit, or no dip on record, asks
+ * for a dip before its figure can be trusted, whatever its level says.
+ */
+export function tankHealth(tank) {
+  const st = tankStatus(tank);
+  if (st.level === "critical")
+    return { id: "critical", labelKey: "stock.critical", tone: "short", marker: "▼" };
+  if (num(tank?.waterCm) > WATER_LIMIT_CM || !tank?.lastDipAt)
+    return { id: "check", labelKey: "stock.checkDip", tone: "credit", marker: "!" };
+  if (st.level === "low")
+    return { id: "low", labelKey: "stock.low", tone: "credit", marker: "⚠" };
+  return { id: "healthy", labelKey: "stock.healthy", tone: "ok", marker: "✓" };
 }
 
 /**
@@ -45,12 +85,18 @@ export default function StockList() {
   } = useStation();
   const base = stockBase(profile.role);
   const isOwner = profile.role === "owner";
+  const canWrite = isOwner || profile.role === "manager";
 
   const [tanks, setTanks] = useState([]);
   const [dips, setDips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [fuelFilter, setFuelFilter] = useState("ALL");
+  const [lowOnly, setLowOnly] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [fabMode, setFabMode] = useState(null);
+  const [fabTankId, setFabTankId] = useState(null);
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -92,6 +138,29 @@ export default function StockList() {
 
   // Tanks needing water attention are worth surfacing without hunting.
   const wet = active.filter((tank) => num(tank.waterCm) > WATER_LIMIT_CM);
+
+  const fuelCounts = useMemo(() => {
+    const counts = { ALL: active.length, MS: 0, HSD: 0, CNG: 0, OTHER: 0 };
+    active.forEach((tank) => {
+      counts[fuelFamily(tank)] += 1;
+    });
+    return counts;
+  }, [active]);
+  const visibleTanks = useMemo(
+    () =>
+      tankRows.filter(({ item: tank }) => {
+        if (fuelFilter !== "ALL" && fuelFamily(tank) !== fuelFilter) return false;
+        if (
+          lowOnly &&
+          tankHealth(tank).id !== "low" &&
+          tankHealth(tank).id !== "critical"
+        )
+          return false;
+        return true;
+      }),
+    [tankRows, fuelFilter, lowOnly]
+  );
+  const fabTank = tanks.find((tank) => tank.id === fabTankId) || null;
 
   const buildReport = useCallback(
     (range, filters = {}) =>
@@ -153,20 +222,29 @@ export default function StockList() {
         {error && <Notice kind="error">{error}</Notice>}
 
         {loading ? (
-          <LoadingPanels count={2} lines={3} label={t("common.loading")} />
+          <Skeleton shape="card" count={3} />
         ) : tanks.length === 0 ? (
-          <div className="empty-card">
-            <h2>{t("stock.noTanks")}</h2>
-            <p className="small muted">
-              {isOwner ? t("stock.noTanksOwner") : t("stock.noTanksStaff")}
-            </p>
-          </div>
+          <EmptyState
+            icon={TankIcon}
+            headline={t("stock.noTanks")}
+            body={isOwner ? t("stock.noTanksOwner") : t("stock.noTanksStaff")}
+            actionLabel={isOwner ? t("stock.addTank") : undefined}
+            onAction={isOwner ? () => setAddOpen(true) : undefined}
+          />
         ) : (
           <>
             {totals.low > 0 && (
-              <Notice kind="error">
-                {tn(totals.low, "stock.lowWarningOne", "stock.lowWarning")}
-              </Notice>
+              <button
+                type="button"
+                className="stock-low-banner"
+                aria-pressed={lowOnly}
+                onClick={() => setLowOnly((v) => !v)}
+              >
+                <span aria-hidden="true">⚠</span>
+                {lowOnly
+                  ? t("stock.showAllTanks")
+                  : t("stock.lowBanner", { count: totals.low })}
+              </button>
             )}
             {wet.length > 0 && (
               <Notice kind="error">
@@ -177,57 +255,109 @@ export default function StockList() {
               </Notice>
             )}
 
-            <div className="tank-farm">
-              {tankRows.map(({ item: tank, exiting }) => {
-                const st = tankStatus(tank);
-                return (
-                  <Link
-                    key={tank.id}
-                    to={link(`${base}/${tank.id}`)}
-                    className={`tank-card${exiting ? " row-exit" : " row-enter"}`}
-                  >
-                    <TankVessel tank={tank} />
-                    <div className="tank-card__body">
-                      <div className="tank-card__name">
-                        <span
-                          className={`fuel-dot fuel-dot--${fuelClass(tank.fuelType)}`}
-                        />
-                        {tank.name}
-                      </div>
-                      <div className="tank-card__fuel">{tank.fuelType}</div>
-                      <div className="tank-card__figure">
-                        <NumberRoll
-                          value={tank.physicalStock ?? st.stock}
-                          format={money}
-                        />{" "}
-                        <span>L</span>
-                        <div className="tank-card__fuel">{t("stock.physicalStock")}</div>
-                        <div className="tank-card__fuel">
-                          {t("stock.bookStock")} {money(st.stock)} L ·{" "}
-                          {t("stock.variance")}{" "}
-                          {tank.stockVariance == null
-                            ? "—"
-                            : `${tank.stockVariance > 0 ? "+" : ""}${money(tank.stockVariance)} L`}
+            <ChipRow label={t("shifts.filterFuel")}>
+              {["ALL", "MS", "HSD", "CNG", ...(fuelCounts.OTHER ? ["OTHER"] : [])].map(
+                (fuel) => (
+                  <Chip
+                    key={fuel}
+                    label={
+                      fuel === "ALL"
+                        ? t("common.all")
+                        : fuel === "OTHER"
+                          ? t("stock.otherFuel")
+                          : fuel
+                    }
+                    count={fuelCounts[fuel]}
+                    selected={fuelFilter === fuel}
+                    onClick={() => setFuelFilter(fuel)}
+                  />
+                )
+              )}
+            </ChipRow>
+
+            {visibleTanks.length === 0 ? (
+              <EmptyState
+                icon={TankIcon}
+                headline={t("stock.noMatches")}
+                actionLabel={t("stock.clearFilter")}
+                onAction={() => {
+                  setFuelFilter("ALL");
+                  setLowOnly(false);
+                }}
+              />
+            ) : (
+              <div className="tank-farm">
+                {visibleTanks.map(({ item: tank, exiting }) => {
+                  const st = tankStatus(tank);
+                  return (
+                    <Link
+                      key={tank.id}
+                      to={link(`${base}/${tank.id}`)}
+                      className={`tank-card${exiting ? " row-exit" : " row-enter"}`}
+                    >
+                      <TankVessel tank={tank} />
+                      <div className="tank-card__body">
+                        <div className="tank-card__name">
+                          <span
+                            className={`fuel-dot fuel-dot--${fuelClass(tank.fuelType)}`}
+                          />
+                          {tank.name}
                         </div>
-                        <div className="tank-card__fuel">
-                          {t("stock.of")} {money(st.capacity)} L
+                        <div className="tank-card__fuel">{tank.fuelType}</div>
+                        {(() => {
+                          const health = tankHealth(tank);
+                          return (
+                            <span className="tank-card__status">
+                              <Chip label={t(health.labelKey)} tone={health.tone} />
+                            </span>
+                          );
+                        })()}
+                        <div
+                          className="tank-level"
+                          role="img"
+                          aria-label={`${t("stock.levelLabel")}: ${Math.round(st.fillPercent)}%`}
+                        >
+                          <span
+                            className={`tank-level__bar tank-fill--${fuelClass(tank.fuelType)}`}
+                            style={{ width: `${st.fillPercent}%` }}
+                          />
                         </div>
-                      </div>
-                      <div className="tank-card__meta">
-                        {tank.lastDipAt && (
-                          <div>
-                            {t("stock.dipped")} {formatStamp(tank.lastDipAt)}
+                        <div className="tank-card__figure">
+                          <NumberRoll
+                            value={tank.physicalStock ?? st.stock}
+                            format={money}
+                          />{" "}
+                          <span>L</span>
+                          <div className="tank-card__fuel">
+                            {t("stock.physicalStock")}
                           </div>
-                        )}
+                          <div className="tank-card__fuel">
+                            {t("stock.bookStock")} {money(st.stock)} L ·{" "}
+                            {t("stock.variance")}{" "}
+                            {tank.stockVariance == null
+                              ? "—"
+                              : `${tank.stockVariance > 0 ? "+" : ""}${money(tank.stockVariance)} L`}
+                          </div>
+                          <div className="tank-card__fuel">
+                            {t("stock.of")} {money(st.capacity)} L
+                          </div>
+                        </div>
+                        <div className="tank-card__meta">
+                          {tank.lastDipAt && (
+                            <div>
+                              {t("stock.dipped")} {formatStamp(tank.lastDipAt)}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <span className="tank-card__chev">
-                      <ChevronIcon size={16} />
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
+                      <span className="tank-card__chev">
+                        <ChevronIcon size={16} />
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
             <section className="card stat-strip">
               <Stat
@@ -349,6 +479,103 @@ export default function StockList() {
           </>
         )}
       </div>
+
+      {canWrite && !loading && tanks.length > 0 && (
+        <button
+          type="button"
+          className="stock-fab"
+          aria-label={t("stock.quickRecord")}
+          aria-haspopup="dialog"
+          onClick={() => {
+            setFabMode(null);
+            setFabTankId(null);
+            setFabOpen(true);
+          }}
+        >
+          <PlusIcon size={22} />
+        </button>
+      )}
+
+      <Sheet
+        open={fabOpen}
+        onClose={() => setFabOpen(false)}
+        title={fabTank ? fabTank.name : t("stock.quickRecord")}
+        wide
+      >
+        {!fabMode ? (
+          <div className="stock-fab-tiles">
+            <button
+              type="button"
+              className="stock-fab-tile"
+              onClick={() => setFabMode("delivery")}
+            >
+              <TankIcon size={24} />
+              {t("stock.bookDelivery")}
+            </button>
+            <button
+              type="button"
+              className="stock-fab-tile"
+              onClick={() => setFabMode("dip")}
+            >
+              <TankIcon size={24} />
+              {t("stock.recordDip")}
+            </button>
+          </div>
+        ) : !fabTank ? (
+          <div className="stack">
+            <p className="small muted">{t("stock.pickTank")}</p>
+            {active.map((tank) => (
+              <ListRow
+                key={tank.id}
+                title={tank.name}
+                subtitle={tank.fuelType}
+                trailing={`${money(tankStatus(tank).stock)} L`}
+                onClick={() => setFabTankId(tank.id)}
+              />
+            ))}
+          </div>
+        ) : fabMode === "dip" ? (
+          <>
+            <DipForm
+              tank={fabTank}
+              onSubmit={async (reading) => {
+                const ok = await run(() => recordDip(stationId, fabTank.id, reading));
+                if (ok) setFabOpen(false);
+                return ok;
+              }}
+            />
+            <button
+              type="submit"
+              form="tank-dip-form"
+              className="cta stock-sheet-submit"
+              disabled={busy}
+            >
+              {t("stock.saveDip")}
+            </button>
+          </>
+        ) : (
+          <>
+            <DeliveryForm
+              tank={fabTank}
+              onSubmit={async (delivery) => {
+                const ok = await run(() =>
+                  recordDelivery(stationId, fabTank.id, delivery)
+                );
+                if (ok) setFabOpen(false);
+                return ok;
+              }}
+            />
+            <button
+              type="submit"
+              form="tank-delivery-form"
+              className="cta stock-sheet-submit"
+              disabled={busy}
+            >
+              {t("stock.bookDelivery")}
+            </button>
+          </>
+        )}
+      </Sheet>
 
       <Sheet
         open={addOpen}

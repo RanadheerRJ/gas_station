@@ -4,14 +4,31 @@ import { ScreenHeader } from "../../components/Layout.jsx";
 import Money from "../../components/Money.jsx";
 import { Notice, Stat } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
+import ReportSheet from "../../components/ReportSheet.jsx";
+import { PAYMENT_MODES } from "../../lib/shiftMath";
+import { filterByRange, shiftStatementReport } from "../../lib/export.js";
+import { PAYMENT_KEY } from "../shifts/parts.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
-import { formatDate, formatStamp, money } from "../../lib/format";
+import { formatDate, formatStamp, money, num } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { fuelClass } from "../../lib/fuel.js";
 import { ledgerBase } from "./LedgerList.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
+
+/** A receipt section: a card behind a native disclosure. */
+function Section({ title, children }) {
+  return (
+    <details className="shift-collapse" open>
+      <summary className="shift-collapse__summary">
+        <span>{title}</span>
+        <span aria-hidden="true">▾</span>
+      </summary>
+      <div className="shift-collapse__body">{children}</div>
+    </details>
+  );
+}
 
 /**
  * One day of the ledger, on its own screen: the shifts that made the day and
@@ -59,6 +76,24 @@ export default function LedgerDay() {
       expenses: rows.reduce((sum, row) => sum + row.totals.expensesTotal, 0),
       declared: rows.reduce((sum, row) => sum + (row.totals.declared ?? 0), 0),
       variance: rows.reduce((sum, row) => sum + (row.totals.variance ?? 0), 0),
+      payments: rows.reduce((acc, row) => {
+        PAYMENT_MODES.forEach((mode) => {
+          acc[mode] = (acc[mode] || 0) + num(row.totals.payments?.[mode]);
+        });
+        return acc;
+      }, {}),
+      creditEntries: rows.flatMap((row) =>
+        (row.shift.creditSales || []).map((c) => ({
+          ...c,
+          employeeName: row.shift.employeeName,
+        }))
+      ),
+      expenseEntries: rows.flatMap((row) =>
+        (row.shift.expenses || []).map((e) => ({
+          ...e,
+          employeeName: row.shift.employeeName,
+        }))
+      ),
       fuels: rows.reduce((fuels, row) => {
         Object.entries(row.totals.fuels).forEach(([fuel, value]) => {
           fuels[fuel] ||= { litres: 0, amount: 0 };
@@ -98,6 +133,22 @@ export default function LedgerDay() {
         title={formatDate(date)}
         sub={station ? station.name : ""}
         back={link(base)}
+        actions={
+          <ReportSheet
+            report="shifts"
+            title="Daily Sales Statement"
+            stationName={station?.name || ""}
+            buildReport={(range, filters = {}) =>
+              shiftStatementReport({
+                shifts: filterByRange(shifts, range),
+                stationName: station?.name || "",
+                ...filters,
+              })
+            }
+            range={{ from: date, to: date }}
+            onRangeChange={() => {}}
+          />
+        }
       />
       <div className="content stack">
         {day.rows.length === 0 ? (
@@ -169,57 +220,138 @@ export default function LedgerDay() {
               </div>
             </section>
 
-            <section className="card card--flush">
-              <div className="card__head">
-                <h2>{t("ledger.byFuel")}</h2>
-              </div>
-              <table className="responsive-table">
-                <thead>
-                  <tr>
-                    <th>{t("ledger.fuel")}</th>
-                    <th className="num">{t("shifts.litres")}</th>
-                    <th className="num">{t("common.amount")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(day.fuels).map(([fuel, value]) => (
-                    <tr key={fuel}>
-                      <td data-label={t("ledger.fuel")}>
-                        <span className="row" style={{ gap: 6, alignItems: "center" }}>
-                          <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
-                          {fuel}
-                        </span>
-                      </td>
+            <Section title={t("ledger.byFuel")}>
+              <section className="card card--flush">
+                <div className="card__head">
+                  <h2>{t("ledger.byFuel")}</h2>
+                </div>
+                <table className="responsive-table">
+                  <thead>
+                    <tr>
+                      <th>{t("ledger.fuel")}</th>
+                      <th className="num">{t("shifts.litres")}</th>
+                      <th className="num">{t("common.amount")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(day.fuels).map(([fuel, value]) => (
+                      <tr key={fuel}>
+                        <td data-label={t("ledger.fuel")}>
+                          <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                            <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
+                            {fuel}
+                          </span>
+                        </td>
+                        <td data-label={t("shifts.litres")} className="num mono">
+                          {money(value.litres)}
+                        </td>
+                        <td data-label={t("common.amount")} className="num">
+                          <Money
+                            kind="neutral"
+                            value={value.amount}
+                            label={`${fuel} · ${t("common.amount")}`}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td data-label={t("ledger.fuel")}>{t("common.total")}</td>
                       <td data-label={t("shifts.litres")} className="num mono">
-                        {money(value.litres)}
+                        {money(day.litres)}
                       </td>
                       <td data-label={t("common.amount")} className="num">
                         <Money
                           kind="neutral"
-                          value={value.amount}
-                          label={`${fuel} · ${t("common.amount")}`}
+                          value={day.sales}
+                          label={t("ledger.fuelSales")}
                         />
                       </td>
                     </tr>
+                  </tfoot>
+                </table>
+              </section>
+            </Section>
+
+            <Section title={t("ledger.paymentsByMode")}>
+              <section className="card">
+                <dl className="ledger-kv">
+                  {PAYMENT_MODES.map((mode) => (
+                    <div key={mode}>
+                      <dt>{t(PAYMENT_KEY[mode])}</dt>
+                      <dd>
+                        <Money
+                          kind={mode === "credit" ? "credit" : "in"}
+                          value={day.payments[mode] || 0}
+                          label={t(PAYMENT_KEY[mode])}
+                        />
+                      </dd>
+                    </div>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td data-label={t("ledger.fuel")}>{t("common.total")}</td>
-                    <td data-label={t("shifts.litres")} className="num mono">
-                      {money(day.litres)}
-                    </td>
-                    <td data-label={t("common.amount")} className="num">
-                      <Money
-                        kind="neutral"
-                        value={day.sales}
-                        label={t("ledger.fuelSales")}
-                      />
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </section>
+                </dl>
+              </section>
+            </Section>
+
+            <Section title={t("shifts.creditSalesHeading")}>
+              <section className="card">
+                {day.creditEntries.length === 0 ? (
+                  <p className="small muted">{t("credit.noCreditYet")}</p>
+                ) : (
+                  <ul className="ledger-lines">
+                    {day.creditEntries.map((c, i) => (
+                      <li key={i}>
+                        <span>
+                          {c.name || c.customerName || t("shifts.walkIn")}{" "}
+                          <span className="small muted">{c.employeeName}</span>
+                        </span>
+                        <Money
+                          kind="credit"
+                          value={c.amount}
+                          label={t("ledger.credit")}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </Section>
+
+            <Section title={t("ledger.expenses")}>
+              <section className="card">
+                {day.expenseEntries.length === 0 ? (
+                  <p className="small muted">{t("common.none")}</p>
+                ) : (
+                  <ul className="ledger-lines">
+                    {day.expenseEntries.map((e, i) => (
+                      <li key={i}>
+                        <span>
+                          {e.label || e.note || t("ledger.expenses")}{" "}
+                          <span className="small muted">{e.employeeName}</span>
+                        </span>
+                        <Money kind="out" value={e.amount} label={t("ledger.expenses")} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </Section>
+
+            <Section title={t("ledger.stockMovement")}>
+              <section className="card">
+                <ul className="ledger-lines">
+                  {Object.entries(day.fuels).map(([fuel, v]) => (
+                    <li key={fuel}>
+                      <span>
+                        <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />{" "}
+                        {fuel}
+                      </span>
+                      <span className="mono">{money(v.litres)} L</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </Section>
           </>
         )}
       </div>

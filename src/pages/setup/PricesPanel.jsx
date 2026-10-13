@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { Empty, Panel } from "../../components/ui";
+import ListRow from "../../components/ListRow.jsx";
+import Sheet from "../../components/Sheet.jsx";
+import { formatDate, todayISO } from "../../lib/format";
 import { RateIcon } from "../../components/icons";
 import { fuelClass } from "../../lib/fuel.js";
 import { formatStamp, money, num } from "../../lib/format";
@@ -21,6 +25,7 @@ export default function PricesPanel({
   onUpdatePrice,
 }) {
   const { t } = useLanguage();
+  const [editing, setEditing] = useState(null);
   return (
     <Panel
       title={
@@ -34,50 +39,28 @@ export default function PricesPanel({
         <Empty>{t("setup.addNozzleFirst")}</Empty>
       ) : (
         <>
-          <div className="price-board">
+          <div className="stack">
             {activeFuels.map((fuel) => {
               const rec = active[fuel];
-              const draft = rateDraft[fuel] ?? "";
-              const changed =
-                draft !== "" && num(draft) > 0 && num(draft) !== num(rec?.price);
               return (
-                <div key={fuel} className="price-card">
-                  <div className="price-card__fuel">
-                    <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
-                    {fuel}
-                  </div>
-                  <div className="price-card__value">
-                    {rec ? `₹ ${money(rec.price)}` : t("setup.notSet")}
-                  </div>
-                  <div className="price-card__since">
-                    {rec
+                <ListRow
+                  key={fuel}
+                  title={fuel}
+                  subtitle={
+                    rec
                       ? `${t("setup.activeSince")} ${formatStamp(rec.effectiveFrom)}`
-                      : t("setup.cannotStart")}
-                  </div>
-                  <div
-                    className="row"
-                    style={{ gap: 6, marginTop: 10, flexWrap: "nowrap" }}
-                  >
-                    <input
-                      className="mono"
-                      inputMode="decimal"
-                      style={{ textAlign: "right" }}
-                      value={draft}
-                      onChange={(e) =>
-                        setRateDraft((d) => ({ ...d, [fuel]: e.target.value }))
-                      }
-                      placeholder={rec ? money(rec.price) : "0.00"}
-                    />
-                    <button
-                      type="button"
-                      className="small"
-                      disabled={busy || !changed}
-                      onClick={() => onUpdatePrice(fuel, draft)}
-                    >
-                      {t("setup.update")}
-                    </button>
-                  </div>
-                </div>
+                      : t("setup.cannotStart")
+                  }
+                  trailing={
+                    <span className="price-card__value">
+                      {rec ? `₹ ${money(rec.price)}` : t("setup.notSet")}
+                    </span>
+                  }
+                  onClick={() => {
+                    setEditing(fuel);
+                    setRateDraft((d) => ({ ...d, [fuel]: rec ? String(rec.price) : "" }));
+                  }}
+                />
               );
             })}
           </div>
@@ -129,6 +112,43 @@ export default function PricesPanel({
           )}
         </>
       )}
+      <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing || ""}>
+        {editing && (
+          <div className="stack">
+            <label className="amount-field">
+              <span>₹</span>
+              <input
+                autoFocus
+                className="mono"
+                inputMode="decimal"
+                aria-label={t("shifts.price")}
+                value={rateDraft[editing] ?? ""}
+                onChange={(e) =>
+                  setRateDraft((d) => ({ ...d, [editing]: e.target.value }))
+                }
+              />
+            </label>
+            <p className="small muted">
+              {t("setup.from")}: {formatDate(todayISO())}
+            </p>
+            <button
+              type="button"
+              className="cta"
+              disabled={
+                busy ||
+                !(num(rateDraft[editing]) > 0) ||
+                num(rateDraft[editing]) === num(active[editing]?.price)
+              }
+              onClick={() => {
+                onUpdatePrice(editing, rateDraft[editing]);
+                setEditing(null);
+              }}
+            >
+              {t("setup.update")}
+            </button>
+          </div>
+        )}
+      </Sheet>
     </Panel>
   );
 }

@@ -1,4 +1,5 @@
 import Money from "../../components/Money.jsx";
+import Sheet from "../../components/Sheet.jsx";
 import { ActionBar } from "../../components/ui.jsx";
 import { varianceLabel } from "../../lib/shiftMath.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -94,50 +95,74 @@ export default function ReviewActionBar({
   setReason,
   submitRejection,
   onApprove,
+  locked = false,
 }) {
   const { t } = useLanguage();
+  const blocked = busy || locked;
   return (
-    <ActionBar className="action-bar--review">
-      <div className="action-bar__stack" data-testid="review-action-bar">
-        <AttentionNotice totals={totals} t={t} />
-        {rejecting && (
-          <div className="row action-bar__reason">
-            <input
-              style={{ flex: 1 }}
-              value={reason}
-              placeholder={t("shifts.whatNeedsCorrecting")}
-              onChange={(e) => setReason(e.target.value)}
-            />
+    <>
+      <ActionBar className="action-bar--review">
+        <div className="action-bar__stack" data-testid="review-action-bar">
+          <AttentionNotice totals={totals} t={t} />
+          <ReviewFigures totals={totals} t={t} />
+          <div className="action-bar__row">
+            <span className="small muted action-bar__hint">
+              {locked ? t("shifts.notReviewable") : t("money.approvalLocks")}
+            </span>
             <button
               type="button"
+              className="review-send-back"
+              disabled={blocked}
+              aria-haspopup="dialog"
+              onClick={() => setRejecting(true)}
+            >
+              {t("shifts.sendBack")}
+            </button>
+            <button
+              type="button"
+              className="cta review-approve"
+              disabled={blocked}
+              onClick={() => onApprove()}
+            >
+              {t("shifts.approve")}
+            </button>
+          </div>
+        </div>
+      </ActionBar>
+      <Sheet
+        open={Boolean(rejecting)}
+        onClose={() => setRejecting(false)}
+        title={t("shifts.sendBackTitle")}
+      >
+        <div className="stack">
+          <p className="small muted">{t("shifts.sendBackHelp")}</p>
+          <input
+            value={reason}
+            placeholder={t("shifts.whatNeedsCorrecting")}
+            aria-label={t("shifts.whatNeedsCorrecting")}
+            autoFocus
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <div className="row">
+            <button
+              type="button"
+              className="quiet"
+              disabled={busy}
+              onClick={() => setRejecting(false)}
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              className="cta"
               disabled={busy || !reason.trim()}
               onClick={submitRejection}
             >
               {t("common.confirm")}
             </button>
           </div>
-        )}
-        <ReviewFigures totals={totals} t={t} />
-        <div className="action-bar__row">
-          <span className="small muted action-bar__hint">{t("money.approvalLocks")}</span>
-          <button
-            type="button"
-            className="review-send-back"
-            disabled={busy}
-            onClick={() => setRejecting((v) => !v)}
-          >
-            {t("shifts.sendBack")}
-          </button>
-          <button
-            type="button"
-            className="cta review-approve"
-            disabled={busy}
-            onClick={() => onApprove()}
-          >
-            {t("shifts.approve")}
-          </button>
         </div>
-      </div>
-    </ActionBar>
+      </Sheet>
+    </>
   );
 }

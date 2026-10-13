@@ -186,15 +186,23 @@ describe("OwnerStaff page interactions and Sheet reliability", () => {
     renderComponent();
     await settle();
 
-    const resetBtn = [...container.querySelectorAll("button")].find((btn) =>
+    // Prompt 12: the roster is ListRows; tapping a person opens their sheet.
+    const row = [...container.querySelectorAll("button")].find((btn) =>
+      btn.textContent.includes("Suresh Babu")
+    );
+    await click(row);
+
+    const resetBtn = [...document.body.querySelectorAll("button")].find((btn) =>
       btn.textContent.toLowerCase().includes("reset pin")
     );
     expect(resetBtn).toBeTruthy();
     await click(resetBtn);
 
-    const sheetRoot = document.body.querySelector(".sheet-root");
+    const sheetRoot = [...document.body.querySelectorAll(".sheet-root")].find((el) =>
+      el.querySelector('input[type="password"]')
+    );
     expect(sheetRoot).toBeTruthy();
-    expect(sheetRoot.textContent).toContain("Suresh Babu");
+    expect(document.body.textContent).toContain("Suresh Babu");
     expect(sheetRoot.querySelector('input[type="password"]')).toBeTruthy();
   });
 });

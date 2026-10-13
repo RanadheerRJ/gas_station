@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import { Notice } from "../../components/ui.jsx";
+import { Notice, Segmented } from "../../components/ui.jsx";
+import StickyCta from "../../components/StickyCta.jsx";
+import ListRow from "../../components/ListRow.jsx";
+import Money from "../../components/Money.jsx";
+import { CashIcon, CreditIcon } from "../../components/icons.jsx";
+import { avatarHue, initials } from "../../lib/avatar.js";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { BackIcon } from "../../components/icons.jsx";
 import Sheet from "../../components/Sheet.jsx";
@@ -198,6 +203,7 @@ export default function CustomerDetail() {
   const [period, setPeriod] = useState("thisMonth"),
     [range, setRange] = useState(() => periodRange("thisMonth")),
     [filter, setFilter] = useState("all"),
+    [view, setView] = useState("statement"),
     [fullOpen, setFullOpen] = useState(false);
   const [tx, setTx] = useState({
     amount: "",
@@ -497,6 +503,29 @@ export default function CustomerDetail() {
 
         {/* Balance plus the only two actions on the screen, above the fold. */}
         <section className={`balance-card${balance > 0 ? " balance-card--due" : ""}`}>
+          <div className="customer-hero__id">
+            <span
+              className="customer-avatar"
+              style={{ "--avatar-hue": avatarHue(customer.name) }}
+              aria-hidden="true"
+            >
+              {initials(customer.name || "")}
+            </span>
+            <span>
+              <b>{customer.name}</b>
+              {customer.phone ? (
+                <a
+                  className="customer-hero__phone"
+                  href={`tel:${customer.phone}`}
+                  aria-label={t("credit.callCustomer", { name: customer.name })}
+                >
+                  {customer.phone}
+                </a>
+              ) : (
+                <span className="small muted">{t("credit.noPhone")}</span>
+              )}
+            </span>
+          </div>
           <div className="balance-card__top">
             <div className="balance-card__figure">
               <span className="balance-card__label">
@@ -531,16 +560,96 @@ export default function CustomerDetail() {
             <h2>{t("credit.statement")}</h2>
             {exportTools}
           </div>
-          {periodControls}
-          <StatementBody
-            statement={statement}
-            range={range}
-            limit={COLLAPSED}
-            t={t}
-            details={details}
-            onEdit={canCorrect ? openCorrection("edit") : undefined}
-            onVoid={canCorrect ? openCorrection("void") : undefined}
+          <Segmented
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "activity", label: t("credit.activity") },
+              { value: "statement", label: t("credit.statement") },
+            ]}
           />
+          {view === "activity" ? (
+            <div className="credit-activity-list">
+              {statement.rows.length === 0 ? (
+                <p className="small muted">{t("credit.noTransactionsInPeriod")}</p>
+              ) : (
+                groupByDay(statement.rows).map((group) => (
+                  <div key={group.day} className="stock-entry-group">
+                    <h3 className="stock-entry-group__title">
+                      {formatDayLabel(group.day)}
+                    </h3>
+                    {group.rows.map((entry) => {
+                      const debit = entry.type === "credit";
+                      const detail = details?.[entry.id];
+                      return (
+                        <div key={entry.id}>
+                          <ListRow
+                            chevron={false}
+                            icon={debit ? CreditIcon : CashIcon}
+                            title={
+                              entry.note ||
+                              t(
+                                debit
+                                  ? "credit.creditGivenOption"
+                                  : "credit.paymentReceived"
+                              )
+                            }
+                            subtitle={[
+                              entry.time,
+                              entry.recordedByName,
+                              detail?.shiftLabel,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                            trailing={
+                              <Money
+                                kind={debit ? "credit" : "in"}
+                                value={entry.amount}
+                                label={t(
+                                  debit ? "credit.creditGiven" : "credit.payments"
+                                )}
+                              />
+                            }
+                          />
+                          {canCorrect && (
+                            <span className="st-row__actions">
+                              <button
+                                type="button"
+                                className="small"
+                                onClick={() => openCorrection("edit")(entry, detail)}
+                              >
+                                {t("common.edit")}
+                              </button>
+                              <button
+                                type="button"
+                                className="small quiet"
+                                onClick={() => openCorrection("void")(entry, detail)}
+                              >
+                                {t("credit.voidCredit")}
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <>
+              {periodControls}
+              <StatementBody
+                statement={statement}
+                range={range}
+                limit={COLLAPSED}
+                t={t}
+                details={details}
+                onEdit={canCorrect ? openCorrection("edit") : undefined}
+                onVoid={canCorrect ? openCorrection("void") : undefined}
+              />
+            </>
+          )}
           {(customer.voidedTransactions || []).length > 0 && (
             <section className="st-voided">
               <h3>{t("credit.voidedEntries")}</h3>
@@ -573,6 +682,14 @@ export default function CustomerDetail() {
           )}
         </section>
       </div>
+
+      <StickyCta
+        summary={`₹${money(balance)} ${t("credit.outstanding")}`}
+        ctaLabel={t("credit.receivePayment")}
+        onCta={() => openSheet("payment")}
+        disabled={balance <= 0}
+        hint={balance <= 0 ? t("credit.settled") : undefined}
+      />
 
       {fullOpen &&
         typeof document !== "undefined" &&

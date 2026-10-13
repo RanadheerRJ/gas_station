@@ -1915,16 +1915,16 @@ tbody tr.money-row--variance:hover > td {
 }
 
 .fuel-dot--petrol {
-  background: #16a34a;
+  background: var(--fuel-petrol-dot);
 }
 .fuel-dot--diesel {
-  background: #2563eb;
+  background: var(--fuel-diesel-dot);
 }
 .fuel-dot--premium {
-  background: #d97706;
+  background: var(--fuel-premium-dot);
 }
 .fuel-dot--cng {
-  background: #8b5cf6;
+  background: var(--fuel-cng-dot);
 }
 
 /* Fuel families as labelled chips, not just dots: the word (Petrol, Diesel,

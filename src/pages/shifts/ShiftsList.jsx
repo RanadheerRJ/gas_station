@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
-import { ChevronIcon, PlusIcon, ShiftIcon } from "../../components/icons.jsx";
+import { ChevronIcon, PlusIcon, SearchIcon, ShiftIcon } from "../../components/icons.jsx";
+import { Chip, ChipRow } from "../../components/Chip.jsx";
+import Skeleton from "../../components/Skeleton.jsx";
+import EmptyState from "../../components/EmptyState.jsx";
+import Sheet from "../../components/Sheet.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
@@ -11,18 +15,23 @@ import { useNow } from "../../state/useNow.js";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
 import { elapsedLabel } from "../../lib/elapsed.js";
-import { money, todayISO } from "../../lib/format";
+import { formatDate, money, todayISO } from "../../lib/format";
 import { SHIFT_STATUS, shiftTotals } from "../../lib/shiftMath";
 import { defaultRange, filterByRange, shiftStatementReport } from "../../lib/export.js";
 import AddNozzlesSheet from "./AddNozzlesSheet.jsx";
 import ExpensesSheet from "./ExpensesSheet.jsx";
 import { LiveShiftCard, ShiftCard, nozzleGroups } from "./ShiftCards.jsx";
-import ShiftTabs, {
-  SHIFT_TAB,
-  bucketCounts,
-  filterShifts,
+import {
+  DATE_PRESET,
+  STATUS_FILTER,
+  filterByStatus,
+  groupShiftsByDate,
+  presetRange,
   shiftBucket,
-  shiftTabDefs,
+  SHIFT_TAB,
+  shiftInRange,
+  statusCounts,
+  statusFilterDefs,
 } from "./ShiftTabs.jsx";
 import { shiftPaths } from "./paths.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -39,24 +48,16 @@ function shiftElapsed(shift, now, translate) {
   return elapsedLabel(now - ms, translate);
 }
 
-function emptyCopy(tab, t) {
-  if (tab === SHIFT_TAB.LIVE) {
-    return {
-      title: t("shifts.emptyLiveTitle"),
-      body: t("shifts.emptyLiveBody"),
-    };
-  }
-  if (tab === SHIFT_TAB.REVIEW) {
-    return {
-      title: t("shifts.emptyReviewTitle"),
-      body: t("shifts.emptyReviewBody"),
-    };
-  }
-  return {
-    title: t("shifts.noneClosed"),
-    body: t("shifts.emptyClosedBody"),
-  };
-}
+const PAGE_SIZE = 20;
+
+const PRESET_DEFS = [
+  [DATE_PRESET.ALL, "shifts.presetAll"],
+  [DATE_PRESET.TODAY, "shifts.presetToday"],
+  [DATE_PRESET.YESTERDAY, "shifts.presetYesterday"],
+  [DATE_PRESET.LAST7, "shifts.presetLast7"],
+  [DATE_PRESET.MONTH, "shifts.presetThisMonth"],
+  [DATE_PRESET.CUSTOM, "shifts.presetCustom"],
+];
 
 /**
  * The shifts list for managers and owners.
@@ -81,7 +82,14 @@ export default function ShiftsList() {
   const paths = shiftPaths(profile.role);
 
   const [shifts, setShifts] = useState([]);
-  const [tab, setTab] = useState(SHIFT_TAB.ALL);
+  const [statusFilter, setStatusFilter] = useState(STATUS_FILTER.ALL);
+  const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [preset, setPreset] = useState(DATE_PRESET.ALL);
+  const [customFrom, setCustomFrom] = useState(todayISO());
+  const [customTo, setCustomTo] = useState(todayISO());
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expenseFor, setExpenseFor] = useState(null);
@@ -109,9 +117,52 @@ export default function ShiftsList() {
     () => shifts.filter((s) => s.status !== SHIFT_STATUS.OPEN),
     [shifts]
   );
-  const counts = useMemo(() => bucketCounts(shifts), [shifts]);
-  const tabs = useMemo(() => shiftTabDefs(t, counts), [t, counts]);
-  const visible = useMemo(() => filterShifts(shifts, tab), [shifts, tab]);
+  const counts = useMemo(() => statusCounts(shifts), [shifts]);
+  const statusDefs = useMemo(() => statusFilterDefs(t, counts), [t, counts]);
+  const range = useMemo(
+    () =>
+      preset === DATE_PRESET.CUSTOM
+        ? { from: customFrom, to: customTo }
+        : presetRange(preset),
+    [preset, customFrom, customTo]
+  );
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return filterByStatus(shifts, statusFilter).filter(
+      (shift) =>
+        shiftInRange(shift, range) &&
+        (!needle || (shift.employeeName || "").toLowerCase().includes(needle))
+    );
+  }, [shifts, statusFilter, range, query]);
+  const grouped = useMemo(() => groupShiftsByDate(visible), [visible]);
+  // Flatten groups in order, cap at `limit`, then re-group the shown slice.
+  const shownGroups = useMemo(() => {
+    let remaining = limit;
+    const out = [];
+    for (const group of grouped) {
+      if (remaining <= 0) break;
+      out.push({ date: group.date, items: group.items.slice(0, remaining) });
+      remaining -= group.items.length;
+    }
+    return out;
+  }, [grouped, limit]);
+  const filtersActive =
+    statusFilter !== STATUS_FILTER.ALL ||
+    query.trim() !== "" ||
+    preset !== DATE_PRESET.ALL;
+  const clearFilters = () => {
+    setStatusFilter(STATUS_FILTER.ALL);
+    setQuery("");
+    setPreset(DATE_PRESET.ALL);
+    setLimit(PAGE_SIZE);
+  };
+  const dateLabel = (date) => {
+    if (date === todayISO()) return t("shifts.groupToday");
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yIso = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+    return date === yIso ? t("shifts.groupYesterday") : formatDate(date);
+  };
 
   const todayLine = useMemo(() => {
     const todays = settled.filter((s) => s.date === todayISO());
@@ -158,8 +209,6 @@ export default function ShiftsList() {
     );
   }
 
-  const empty = emptyCopy(tab, t);
-
   return (
     <>
       <ScreenHeader
@@ -170,6 +219,16 @@ export default function ShiftsList() {
         }
         actions={
           <>
+            <button
+              type="button"
+              className="tool-btn"
+              aria-expanded={searchOpen}
+              aria-label={t("shifts.searchEmployee")}
+              onClick={() => setSearchOpen((v) => !v)}
+            >
+              <SearchIcon size={16} />
+              {t("common.search")}
+            </button>
             <ReportSheet
               report="shifts"
               title="Daily Sales Statement"
@@ -191,47 +250,108 @@ export default function ShiftsList() {
         {error && <Notice kind="error">{error}</Notice>}
 
         {loading ? (
-          <LoadingPanels count={3} lines={2} label={t("common.loading")} />
+          <Skeleton shape="card" count={3} />
         ) : (
           <>
-            <ShiftTabs
-              tabs={tabs}
-              value={tab}
-              onChange={setTab}
-              label={t("shifts.title")}
-            />
+            {searchOpen && (
+              <input
+                type="search"
+                className="shifts-search"
+                aria-label={t("shifts.searchEmployee")}
+                placeholder={t("shifts.searchEmployeeHint")}
+                value={query}
+                autoFocus
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setLimit(PAGE_SIZE);
+                }}
+              />
+            )}
+            <div className="shifts-filterbar">
+              <ChipRow label={t("common.status")}>
+                {statusDefs.map((def) => (
+                  <Chip
+                    key={def.id}
+                    label={def.label}
+                    count={def.count}
+                    selected={statusFilter === def.id}
+                    onClick={() => {
+                      setStatusFilter(def.id);
+                      setLimit(PAGE_SIZE);
+                    }}
+                  />
+                ))}
+              </ChipRow>
+              <button
+                type="button"
+                className="chip shifts-date-pill"
+                aria-haspopup="dialog"
+                onClick={() => setDateSheetOpen(true)}
+              >
+                {t("shifts.dateFilter")}:{" "}
+                {t(PRESET_DEFS.find(([id]) => id === preset)?.[1] || "shifts.presetAll")}
+              </button>
+            </div>
 
             {visible.length === 0 ? (
-              <div className="empty-card empty-card--compact">
-                <div className="empty-card__icon" aria-hidden="true">
-                  <ShiftIcon size={26} />
-                </div>
-                <h2>{empty.title}</h2>
-                <p className="small muted">{empty.body}</p>
-              </div>
+              <EmptyState
+                icon={ShiftIcon}
+                headline={
+                  filtersActive ? t("shifts.noMatchesTitle") : t("shifts.noneClosed")
+                }
+                body={
+                  filtersActive ? t("shifts.noMatchesBody") : t("shifts.emptyClosedBody")
+                }
+                actionLabel={filtersActive ? t("shifts.clearFilters") : undefined}
+                onAction={filtersActive ? clearFilters : undefined}
+              />
             ) : (
-              <div className="shift-feed">
-                {visible.map((shift) => {
-                  if (shiftBucket(shift) === SHIFT_TAB.LIVE) {
-                    return (
-                      <div key={shift.id} className="row-enter">
-                        <LiveShiftCard
-                          shift={shift}
-                          closeHref={link(paths.close(shift.id))}
-                          onAddExpense={setExpenseFor}
-                          onAddNozzle={setNozzlesFor}
-                          elapsed={shiftElapsed(shift, now, t)}
-                        />
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={shift.id} className="row-enter">
-                      <ShiftCard shift={shift} to={link(paths.detail(shift.id))} />
+              <>
+                {shownGroups.map((group) => (
+                  <section key={group.date || "undated"} className="shift-date-group">
+                    <h2 className="shift-date-group__title">{dateLabel(group.date)}</h2>
+                    <div className="shift-feed">
+                      {group.items.map((shift) => {
+                        if (shiftBucket(shift) === SHIFT_TAB.LIVE) {
+                          return (
+                            <div key={shift.id} className="row-enter">
+                              <LiveShiftCard
+                                shift={shift}
+                                closeHref={link(paths.close(shift.id))}
+                                onAddExpense={setExpenseFor}
+                                onAddNozzle={setNozzlesFor}
+                                elapsed={shiftElapsed(shift, now, t)}
+                              />
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={shift.id} className="row-enter shift-card-wrap">
+                            <ShiftCard shift={shift} to={link(paths.detail(shift.id))} />
+                            {shift.status === SHIFT_STATUS.PENDING_REVIEW && (
+                              <Link
+                                className="shift-card__review"
+                                to={link(paths.detail(shift.id))}
+                              >
+                                {t("shifts.reviewShift")}
+                              </Link>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </section>
+                ))}
+                {visible.length > limit && (
+                  <button
+                    type="button"
+                    className="shifts-show-more"
+                    onClick={() => setLimit((v) => v + PAGE_SIZE)}
+                  >
+                    {t("shifts.showMore")} ({visible.length - limit})
+                  </button>
+                )}
+              </>
             )}
 
             {statementAvailable && (
@@ -305,6 +425,56 @@ export default function ShiftsList() {
           </>
         )}
       </div>
+
+      <Sheet
+        open={dateSheetOpen}
+        onClose={() => setDateSheetOpen(false)}
+        title={t("shifts.dateFilter")}
+      >
+        <div className="stack">
+          <ChipRow label={t("shifts.dateFilter")}>
+            {PRESET_DEFS.map(([id, key]) => (
+              <Chip
+                key={id}
+                label={t(key)}
+                selected={preset === id}
+                onClick={() => {
+                  setPreset(id);
+                  setLimit(PAGE_SIZE);
+                  if (id !== DATE_PRESET.CUSTOM) setDateSheetOpen(false);
+                }}
+              />
+            ))}
+          </ChipRow>
+          {preset === DATE_PRESET.CUSTOM && (
+            <div className="row">
+              <label className="stack shifts-date-field">
+                <span className="small muted">{t("report.from")}</span>
+                <input
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                />
+              </label>
+              <label className="stack shifts-date-field">
+                <span className="small muted">{t("report.to")}</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="cta"
+                onClick={() => setDateSheetOpen(false)}
+              >
+                {t("common.confirm")}
+              </button>
+            </div>
+          )}
+        </div>
+      </Sheet>
 
       <ExpensesSheet
         open={!!expenseFor}

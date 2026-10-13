@@ -129,7 +129,8 @@ export function CreditIcon(props) {
 
 /** Small status dot used in shift rows. */
 export function StatusDot({ tone = "green", title }) {
-  const fill = tone === "green" ? "#15803d" : tone === "rust" ? "#dc2626" : "#b45309";
+  const fill =
+    tone === "green" ? "var(--green)" : tone === "rust" ? "var(--rust)" : "var(--amber)";
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
       <title>{title}</title>
@@ -292,6 +293,16 @@ export function DownloadIcon(props) {
       <path d="M12 4v10" />
       <path d="M8 10.5l4 4 4-4" />
       <path d="M5 19h14" />
+    </svg>
+  );
+}
+
+/** Search magnifier, for list search actions. */
+export function SearchIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="11" cy="11" r="6" />
+      <path d="M16 16l4.5 4.5" />
     </svg>
   );
 }
