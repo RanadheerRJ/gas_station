@@ -23,6 +23,26 @@ import { useLanguage } from "../../state/LanguageContext.jsx";
 const STATEMENT_CORE_COLUMNS = new Set([0, 1, 4, 7, 13, 21]);
 
 /**
+ * One chip per fuel product on a running shift, e.g. "2 × MS". Nozzles group
+ * by the fuel name printed on the dispenser, so the chip reads the way the
+ * pump does, and the word carries the meaning rather than colour alone.
+ */
+function nozzleGroups(nozzles) {
+  const groups = new Map();
+  for (const nozzle of nozzles) {
+    const fuelType = nozzle.fuelType || "";
+    const group = groups.get(fuelType) || {
+      fuelType,
+      cls: fuelClass(fuelType),
+      count: 0,
+    };
+    group.count += 1;
+    groups.set(fuelType, group);
+  }
+  return [...groups.values()];
+}
+
+/**
  * The shifts list for managers and owners: open shifts as live cards at the
  * top, everything handed in below as compact rows that tap through to the
  * full breakdown. The station choice is a header filter, not a panel, and it
@@ -169,12 +189,13 @@ export default function ShiftsList() {
                         </div>
                       </div>
                       <span className="open-card__nozzles">
-                        {shift.nozzles.map((nozzle) => (
+                        {nozzleGroups(shift.nozzles).map((group) => (
                           <span
-                            key={nozzle.nozzleId}
-                            className={`fuel-dot fuel-dot--${fuelClass(nozzle.fuelType)}`}
-                            title={nozzle.label}
-                          />
+                            key={group.fuelType || "unknown"}
+                            className={`fuel-tag fuel-tag--${group.cls}`}
+                          >
+                            {group.count} × {group.fuelType || "—"}
+                          </span>
                         ))}
                       </span>
                     </div>
@@ -195,10 +216,7 @@ export default function ShiftsList() {
                       >
                         {t("shifts.addNozzle")}
                       </button>
-                      <Link
-                        className="small primary-link"
-                        to={link(paths.close(shift.id))}
-                      >
+                      <Link className="open-card__close" to={link(paths.close(shift.id))}>
                         {t("shifts.closeShift")}
                       </Link>
                     </div>
