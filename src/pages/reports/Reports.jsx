@@ -12,7 +12,14 @@ import { SHIFT_STATUS, varianceTone } from "../../lib/shiftMath";
 import { changePct, monthOf, monthReport, shiftMonth } from "../../lib/reportMath.js";
 import { fuelClass } from "../../lib/fuel.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
-import { monthlyReport } from "../../lib/export.js";
+import {
+  creditReport,
+  monthlyReport,
+  shiftStatementReport,
+  stockReport,
+} from "../../lib/export.js";
+import { listCustomers, listTanks } from "../../lib/api";
+import { ChartIcon, CreditIcon, LedgerIcon, TankIcon } from "../../components/icons.jsx";
 
 /**
  * The month on one screen, for owners and managers: a month dial, the
@@ -38,6 +45,8 @@ export default function Reports() {
   const [error, setError] = useState("");
   const [month, setMonth] = useState(() => monthOf(todayISO()));
   const [measure, setMeasure] = useState("litres");
+  const [customers, setCustomers] = useState([]);
+  const [tankData, setTankData] = useState({ tanks: [], dips: [] });
 
   const load = useCallback(async () => {
     if (!stationId) return;
@@ -48,6 +57,14 @@ export default function Reports() {
       setShifts(
         (await listShifts(stationId)).filter((s) => s.status !== SHIFT_STATUS.OPEN)
       );
+      // Tile exports for the credit book and ground stock; a failure here
+      // must not blank the monthly report, so these settle quietly.
+      listCustomers(stationId)
+        .then(setCustomers)
+        .catch(() => setCustomers([]));
+      listTanks(stationId)
+        .then(setTankData)
+        .catch(() => setTankData({ tanks: [], dips: [] }));
       setError("");
     } catch (err) {
       setError(readableError(err));
@@ -72,6 +89,31 @@ export default function Reports() {
         ...filters,
       }),
     [shifts, month, station]
+  );
+
+  const buildShiftsReport = useCallback(
+    (range, filters = {}) =>
+      shiftStatementReport({
+        shifts: shifts.filter((x) => x.date >= range.from && x.date <= range.to),
+        stationName: station?.name || "",
+        ...filters,
+      }),
+    [shifts, station]
+  );
+  const buildCreditReport = useCallback(
+    (range) => creditReport({ customers, range, stationName: station?.name || "" }),
+    [customers, station]
+  );
+  const buildStockReport = useCallback(
+    (range, filters = {}) =>
+      stockReport({
+        tanks: tankData.tanks.filter((x) => x.state !== "retired"),
+        entries: tankData.dips,
+        range,
+        stationName: station?.name || "",
+        ...filters,
+      }),
+    [tankData, station]
   );
 
   const previous = useMemo(
@@ -154,8 +196,50 @@ export default function Reports() {
           <LoadingPanels count={3} lines={2} label={t("common.loading")} />
         ) : (
           <>
+            {/* ---- report tiles ---- */}
+            <div className="report-tiles">
+              <a className="report-tile" href="#monthly-summary">
+                <ChartIcon size={24} />
+                <b>{t("reports.title")}</b>
+                <span>{t("reports.tileMonthlyDesc")}</span>
+              </a>
+              <div className="report-tile report-tile--action">
+                <LedgerIcon size={24} />
+                <b>{t("shifts.statement")}</b>
+                <span>{t("reports.tileShiftsDesc")}</span>
+                <ReportSheet
+                  report="shifts"
+                  title="Daily Sales Statement"
+                  stationName={station?.name || ""}
+                  buildReport={buildShiftsReport}
+                />
+              </div>
+              <div className="report-tile report-tile--action">
+                <CreditIcon size={24} />
+                <b>{t("credit.title")}</b>
+                <span>{t("reports.tileCreditDesc")}</span>
+                <ReportSheet
+                  report="credit"
+                  title={t("credit.reportExport")}
+                  stationName={station?.name || ""}
+                  buildReport={buildCreditReport}
+                />
+              </div>
+              <div className="report-tile report-tile--action">
+                <TankIcon size={24} />
+                <b>{t("stock.title")}</b>
+                <span>{t("reports.tileStockDesc")}</span>
+                <ReportSheet
+                  report="stock"
+                  title="Ground stock"
+                  stationName={station?.name || ""}
+                  buildReport={buildStockReport}
+                />
+              </div>
+            </div>
+
             {/* ---- which month ---- */}
-            <section className="card month-dial">
+            <section className="card month-dial" id="monthly-summary">
               <button
                 type="button"
                 className="month-dial__arrow"
@@ -308,6 +392,20 @@ export default function Reports() {
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr>
+                        <td data-label={t("ledger.fuel")}>{t("common.total")}</td>
+                        <td data-label={t("shifts.litres")} className="num mono">
+                          {money(report.litres)}
+                        </td>
+                        <td data-label={t("common.amount")} className="num mono">
+                          {money(report.sales)}
+                        </td>
+                        <td data-label={t("reports.share")} className="num mono">
+                          100%
+                        </td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </section>
               </>

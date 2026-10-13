@@ -524,3 +524,43 @@ a.customer-row:active {
     font-size: 14px;
   }
 }
+
+/* ---- Prompt 10: sticky credit toolbar, amber balances, customer hero ---- */
+.credit-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: var(--topbar-bg);
+  padding: 6px 0 10px;
+}
+.customer-balance.neg {
+  color: var(--amber);
+}
+.customer-hero__id {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.customer-hero__id .customer-avatar {
+  flex: none;
+}
+.customer-hero__phone {
+  display: block;
+  color: var(--accent);
+  font-weight: 650;
+  min-height: var(--tap-min, 44px);
+  line-height: var(--tap-min, 44px);
+}
+.credit-sort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.credit-activity-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}

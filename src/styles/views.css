@@ -822,3 +822,201 @@
   opacity: 0.45;
   border-style: dashed;
 }
+
+/* ---- Prompt 9: ground-stock cards, level bars, FAB ---- */
+.tank-level {
+  height: 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-sunken);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.tank-level--lg {
+  height: 12px;
+}
+.tank-level__bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width var(--duration-fill) var(--ease-out);
+}
+.tank-card__status {
+  display: inline-flex;
+  margin-top: 6px;
+}
+.stock-low-banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: var(--tap-min, 44px);
+  padding: 10px 14px;
+  border-radius: var(--radius-card, 20px);
+  border: 1px solid var(--amber);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  text-align: left;
+}
+.stock-low-banner:active {
+  transform: scale(0.99);
+}
+.stock-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--tabbar-height, 64px) + 18px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--cta-bg, var(--ink-strong));
+  color: var(--cta-ink, var(--surface));
+  box-shadow: var(--shadow-sticky, var(--shadow-md));
+}
+.stock-fab:active {
+  transform: scale(0.94);
+}
+.stock-fab-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.stock-fab-tile {
+  min-height: 96px;
+  border-radius: var(--radius-card, 20px);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  font-weight: 700;
+  padding: 16px;
+}
+.stock-fab-tile:active {
+  transform: scale(0.97);
+}
+.stock-sheet-submit {
+  width: 100%;
+  margin-top: 12px;
+  min-height: var(--tap-min, 44px);
+}
+.stock-entry-group {
+  padding: 0 8px 8px;
+}
+.stock-entry-group__title {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 12px 8px 4px;
+}
+@media (min-width: 1024px) {
+  .stock-fab {
+    bottom: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tank-level__bar {
+    transition: none;
+  }
+  .stock-fab:active,
+  .stock-fab-tile:active,
+  .stock-low-banner:active {
+    transform: none;
+  }
+}
+
+/* ---- Prompt 11: ledger weeks, receipt sections, report tiles ---- */
+.ledger-month-btn {
+  flex: 1;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  min-height: var(--tap-min, 44px);
+}
+.ledger-week {
+  display: grid;
+  gap: 10px;
+}
+.ledger-week__title {
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+.ledger-kv {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.ledger-kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ledger-kv dt {
+  color: var(--muted);
+}
+.ledger-kv dd {
+  margin: 0;
+}
+.ledger-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.ledger-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.report-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.report-tile {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card, 20px);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: var(--shadow-card, var(--shadow-sm));
+}
+.report-tile span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.report-tile:active {
+  transform: scale(0.98);
+}
+.report-tile--action {
+  cursor: default;
+}
+.report-tile--action .tool-btn {
+  justify-self: start;
+  margin-top: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .report-tile:active {
+    transform: none;
+  }
+}
+
+/* ---- Prompt 12: setup, staff, danger zone ---- */
+.danger-zone {
+  border: 1.5px solid var(--rust) !important;
+}
+.pump-card__toggle {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: var(--tap-min, 44px);
+  color: inherit;
+}

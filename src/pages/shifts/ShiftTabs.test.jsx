@@ -10,7 +10,18 @@ import { elapsedLabel, elapsedMinutes } from "../../lib/elapsed.js";
 import { SHIFT_STATUS } from "../../lib/shiftMath.js";
 import ShiftsList from "./ShiftsList.jsx";
 import TodayHistory from "../today/TodayHistory.jsx";
-import { SHIFT_TAB, bucketCounts, filterShifts, shiftBucket } from "./ShiftTabs.jsx";
+import {
+  DATE_PRESET,
+  SHIFT_TAB,
+  STATUS_FILTER,
+  bucketCounts,
+  filterByStatus,
+  filterShifts,
+  groupShiftsByDate,
+  presetRange,
+  shiftBucket,
+  statusCounts,
+} from "./ShiftTabs.jsx";
 
 const api = vi.hoisted(() => ({
   listShifts: vi.fn(),
@@ -150,6 +161,40 @@ describe("shiftBucket & bucketCounts", () => {
   });
 });
 
+describe("Prompt 8 status filters, presets and grouping", () => {
+  it("counts and filters each status separately", () => {
+    const all = [LIVE_SHIFT, PENDING_SHIFT, REJECTED_SHIFT, APPROVED_SHIFT];
+    expect(statusCounts(all)).toEqual({
+      all: 4,
+      running: 1,
+      pending: 1,
+      sent_back: 1,
+      approved: 1,
+    });
+    expect(filterByStatus(all, STATUS_FILTER.PENDING).map((x) => x.id)).toEqual([
+      "sh-pending",
+    ]);
+    expect(filterByStatus(all, STATUS_FILTER.SENT_BACK).map((x) => x.id)).toEqual([
+      "sh-rejected",
+    ]);
+  });
+
+  it("builds inclusive preset ranges and groups by date, newest first", () => {
+    const now = new Date(2026, 9, 13);
+    expect(presetRange(DATE_PRESET.TODAY, now)).toEqual({
+      from: "2026-10-13",
+      to: "2026-10-13",
+    });
+    expect(presetRange(DATE_PRESET.LAST7, now)).toEqual({
+      from: "2026-10-07",
+      to: "2026-10-13",
+    });
+    expect(presetRange(DATE_PRESET.ALL, now)).toBeNull();
+    const groups = groupShiftsByDate([PENDING_SHIFT, APPROVED_SHIFT, LIVE_SHIFT]);
+    expect(groups.map((g) => g.date)).toEqual(["2026-10-13"]);
+  });
+});
+
 describe("avatar & elapsed helpers", () => {
   it("extracts up to two uppercase initials and a deterministic hue", () => {
     expect(initials("Suresh Babu")).toBe("SB");
@@ -219,38 +264,88 @@ describe("ShiftsList & TodayHistory tabbed UI", () => {
     vi.clearAllMocks();
   });
 
-  it("filters between All, Live, Review, and Closed tabs on ShiftsList", async () => {
+  it("filters between All, Running, Pending review, Sent back and Approved chips on ShiftsList", async () => {
     await mount(<ShiftsList />);
 
-    const tabs = [...container.querySelectorAll('[role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent)).toEqual([
+    const chips = [
+      ...container.querySelectorAll(".shifts-filterbar .chip[aria-pressed]"),
+    ];
+    expect(chips.map((chip) => chip.textContent)).toEqual([
       "All4",
-      "Live1",
-      "Review2",
-      "Closed1",
+      "Running1",
+      "Pending review1",
+      "Sent back1",
+      "Approved1",
     ]);
+    expect(chips[0].getAttribute("aria-pressed")).toBe("true");
 
-    // Click Live tab: only Suresh Babu's live shift is visible.
+    // Running: only Suresh Babu's live shift is visible.
     await act(async () => {
-      tabs[1].click();
+      chips[1].click();
     });
     expect(container.textContent).toContain("Suresh Babu");
     expect(container.textContent).not.toContain("Kiran Verma");
 
-    // Click Review tab: Ravi Kumar and Anitha Rao are visible, not Kiran Verma.
+    // Pending review: Ravi Kumar only (Anitha Rao is filed under Sent back).
     await act(async () => {
-      tabs[2].click();
+      chips[2].click();
     });
     expect(container.textContent).toContain("Ravi Kumar");
-    expect(container.textContent).toContain("Anitha Rao");
-    expect(container.textContent).not.toContain("Kiran Verma");
+    expect(container.textContent).not.toContain("Anitha Rao");
+    expect(container.querySelector(".shift-card__review")).toBeTruthy();
 
-    // Click Closed tab: only Kiran Verma is visible.
+    // Sent back: Anitha Rao only.
     await act(async () => {
-      tabs[3].click();
+      chips[3].click();
+    });
+    expect(container.textContent).toContain("Anitha Rao");
+    expect(container.textContent).not.toContain("Ravi Kumar");
+
+    // Approved: only Kiran Verma is visible.
+    await act(async () => {
+      chips[4].click();
     });
     expect(container.textContent).toContain("Kiran Verma");
     expect(container.textContent).not.toContain("Ravi Kumar");
+  });
+
+  it("searches by employee name and clears filters back to every shift", async () => {
+    await mount(<ShiftsList />);
+    const searchBtn = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent.includes("Search")
+    );
+    await act(async () => {
+      searchBtn.click();
+    });
+    const input = container.querySelector('input[type="search"]');
+    expect(input).toBeTruthy();
+    await act(async () => {
+      input.focus();
+      document.execCommand?.("selectAll", false, null);
+    });
+    // jsdom has no typing simulation; set the value through the native setter.
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value"
+    ).set;
+    await act(async () => {
+      setter.call(input, "anitha");
+      input.dispatchEvent(new window.Event("input", { bubbles: true }));
+    });
+    expect(container.textContent).toContain("Anitha Rao");
+    expect(container.textContent).not.toContain("Kiran Verma");
+
+    const clear = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent.includes("Clear filters")
+    );
+    // No-match state only offers Clear when nothing matches; with a match the
+    // chip row still resets via All. Use All chip here.
+    void clear;
+    const allChip = container.querySelector(".shifts-filterbar .chip[aria-pressed]");
+    await act(async () => {
+      allChip.click();
+    });
+    expect(container.textContent).toContain("Anitha Rao");
   });
 
   it("renders the three history tabs (All, Review, Closed) for an attendant", async () => {

@@ -147,17 +147,26 @@ export default function TodayHistory() {
                 <p className="small muted">{tabEmpty.body}</p>
               </div>
             ) : (
-              <div className="shift-feed">
-                {visible.map((shift) => (
-                  <div key={shift.id} className="row-enter">
-                    <ShiftCard
-                      shift={shift}
-                      to={`/today/history/${shift.id}`}
-                      title={formatDate(shift.date)}
-                    />
-                  </div>
+              <>
+                {[...new Set(visible.map((x) => x.date))].map((date) => (
+                  <section key={date} className="shift-date-group">
+                    <h2 className="shift-date-group__title">{formatDate(date)}</h2>
+                    <div className="shift-feed">
+                      {visible
+                        .filter((x) => x.date === date)
+                        .map((shift) => (
+                          <div key={shift.id} className="row-enter">
+                            <ShiftCard
+                              shift={shift}
+                              to={`/today/history/${shift.id}`}
+                              title={formatDate(shift.date)}
+                            />
+                          </div>
+                        ))}
+                    </div>
+                  </section>
                 ))}
-              </div>
+              </>
             )}
           </>
         )}

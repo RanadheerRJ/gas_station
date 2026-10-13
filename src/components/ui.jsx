@@ -2,9 +2,11 @@ import { useState } from "react";
 import { NumberRoll } from "./motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
-export function Panel({ title, actions, children, flush = false, note }) {
+export function Panel({ title, actions, children, flush = false, note, className = "" }) {
   return (
-    <section className={`panel${flush ? " flush" : ""}`}>
+    <section
+      className={`panel${flush ? " flush" : ""}${className ? ` ${className}` : ""}`}
+    >
       {(title || actions) && (
         <header>
           <div>

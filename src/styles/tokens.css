@@ -65,6 +65,10 @@
   --petrav-clock-ring: #0b5bc6;
   --petrav-clock-hour: #063b8f;
   --petrav-red: #e31b23;
+  --fuel-petrol-dot: #16a34a;
+  --fuel-diesel-dot: #2563eb;
+  --fuel-premium-dot: #d97706;
+  --fuel-cng-dot: #8b5cf6;
 
   /* The checkout button. Deliberately its own pair of tokens: it must stay
      legible and confident in both themes whatever happens to --accent.
@@ -216,6 +220,10 @@
   --fuel-premium-soft: #3a2a14;
   --fuel-cng: #c4b0f5;
   --fuel-cng-soft: #2c2450;
+  --fuel-petrol-dot: #6ce9a6;
+  --fuel-diesel-dot: #93b4ff;
+  --fuel-premium-dot: #fdba60;
+  --fuel-cng-dot: #c4b0f5;
 
   /* Dark-mode brand artwork: the pump brightens so it holds its shape on a
      dark surface, and the secondary strokes lift with it. Not a simple

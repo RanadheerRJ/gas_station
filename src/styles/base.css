@@ -69,3 +69,31 @@ th.num {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* Prompt 13: every interactive element shows the shared focus ring,
+   including links and the <summary> toggles on collapsible cards. */
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* Long Hindi/Telugu labels must never stretch a segmented control or a
+   chip past the phone: both scroll horizontally instead of wrapping. */
+.segmented {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.segmented::-webkit-scrollbar {
+  display: none;
+}
+.segmented > button {
+  white-space: nowrap;
+  min-height: var(--tap-min);
+}
+.segmented {
+  grid-auto-columns: minmax(max-content, 1fr);
+}

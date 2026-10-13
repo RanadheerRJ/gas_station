@@ -7,6 +7,7 @@ export default function DangerZonePanel({ station, busy, onReset }) {
   const { t } = useLanguage();
   return (
     <Panel
+      className="danger-zone"
       title={
         <span
           className="row"

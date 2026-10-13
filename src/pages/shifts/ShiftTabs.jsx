@@ -66,6 +66,108 @@ function startedAt(shift) {
   return Number.isFinite(time?.getTime?.()) ? time.getTime() : 0;
 }
 
+/* ---- Prompt 8: per-status filters + date presets (ShiftsList) ---- */
+
+export const STATUS_FILTER = {
+  ALL: "all",
+  RUNNING: "running",
+  PENDING: "pending",
+  SENT_BACK: "sent_back",
+  APPROVED: "approved",
+};
+
+export function statusFilterOf(shift) {
+  const s = shift?.status;
+  if (s === SHIFT_STATUS.OPEN) return STATUS_FILTER.RUNNING;
+  if (s === SHIFT_STATUS.PENDING_REVIEW) return STATUS_FILTER.PENDING;
+  if (s === SHIFT_STATUS.REJECTED) return STATUS_FILTER.SENT_BACK;
+  if (s === SHIFT_STATUS.APPROVED) return STATUS_FILTER.APPROVED;
+  return STATUS_FILTER.PENDING;
+}
+
+export function statusCounts(shifts) {
+  const counts = { all: 0, running: 0, pending: 0, sent_back: 0, approved: 0 };
+  (shifts || []).forEach((shift) => {
+    counts.all += 1;
+    counts[statusFilterOf(shift)] += 1;
+  });
+  return counts;
+}
+
+export function filterByStatus(shifts, filter) {
+  const rows = [...(shifts || [])].sort((a, b) => startedAt(b) - startedAt(a));
+  if (!filter || filter === STATUS_FILTER.ALL) return rows;
+  return rows.filter((shift) => statusFilterOf(shift) === filter);
+}
+
+export function statusFilterDefs(t, counts) {
+  return [
+    { id: STATUS_FILTER.ALL, label: t("shifts.tabAll"), count: counts.all },
+    { id: STATUS_FILTER.RUNNING, label: t("shifts.tabRunning"), count: counts.running },
+    {
+      id: STATUS_FILTER.PENDING,
+      label: t("shifts.pendingReview"),
+      count: counts.pending,
+    },
+    { id: STATUS_FILTER.SENT_BACK, label: t("shifts.sentBack"), count: counts.sent_back },
+    { id: STATUS_FILTER.APPROVED, label: t("shifts.approved"), count: counts.approved },
+  ];
+}
+
+export const DATE_PRESET = {
+  ALL: "all",
+  TODAY: "today",
+  YESTERDAY: "yesterday",
+  LAST7: "last7",
+  MONTH: "month",
+  CUSTOM: "custom",
+};
+
+const isoOf = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** Inclusive {from,to} ISO range for a preset; null = no date filtering. */
+export function presetRange(preset, now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = 86400000;
+  switch (preset) {
+    case DATE_PRESET.TODAY:
+      return { from: isoOf(today), to: isoOf(today) };
+    case DATE_PRESET.YESTERDAY: {
+      const y = new Date(today.getTime() - day);
+      return { from: isoOf(y), to: isoOf(y) };
+    }
+    case DATE_PRESET.LAST7:
+      return { from: isoOf(new Date(today.getTime() - 6 * day)), to: isoOf(today) };
+    case DATE_PRESET.MONTH:
+      return {
+        from: isoOf(new Date(today.getFullYear(), today.getMonth(), 1)),
+        to: isoOf(today),
+      };
+    default:
+      return null;
+  }
+}
+
+export function shiftInRange(shift, range) {
+  if (!range) return true;
+  const date = shift?.date || isoOf(new Date(startedAt(shift)));
+  return date >= range.from && date <= range.to;
+}
+
+/** Group shifts (already sorted newest-first) under their shift date, newest date first. */
+export function groupShiftsByDate(shifts) {
+  const groups = new Map();
+  for (const shift of shifts || []) {
+    const key = shift?.date || "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(shift);
+  }
+  return [...groups.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([date, items]) => ({ date, items }));
+}
+
 /**
  * The tab row, with counts.
  *

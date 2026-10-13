@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import { Notice } from "../../components/ui.jsx";
+import { Notice, Segmented } from "../../components/ui.jsx";
+import { Chip, ChipRow } from "../../components/Chip.jsx";
+import Skeleton from "../../components/Skeleton.jsx";
+import EmptyState from "../../components/EmptyState.jsx";
+import { CreditIcon } from "../../components/icons.jsx";
 import { LoadingPanels, NumberRoll } from "../../components/motion.jsx";
 import { ChevronIcon, CloseIcon, PlusIcon } from "../../components/icons.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
@@ -20,7 +24,7 @@ import {
 } from "../../lib/api";
 import { formatDayLabel, money } from "../../lib/format";
 import { creditReport } from "../../lib/export.js";
-import { avatarHue } from "../../lib/avatar.js";
+import { avatarHue, initials } from "../../lib/avatar.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 
 export { avatarHue };
@@ -190,6 +194,9 @@ export default function CreditList() {
       all: active.length,
       outstanding: active.filter((c) => Number(c.outstandingBalance || 0) > 0).length,
       settled: active.filter((c) => Number(c.outstandingBalance || 0) <= 0).length,
+      overdue: active.filter(
+        (c) => Number(c.outstandingBalance || 0) > 0 && accountAge(c).tone === "late"
+      ).length,
       archived: customers.filter((c) => c.archivedAt).length,
     };
   }, [customers]);
@@ -202,6 +209,10 @@ export default function CreditList() {
       return (
         ((filter === "all" && !archived) ||
           (filter === "outstanding" && !archived && bal > 0) ||
+          (filter === "overdue" &&
+            !archived &&
+            bal > 0 &&
+            accountAge(c).tone === "late") ||
           (filter === "settled" && !archived && bal <= 0) ||
           (filter === "archived" && archived)) &&
         (!q || `${c.name} ${c.phone}`.toLowerCase().includes(q))
@@ -284,7 +295,7 @@ export default function CreditList() {
         {(error || runError) && <Notice kind="error">{error || runError}</Notice>}
         {addedNotice && <Notice kind="attention">{addedNotice}</Notice>}
         {loading ? (
-          <LoadingPanels count={3} lines={2} label={t("common.loading")} />
+          <Skeleton shape="row" count={4} />
         ) : (
           <>
             {!attendant && <CreditHero insights={insights} t={t} />}
@@ -312,70 +323,55 @@ export default function CreditList() {
               </div>
               {!attendant && (
                 <>
-                  <div
-                    className="filter-chips credit-chips"
-                    role="group"
-                    aria-label={t("credit.filterStatus")}
-                  >
+                  <ChipRow label={t("credit.filterStatus")}>
                     {[
                       ["all", "credit.all"],
                       ["outstanding", "credit.outstanding"],
+                      ["overdue", "credit.overdue"],
                       ["settled", "credit.settled"],
                       ["archived", "credit.archived"],
                     ].map(([id, key]) => (
-                      <button
+                      <Chip
                         key={id}
-                        type="button"
-                        className={filter === id ? "active" : ""}
-                        aria-pressed={filter === id}
+                        label={t(key)}
+                        count={counts[id]}
+                        selected={filter === id}
                         onClick={() => setFilter(id)}
-                      >
-                        {t(key)}
-                        <span className="credit-chip__count">{counts[id]}</span>
-                      </button>
+                      />
                     ))}
+                  </ChipRow>
+                  <div className="credit-sort">
+                    <span className="small muted">{t("credit.sortBy")}</span>
+                    <Segmented
+                      value={sort}
+                      onChange={setSort}
+                      options={[
+                        { value: "balance", label: t("credit.sortBalance") },
+                        { value: "recent", label: t("credit.sortRecent") },
+                        { value: "name", label: t("credit.sortName") },
+                      ]}
+                    />
                   </div>
-                  <label className="field credit-sort">
-                    <span>{t("credit.sortBy")}</span>
-                    <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                      <option value="balance">{t("credit.sortBalance")}</option>
-                      <option value="recent">{t("credit.sortRecent")}</option>
-                      <option value="name">{t("credit.sortName")}</option>
-                    </select>
-                  </label>
                 </>
               )}
             </div>
 
             {visible.length === 0 ? (
-              <div className="empty-card">
-                <h2>
-                  {searching
+              <EmptyState
+                icon={CreditIcon}
+                headline={
+                  searching
                     ? t("credit.searchEmpty", { query: search.trim() })
                     : filter === "archived"
                       ? t("credit.archivedEmpty")
-                      : t("credit.empty")}
-                </h2>
-                <p>{searching ? t("credit.searchEmptyHint") : t("credit.emptyHint")}</p>
-                {searching ? (
-                  <button
-                    type="button"
-                    className="tool-btn"
-                    onClick={() => setSearch("")}
-                  >
-                    {t("credit.clearSearch")}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="tool-btn tool-btn--primary"
-                    onClick={() => setAddOpen(true)}
-                  >
-                    <PlusIcon size={16} />
-                    {t("credit.addCustomer")}
-                  </button>
-                )}
-              </div>
+                      : t("credit.empty")
+                }
+                body={searching ? t("credit.searchEmptyHint") : t("credit.emptyHint")}
+                actionLabel={
+                  searching ? t("credit.clearSearch") : t("credit.addCustomer")
+                }
+                onAction={() => (searching ? setSearch("") : setAddOpen(true))}
+              />
             ) : (
               <div className="customer-list">
                 {visible.map((c) => (
@@ -394,6 +390,17 @@ export default function CreditList() {
           </>
         )}
       </div>
+      {!loading && (
+        <button
+          type="button"
+          className="stock-fab"
+          aria-label={t("credit.addCustomer")}
+          aria-haspopup="dialog"
+          onClick={() => setAddOpen(true)}
+        >
+          <PlusIcon size={22} />
+        </button>
+      )}
       <Sheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
@@ -510,7 +517,7 @@ function CustomerRow({ customer, attendant, busy, to, onRestore, t }) {
         style={{ "--avatar-hue": avatarHue(customer.name) }}
         aria-hidden="true"
       >
-        {customer.name?.trim()?.[0]?.toUpperCase() || "?"}
+        {initials(customer.name || "")}
       </span>
       <span className="customer-main">
         <b>{customer.name}</b>

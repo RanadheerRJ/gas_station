@@ -6,7 +6,11 @@ import ResetPinPanel from "../components/ResetPinPanel.jsx";
 import Sheet from "../components/Sheet.jsx";
 import { listStaff, readableError } from "../lib/api";
 import { formatStamp } from "../lib/format";
-import { LoadingPanels } from "../components/motion.jsx";
+import { Chip, ChipRow } from "../components/Chip.jsx";
+import Skeleton from "../components/Skeleton.jsx";
+import EmptyState from "../components/EmptyState.jsx";
+import ListRow from "../components/ListRow.jsx";
+import { PeopleIcon } from "../components/icons.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
 /**
@@ -21,6 +25,9 @@ export default function ManagerStaff() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(null);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -47,71 +54,92 @@ export default function ManagerStaff() {
         {error && <Notice kind="error">{error}</Notice>}
 
         {loading ? (
-          <LoadingPanels count={2} lines={3} label={t("common.loading")} />
+          <Skeleton shape="row" count={3} />
         ) : staff.length === 0 ? (
-          <div className="empty-card">
-            <h2>{t("team.none")}</h2>
-          </div>
+          <EmptyState icon={PeopleIcon} headline={t("team.none")} />
         ) : (
-          <section className="card card--flush">
-            <div className="card__head">
-              <h2>{t("staff.existing")}</h2>
-            </div>
-            <table className="responsive-table">
-              <thead>
-                <tr>
-                  <th>{t("common.name")}</th>
-                  <th>{t("staff.username")}</th>
-                  <th>{t("common.phone")}</th>
-                  <th>{t("staff.role")}</th>
-                  <th>{t("staff.created")}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((member) => {
-                  const self = member.uid === profile.uid;
-                  return (
-                    <tr key={member.uid}>
-                      <td data-label={t("common.name")} style={{ fontWeight: 500 }}>
-                        {member.name}
-                        {self && (
-                          <span className="tag" style={{ marginLeft: 8 }}>
-                            {t("team.you")}
-                          </span>
-                        )}
-                      </td>
-                      <td data-label={t("staff.username")} className="mono">
-                        {member.username}
-                      </td>
-                      <td data-label={t("common.phone")} className="mono small">
-                        {member.phone}
-                      </td>
-                      <td data-label={t("staff.role")}>{t(`role.${member.role}`)}</td>
-                      <td data-label={t("staff.created")} className="small muted">
-                        {formatStamp(member.createdAt)}
-                      </td>
-                      <td data-label={t("common.actions")} className="num">
-                        {/* Your own PIN is changed from the account panel —
-                            with the current PIN, not over it. */}
-                        {!self && (
-                          <button
-                            type="button"
-                            className="quiet"
-                            onClick={() => setResetting(member)}
-                          >
-                            {t("staff.resetPin")}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </section>
+          <>
+            <input
+              type="search"
+              className="shifts-search"
+              aria-label={t("staff.searchStaff")}
+              placeholder={t("staff.searchStaff")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <ChipRow label={t("staff.role")}>
+              {[
+                ["all", t("staff.allRoles")],
+                ["manager", t("role.manager")],
+                ["attendant", t("role.attendant")],
+              ].map(([id, label]) => (
+                <Chip
+                  key={id}
+                  label={label}
+                  count={
+                    id === "all"
+                      ? staff.length
+                      : staff.filter((m) => m.role === id).length
+                  }
+                  selected={roleFilter === id}
+                  onClick={() => setRoleFilter(id)}
+                />
+              ))}
+            </ChipRow>
+            <section className="card">
+              {staff
+                .filter(
+                  (m) =>
+                    (roleFilter === "all" || m.role === roleFilter) &&
+                    (!search.trim() ||
+                      `${m.name} ${m.phone} ${m.username}`
+                        .toLowerCase()
+                        .includes(search.trim().toLowerCase()))
+                )
+                .map((member) => (
+                  <ListRow
+                    key={member.uid}
+                    avatar={member.name}
+                    title={
+                      member.uid === profile.uid
+                        ? `${member.name} (${t("team.you")})`
+                        : member.name
+                    }
+                    subtitle={`${t(`role.${member.role}`)} · ${member.phone || ""}`}
+                    trailing={
+                      <span className="small muted">{formatStamp(member.createdAt)}</span>
+                    }
+                    onClick={() => member.uid !== profile.uid && setSelected(member)}
+                  />
+                ))}
+            </section>
+          </>
         )}
       </div>
+
+      <Sheet
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected?.name || ""}
+      >
+        {selected && (
+          <div className="stack">
+            <p className="small muted">
+              {t(`role.${selected.role}`)} · {selected.phone || ""} · @{selected.username}
+            </p>
+            <button
+              type="button"
+              className="cta"
+              onClick={() => {
+                setResetting(selected);
+                setSelected(null);
+              }}
+            >
+              {t("staff.resetPin")}
+            </button>
+          </div>
+        )}
+      </Sheet>
 
       {/* ---- reset a colleague's PIN ---- */}
       <Sheet

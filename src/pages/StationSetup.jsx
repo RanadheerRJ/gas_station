@@ -1,5 +1,8 @@
 import { ScreenHeader } from "../components/Layout.jsx";
-import { Notice } from "../components/ui";
+import { useState } from "react";
+import { Field, Notice, Segmented } from "../components/ui";
+import Sheet from "../components/Sheet.jsx";
+import { PlusIcon } from "../components/icons.jsx";
 import StationFilter from "../components/StationFilter";
 import ResetStationSheet from "../components/ResetStationSheet.jsx";
 import { LoadingPanels } from "../components/motion.jsx";
@@ -17,6 +20,8 @@ import DangerZonePanel from "./setup/DangerZonePanel.jsx";
  */
 export default function StationSetup() {
   const { t, tn } = useLanguage();
+  const [tab, setTab] = useState("pumps");
+  const [pumpSheet, setPumpSheet] = useState(false);
   const {
     stations,
     station,
@@ -78,44 +83,99 @@ export default function StationSetup() {
       <div className="content stack">
         {error && <Notice kind="error">{error}</Notice>}
 
-        <PricesPanel
-          activeFuels={activeFuels}
-          active={active}
-          priceRecords={priceRecords}
-          rateDraft={rateDraft}
-          setRateDraft={setRateDraft}
-          busy={busy}
-          onUpdatePrice={updatePrice}
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "pumps", label: t("setup.tabPumps") },
+            { value: "prices", label: t("setup.tabPrices") },
+            { value: "readings", label: t("setup.howReadingsFlow") },
+            { value: "danger", label: t("station.resetDangerZone") },
+          ]}
         />
 
-        <EquipmentPanel
-          loading={loading}
-          pumps={pumps}
-          nozzles={nozzles}
-          tanks={tanks}
-          active={active}
-          busy={busy}
-          pumpName={pumpName}
-          setPumpName={setPumpName}
-          onSubmitPump={submitPump}
-          nozzleFor={nozzleFor}
-          nozzleForm={nozzleForm}
-          setNozzleForm={setNozzleForm}
-          onToggleNozzleForm={toggleNozzleForm}
-          onSubmitNozzle={submitNozzle}
-          onTogglePumpState={togglePumpState}
-          onToggleNozzleState={toggleNozzleState}
-          onAssignTank={assignTank}
-        />
+        {tab === "prices" && (
+          <PricesPanel
+            activeFuels={activeFuels}
+            active={active}
+            priceRecords={priceRecords}
+            rateDraft={rateDraft}
+            setRateDraft={setRateDraft}
+            busy={busy}
+            onUpdatePrice={updatePrice}
+          />
+        )}
 
-        <ReadingsFlowPanel />
+        {tab === "pumps" && (
+          <EquipmentPanel
+            loading={loading}
+            pumps={pumps}
+            nozzles={nozzles}
+            tanks={tanks}
+            active={active}
+            busy={busy}
+            pumpName={pumpName}
+            setPumpName={setPumpName}
+            onSubmitPump={submitPump}
+            nozzleFor={nozzleFor}
+            nozzleForm={nozzleForm}
+            setNozzleForm={setNozzleForm}
+            onToggleNozzleForm={toggleNozzleForm}
+            onSubmitNozzle={submitNozzle}
+            onTogglePumpState={togglePumpState}
+            onToggleNozzleState={toggleNozzleState}
+            onAssignTank={assignTank}
+          />
+        )}
 
-        <DangerZonePanel
-          station={station}
-          busy={busy}
-          onReset={() => setResetting(station)}
-        />
+        {tab === "readings" && <ReadingsFlowPanel />}
+
+        {tab === "danger" && (
+          <DangerZonePanel
+            station={station}
+            busy={busy}
+            onReset={() => setResetting(station)}
+          />
+        )}
       </div>
+
+      {tab === "pumps" && (
+        <button
+          type="button"
+          className="stock-fab"
+          aria-label={t("setup.addPump")}
+          aria-haspopup="dialog"
+          onClick={() => setPumpSheet(true)}
+        >
+          <PlusIcon size={22} />
+        </button>
+      )}
+      <Sheet
+        open={pumpSheet}
+        onClose={() => setPumpSheet(false)}
+        title={t("setup.addAPump")}
+      >
+        <div className="stack">
+          <Field label={t("setup.addAPump")}>
+            <input
+              value={pumpName}
+              onChange={(e) => setPumpName(e.target.value)}
+              placeholder="Pump 3"
+            />
+          </Field>
+          <button
+            type="button"
+            className="cta"
+            disabled={busy || !pumpName.trim()}
+            onClick={async () => {
+              await submitPump();
+              setPumpSheet(false);
+            }}
+          >
+            {t("setup.addPump")}
+          </button>
+        </div>
+      </Sheet>
 
       <ResetStationSheet
         open={!!resetting}
