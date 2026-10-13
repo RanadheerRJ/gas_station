@@ -70,7 +70,7 @@ async function bootUnderBase(path, profile) {
     );
   });
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (container.querySelector(".login-card, .screen-head h1, .screen-head h2")) return;
+    if (container.querySelector(".login, .screen-head h1, .screen-head h2")) return;
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });

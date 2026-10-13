@@ -1,8 +1,9 @@
 import { Navigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import StepProgress from "../../components/StepProgress.jsx";
-import { ActionBar, Notice } from "../../components/ui.jsx";
-import { LoadingPanels } from "../../components/motion.jsx";
+import { Notice } from "../../components/ui.jsx";
+import StickyCta from "../../components/StickyCta.jsx";
+import Skeleton from "../../components/Skeleton.jsx";
 import { formatStamp } from "../../lib/format";
 import { SHIFT_STATUS, validateClosing } from "../../lib/shiftMath";
 import { useLanguage } from "../../state/LanguageContext.jsx";
@@ -73,7 +74,7 @@ export default function CloseShift() {
       <>
         <ScreenHeader title={t("shifts.closeShift")} back={fallbackBack} />
         <div className="content">
-          <LoadingPanels count={2} lines={4} label={t("common.loading")} />
+          <Skeleton shape="card" count={3} />
         </div>
       </>
     );
@@ -212,7 +213,7 @@ export default function CloseShift() {
 
         {problems.length > 0 && (
           <Notice kind="error">
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <ul className="problem-list">
               {problems.map((problem, index) => (
                 <li key={index}>{problem}</li>
               ))}
@@ -220,19 +221,30 @@ export default function CloseShift() {
           </Notice>
         )}
 
-        <ActionBar>
-          {/* Same explicit target as the back arrow: from a deep link or a
-              refresh there is no in-app history, and navigate(-1) would walk
-              straight out of the app. */}
-          <button type="button" disabled={busy} onClick={() => navigate(back)}>
-            {t("common.cancel")}
-          </button>
-          <button type="button" className="cta" disabled={busy} onClick={submit}>
-            {busy
+        <StickyCta
+          summary={shift.employeeName}
+          hint={isCorrection ? undefined : t("close.sendHint")}
+          secondary={
+            /* Same explicit target as the back arrow: from a deep link or a
+               refresh there is no in-app history, and navigate(-1) would walk
+               straight out of the app. */
+            <button
+              type="button"
+              className="quiet"
+              disabled={busy}
+              onClick={() => navigate(back)}
+            >
+              {t("common.cancel")}
+            </button>
+          }
+          ctaLabel={
+            busy
               ? t(isCorrection ? "shifts.resubmitting" : "shifts.submitting")
-              : t(isCorrection ? "shifts.resubmitForReview" : "shifts.closeAndSend")}
-          </button>
-        </ActionBar>
+              : t(isCorrection ? "shifts.resubmitForReview" : "shifts.closeAndSend")
+          }
+          onCta={submit}
+          busy={busy}
+        />
       </div>
     </>
   );

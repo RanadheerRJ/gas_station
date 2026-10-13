@@ -124,6 +124,9 @@ const en = {
   "login.developerNote":
     "Developer accounts are created in Supabase Auth, then assigned the admin profile role as described in the README.",
 
+  "login.welcome": "Welcome back",
+  "login.needUsername": "Enter your username.",
+  "login.pinDigit": "PIN digit {index}",
   /* ---- daily ledger ---- */
   "ledger.title": "Daily ledger",
   "ledger.subtitle": "totalled from closed shifts",
@@ -198,6 +201,13 @@ const en = {
   /* ---- shifts ---- */
   "shifts.title": "Shifts",
   "shifts.pumpsFree": "{free} pumps free · {busy} busy",
+  "common.all": "All",
+  "common.search": "Search",
+  "shifts.whoIsWorking": "Who is working this shift?",
+  "shifts.yourself": "You",
+  "shifts.selectAllFree": "Select all free",
+  "shifts.filterFuel": "Filter by fuel",
+  "setup.goSetup": "Set up pumps",
   "shifts.startShift": "Start shift",
   "shifts.forecourt": "Forecourt right now",
   "shifts.forecourtNote": "A pump is busy while any of its nozzles is in an open shift.",
@@ -618,6 +628,7 @@ const en = {
     "{count} shifts awaiting your sign-off. Open a station’s shift register to review the figures, adjust expenses or testing, and approve.",
   "owner.pendingNoticeOne":
     "{count} shift awaiting your sign-off. Open a station’s shift register to review the figures, adjust expenses or testing, and approve.",
+  "owner.reviewShifts": "Review shifts",
   "owner.stations": "Stations",
   "owner.addStation": "Add station",
   "owner.stationName": "Station name",
@@ -850,10 +861,15 @@ const en = {
   "close.paymentsHelp": "Type how much you collected in each way.",
   "close.draftKept": "Nothing is lost — what you typed stays saved on this phone.",
   "close.edited": "Edited",
+  "close.sendHint": "Goes to the owner for review once submitted",
   "close.fixAndResend": "Fix the flagged figures and send it again.",
   "today.runningSince": "Running since {time}",
   "today.continueShift": "Continue shift",
   "today.sentBackTitle": "Shift sent back",
+  "common.refresh": "Refresh",
+  "today.availableNozzles": "Available nozzles",
+  "today.noHistoryTitle": "No shifts yet",
+  "today.noHistoryBody": "Your completed shifts will appear here.",
   "today.recentShifts": "Your recent shifts",
   "today.seeAll": "See all",
   "today.sentForReview": "Sent for review",
@@ -877,5 +893,35 @@ const en = {
   "shifts.emptyReviewTitle": "All caught up",
   "shifts.emptyReviewBody": "Every closed shift has been reviewed and signed off.",
   "shifts.emptyClosedBody": "Approved shifts will be filed here once signed off.",
+
+  /* ---- app shell: station switcher, More sheet ---- */
+  "chrome.switchStation": "Switch station",
+  "more.places": "Places",
+
+  /* ---- dev-only component kit (/__kit) ---- */
+  "kit.title": "Component kit",
+  "kit.devOnly": "Dev-only preview — never included in a production build.",
+  "kit.buttons": "Buttons",
+  "kit.chips": "Chips",
+  "kit.cards": "Cards",
+  "kit.pressable": "Tappable card",
+  "kit.pressableHint": "The whole card is one tap target.",
+  "kit.sticky": "Sticky action bar",
+  "kit.stickySummary": "{count} selected",
+  "kit.stickyHint": "Pinned above the tab bar on phones.",
+  "kit.rows": "List rows",
+  "kit.skeletons": "Loading skeletons",
+  "kit.empty": "Empty state",
+  "kit.emptyTitle": "Nothing here yet",
+  "kit.emptyBody": "Start a shift and it will appear here.",
+  "kit.segmented": "Segmented control",
+  "kit.panels": "Panels and figures",
+  "kit.money": "Money figures",
+  "kit.notices": "Notices",
+  "kit.sheets": "Bottom sheet",
+  "kit.openSheet": "Open the demo sheet",
+  "kit.sheetBody":
+    "A sheet holds one quick action over the screen and dismisses back to where you were.",
+  "kit.steps": "Step progress",
 };
 export default en;

@@ -89,7 +89,7 @@ async function boot(route, profile) {
   // rather than relying on a fixed number of microtasks, so this remains a
   // useful smoke test if the split chunks or test runner get slower.
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (container.querySelector(".login-card, .screen-head h1, .screen-head h2")) {
+    if (container.querySelector(".login, .screen-head h1, .screen-head h2")) {
       return;
     }
     await act(async () => {
@@ -105,7 +105,7 @@ function expectScreen() {
 }
 
 function expectLogin() {
-  expect(container.querySelector(".login-card"), "login card rendered").toBeTruthy();
+  expect(container.querySelector(".login"), "login screen rendered").toBeTruthy();
 }
 
 afterEach(async () => {

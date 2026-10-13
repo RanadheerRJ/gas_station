@@ -141,11 +141,13 @@ describe("the header actions at the supported phone widths", () => {
       expect(child["max-width"]).toBe("100%");
 
       // A long label wraps inside the pill instead of overflowing it, and the
-      // pill keeps its tap height while it does.
+      // pill keeps its tap height while it does. The floor is the shared
+      // --tap-min token, asserted below to be the 44px minimum tap target.
       expect(resolve(".screen-head__actions .tool-btn", width)["white-space"]).toBe(
         "normal"
       );
-      expect(resolve(".tool-btn", width)["min-height"]).toBe("40px");
+      expect(resolve(".tool-btn", width)["min-height"]).toBe("var(--tap-min)");
+      expect(resolve(":root", width)["--tap-min"]).toBe("44px");
     });
   }
 
@@ -166,6 +168,6 @@ describe("the header actions at the supported phone widths", () => {
     expect(actions.width).toBeUndefined();
     expect(actions["margin-left"]).toBe("auto");
     expect(resolve(".screen-head", 1280).padding).toBe("20px var(--content-gutter) 6px");
-    expect(resolve(".screen-head h1", 1280)["font-size"]).toBe("22px");
+    expect(resolve(".screen-head h1", 1280)["font-size"]).toBe("28px");
   });
 });

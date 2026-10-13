@@ -61,7 +61,7 @@
   }
 
   .screen-head h1 {
-    font-size: 19.5px;
+    font-size: 24px;
   }
 
   /* The actions wrap onto their own line when the title needs the width. */
@@ -91,6 +91,37 @@
 
   .action-bar__spacer {
     height: calc(var(--actionbar-h) + var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* The StickyCta bar follows the same rule as the action bar: pinned above
+     the tab bar on phones, and flush to the bottom edge on screens with no
+     tab bar of their own. */
+  .sticky-cta {
+    left: 0;
+    padding: 10px 16px;
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sticky-cta__spacer {
+    height: calc(var(--actionbar-h) + var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sticky-cta__btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sticky-cta__summary {
+    flex: 0 1 auto;
+  }
+
+  .shell:not(.shell--tabs) .sticky-cta {
+    bottom: 0;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell:not(.shell--tabs) .sticky-cta__spacer {
+    height: calc(var(--actionbar-h) + env(safe-area-inset-bottom, 0px));
   }
 
   .action-bar__spacer.action-bar--review__spacer {
@@ -352,6 +383,12 @@
   .tabbar {
     display: none;
   }
+
+  /* No tab bar to clear, so the toasts drop to the plain bottom edge. */
+  .conn-banner,
+  .install-bar {
+    bottom: 16px;
+  }
 }
 
 /* =====================================================================
@@ -405,6 +442,49 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+}
+
+/* Today's numbers as a scrolling row of stat cards — the delivery-app
+   "quick stats" strip. Cards keep an even width and snap while scrol ing. */
+.quick-stat-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px;
+  margin: -2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-stat-row::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-stat-row .card {
+  scroll-snap-align: start;
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+/* The running shift's one big live figure: how long it has been going. */
+.status-card__elapsed {
+  margin-left: auto;
+  text-align: right;
+}
+
+.status-card__elapsed .figure-hero {
+  font-size: clamp(24px, 7vw, 32px);
+}
+
+.status-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .sales-hero {
@@ -1418,11 +1498,11 @@
 
   .install-bar {
     flex-wrap: wrap;
-    padding-inline: 16px;
+    padding-inline: 14px;
   }
 
   .install-bar > span {
-    flex: 1 1 100% !important;
+    flex: 1 1 100%;
     min-width: 0;
   }
 

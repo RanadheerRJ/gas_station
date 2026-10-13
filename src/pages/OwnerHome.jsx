@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScreenHeader } from "../components/Layout.jsx";
 import { Notice, Stat } from "../components/ui.jsx";
-import { LoadingPanels } from "../components/motion.jsx";
-import { ChevronIcon, PlusIcon } from "../components/icons.jsx";
+import { Card } from "../components/Card.jsx";
+import Skeleton from "../components/Skeleton.jsx";
+import EmptyState from "../components/EmptyState.jsx";
+import { ChevronIcon, PlusIcon, PumpIcon } from "../components/icons.jsx";
+import { avatarHue, initials } from "../lib/avatar.js";
 import Sheet from "../components/Sheet.jsx";
 import ResetStationSheet from "../components/ResetStationSheet.jsx";
 import OverflowMenu from "../components/OverflowMenu.jsx";
@@ -128,11 +131,16 @@ export default function OwnerHome() {
         {error && <Notice kind="error">{error}</Notice>}
 
         {loading ? (
-          <LoadingPanels count={2} lines={3} label={t("common.loading")} />
+          <Skeleton shape="card" count={3} />
         ) : stations.length === 0 ? (
-          <div className="empty-card">
-            <h2>{t("owner.noStations")}</h2>
-          </div>
+          <Card>
+            <EmptyState
+              icon={PumpIcon}
+              headline={t("owner.noStations")}
+              actionLabel={t("owner.addStation")}
+              onAction={() => setShowAdd(true)}
+            />
+          </Card>
         ) : (
           <>
             {/* ---- the group's day ---- */}
@@ -166,7 +174,10 @@ export default function OwnerHome() {
 
             {totals.pending > 0 && (
               <Notice>
-                {tn(totals.pending, "owner.pendingNoticeOne", "owner.pendingNotice")}
+                {tn(totals.pending, "owner.pendingNoticeOne", "owner.pendingNotice")}{" "}
+                <Link to="/owner/shifts" className="primary-link">
+                  {t("owner.reviewShifts")}
+                </Link>
               </Notice>
             )}
 
@@ -181,6 +192,13 @@ export default function OwnerHome() {
                       className="station-card__main"
                     >
                       <div className="station-card__head">
+                        <span
+                          className="station-card__avatar"
+                          style={{ "--avatar-hue": avatarHue(stationRef.name) }}
+                          aria-hidden="true"
+                        >
+                          {initials(stationRef.name)}
+                        </span>
                         <div>
                           <div className="station-card__name">
                             {stationRef.name}
@@ -202,7 +220,8 @@ export default function OwnerHome() {
 
                       <div className="station-card__meta">
                         {summary?.openShifts > 0 ? (
-                          <span className="tag">
+                          <span className="tag tag--live">
+                            <span className="live-dot" aria-hidden="true" />
                             {t("owner.openCount", { count: summary.openShifts })}
                           </span>
                         ) : summary?.closedToday > 0 ? (
@@ -277,7 +296,7 @@ export default function OwnerHome() {
         onClose={() => setShowAdd(false)}
         title={t("owner.addStation")}
       >
-        <form className="stack" style={{ gap: 14 }} onSubmit={submitStation}>
+        <form className="stack" onSubmit={submitStation}>
           <label className="field">
             <span>{t("owner.stationName")}</span>
             <input
@@ -296,7 +315,7 @@ export default function OwnerHome() {
               placeholder="Beside RTO Office, Karimnagar"
             />
           </label>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row">
             <button
               className="cta"
               type="submit"
@@ -317,7 +336,7 @@ export default function OwnerHome() {
         onClose={() => setArchiving(null)}
         title={t("owner.archiveTitle", { name: archiving?.name || "" })}
       >
-        <div className="stack" style={{ gap: 14 }}>
+        <div className="stack">
           <Notice>{t("owner.archiveNotice")}</Notice>
           <div className="row">
             <button

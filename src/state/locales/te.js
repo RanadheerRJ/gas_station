@@ -120,6 +120,9 @@ const te = {
   "login.developerNote":
     "డెవలపర్ ఖాతాలు Supabase Auth లో సృష్టించబడతాయి, ఆపై README లో వివరించినట్లు admin ప్రొఫైల్ పాత్ర కేటాయించబడుతుంది.",
 
+  "login.welcome": "తిరిగి స్వాగతం",
+  "login.needUsername": "మీ యూజర్‌నేమ్ నమోదు చేయండి.",
+  "login.pinDigit": "పిన్ అంకె {index}",
   "ledger.title": "రోజువారీ ఖాతా",
   "ledger.subtitle": "ముగిసిన షిఫ్టుల నుండి మొత్తం చేయబడింది",
   "ledger.days": "{count} రోజులు",
@@ -191,6 +194,13 @@ const te = {
   "history.title": "గత షిఫ్టులు",
   "shifts.title": "షిఫ్టులు",
   "shifts.pumpsFree": "{free} పంపులు ఖాళీ · {busy} బిజీ",
+  "common.all": "అన్నీ",
+  "common.search": "వెతకండి",
+  "shifts.whoIsWorking": "ఈ షిఫ్ట్ ఎవరు చేస్తున్నారు?",
+  "shifts.yourself": "మీరు",
+  "shifts.selectAllFree": "ఖాళీ వాటిన్నీ ఎంచుకోండి",
+  "shifts.filterFuel": "ఇంధనం ద్వారా వడకట్టండి",
+  "setup.goSetup": "పంపులను సెటప్ చేయండి",
   "shifts.startShift": "షిఫ్ట్ ప్రారంభించు",
   "shifts.forecourt": "ప్రస్తుత ఫోర్‌కోర్ట్",
   "shifts.forecourtNote":
@@ -607,6 +617,7 @@ const te = {
     "{count} షిఫ్టులు మీ ఆమోదం కోసం వేచి ఉన్నాయి. అంకెలను సమీక్షించడానికి, ఖర్చులు లేదా పరీక్షను సర్దుబాటు చేయడానికి స్టేషన్ షిఫ్ట్ రిజిస్టర్ తెరవండి.",
   "owner.pendingNoticeOne":
     "{count} షిఫ్ట్ మీ ఆమోదం కోసం వేచి ఉంది. అంకెలను సమీక్షించడానికి, ఖర్చులు లేదా పరీక్షను సర్దుబాటు చేయడానికి స్టేషన్ షిఫ్ట్ రిజిస్టర్ తెరవండి.",
+  "owner.reviewShifts": "షిఫ్ట్‌లను సమీక్షించండి",
   "owner.stations": "స్టేషన్లు",
   "owner.addStation": "స్టేషన్ జోడించు",
   "owner.stationName": "స్టేషన్ పేరు",
@@ -835,10 +846,15 @@ const te = {
   "close.paymentsHelp": "ప్రతి విధంగా వచ్చిన డబ్బు రాయండి.",
   "close.draftKept": "ఏదీ పోలేదు — మీరు రాసినది ఈ ఫోన్‌లో భద్రమే.",
   "close.edited": "సవరించారు",
+  "close.sendHint": "సమర్పించగానే యజమాని సమీక్షకు వెళ్తుంది",
   "close.fixAndResend": "గుర్తు చేసిన లెక్కలు సరిచేసి మళ్ళీ పంపండి.",
   "today.runningSince": "{time} నుండి నడుస్తోంది",
   "today.continueShift": "షిఫ్ట్ కొనసాగించండి",
   "today.sentBackTitle": "షిఫ్ట్ తిరిగి వచ్చింది",
+  "common.refresh": "రిఫ్రెష్",
+  "today.availableNozzles": "ఖాళీ నాజిల్స్",
+  "today.noHistoryTitle": "ఇంకా షిఫ్టులు లేవు",
+  "today.noHistoryBody": "మీ పూర్తయిన షిఫ్టులు ఇక్కడ కనిపిస్తాయి.",
   "today.recentShifts": "మీ ఇటీవలి షిఫ్ట్‌లు",
   "today.seeAll": "అన్నీ చూడండి",
   "today.sentForReview": "సమీక్షకు పంపబడింది",
@@ -862,5 +878,35 @@ const te = {
   "shifts.emptyReviewTitle": "అన్నీ పూర్తయ్యాయి",
   "shifts.emptyReviewBody": "ముగిసిన ప్రతి షిఫ్ట్ సమీక్షించి ఆమోదించబడింది.",
   "shifts.emptyClosedBody": "ఆమోదించబడిన షిఫ్టులు ఇక్కడ నిల్వ చేయబడతాయి.",
+
+  /* ---- app shell: station switcher, More sheet ---- */
+  "chrome.switchStation": "స్టేషన్ మార్చండి",
+  "more.places": "స్థానాలు",
+
+  /* ---- dev-only component kit (/__kit) ---- */
+  "kit.title": "కాంపోనెంట్ కిట్",
+  "kit.devOnly": "డెవ్-మాత్రమే ప్రివ్యూ — ప్రొడక్షన్ బిల్డ్‌లో ఎప్పుడూ చేరదు.",
+  "kit.buttons": "బటన్లు",
+  "kit.chips": "చిప్స్",
+  "kit.cards": "కార్డులు",
+  "kit.pressable": "నొక్కగల కార్డు",
+  "kit.pressableHint": "మొత్తం కార్డే ఒకే టాప్ లక్ష్యం.",
+  "kit.sticky": "స్టిక్కీ యాక్షన్ బార్",
+  "kit.stickySummary": "{count} ఎంపిక",
+  "kit.stickyHint": "ఫోన్‌లో ట్యాబ్ బార్ పైన స్థిరంగా ఉంటుంది.",
+  "kit.rows": "జాబితా వరుసలు",
+  "kit.skeletons": "లోడ్ అవుతున్న స్కెలెటన్లు",
+  "kit.empty": "ఖాళీ స్థితి",
+  "kit.emptyTitle": "ఇక్కడ ఇంకా ఏమీ లేదు",
+  "kit.emptyBody": "షిఫ్ట్ ప్రారంభిస్తే ఇక్కడ కనిపిస్తుంది.",
+  "kit.segmented": "సెగ్మెంటెడ్ కంట్రోల్",
+  "kit.panels": "ప్యానల్స్ మరియు అంకెలు",
+  "kit.money": "రూపాయల అంకెలు",
+  "kit.notices": "నోటీసులు",
+  "kit.sheets": "కింది షీట్",
+  "kit.openSheet": "డెమో షీట్ తెరవండి",
+  "kit.sheetBody":
+    "షీట్ స్క్రీన్ మీద ఒక త్వరిత పనిని ఉంచుతుంది, తెరిచిన చోటికే తిరిగి మూసుకుంటుంది.",
+  "kit.steps": "దశ పురోగతి",
 };
 export default te;

@@ -347,3 +347,36 @@ export function RefreshIcon(props) {
     </svg>
   );
 }
+
+/** An open eye, for revealing a PIN. */
+export function EyeIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+/** A closed eye, for hiding a revealed PIN. */
+export function EyeOffIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 4l16 16" />
+      <path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17.5 17.5 0 0 1-2.7 3.4" />
+      <path d="M6.6 7.9A16.4 16.4 0 0 0 2.5 12s3.5 6 9.5 6a9.4 9.4 0 0 0 4.1-.9" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  );
+}
+
+/** A warning triangle, for inline field errors. */
+export function AlertIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 4.5L21 19.5H3z" />
+      <path d="M12 10v4" />
+      <path d="M12 16.8v.4" />
+    </svg>
+  );
+}

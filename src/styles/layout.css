@@ -10,7 +10,8 @@
   background: var(--bg);
 }
 
-/* Mobile top bar: brand at a glance, account one tap away. */
+/* Mobile top bar: the station (or brand) on the left, device controls on
+   the right. Hidden on desktop, where the sidebar carries all of it. */
 .appbar {
   display: none;
 }
@@ -19,20 +20,114 @@
   gap: 9px;
 }
 
-.appbar__account {
-  width: 38px;
-  height: 38px;
+.appbar__lead {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appbar__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* The station switcher pill: name + chevron, truncating rather than pushing
+   the tools off the bar. The static variant is the attendant's station — a
+   fact, not a control, so it is muted and has no chevron. */
+.appbar__station {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 8px 0 13px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+}
+
+.appbar__station:hover:not(:disabled) {
+  border-color: var(--hairline-strong);
+}
+
+.appbar__station:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.appbar__station:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.appbar__station--static {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  cursor: default;
+  padding-left: 0;
+}
+
+.appbar__station-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+  font-size: 14px;
+}
+
+.appbar__station--static .appbar__station-name {
+  font-weight: 550;
+}
+
+.appbar__chevron {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+/* Icon buttons: theme, language, account. All 44px — the top bar is the
+   most-reached row on a phone. */
+.appbar__tool {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  border: none;
-  box-shadow: none;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  box-shadow: var(--shadow-xs);
   padding: 0;
 }
 
-.appbar__account:hover:not(:disabled) {
+.appbar__tool:hover:not(:disabled) {
+  border-color: var(--hairline-strong);
+}
+
+.appbar__tool:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.appbar__tool:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.appbar__tool.appbar__account {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-strong);
+}
+
+.appbar__tool.appbar__account:hover:not(:disabled) {
   background: var(--accent-soft-strong);
 }
 
@@ -139,12 +234,50 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px 12px;
+  padding: 10px 14px;
+  min-height: 44px;
   color: var(--sidebar-ink);
   text-decoration: none;
   font-size: 13.5px;
   font-weight: 550;
-  border-radius: var(--radius-sm);
+  /* The active destination reads as a rounded pill, matching the tab bar. */
+  border-radius: var(--radius-pill);
+}
+
+/* The station switcher, sitting under the identity block so the whole
+   sidebar states who is signed in and where. */
+.sidebar__station {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.sidebar__station:hover:not(:disabled) {
+  border-color: var(--hairline-strong);
+}
+
+.sidebar__station:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.sidebar__station-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
 
 .sidebar nav a svg {
@@ -231,8 +364,9 @@
 }
 
 .screen-head h1 {
-  font-size: 22px;
-  line-height: 1.2;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
 }
 
 .screen-head .sub {
@@ -257,8 +391,8 @@
 }
 
 .back-link {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -268,6 +402,11 @@
   box-shadow: var(--shadow-xs);
   flex: 0 0 auto;
   margin-top: 2px;
+}
+
+.back-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .back-link:hover {
@@ -330,8 +469,8 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-height: 50px;
-  padding: 6px 2px 5px;
+  min-height: 52px;
+  padding: 5px 2px 5px;
   font-size: 10.5px;
   font-weight: 650;
   letter-spacing: 0.01em;
@@ -344,6 +483,31 @@
   cursor: pointer;
 }
 
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The soft pill behind the active tab's icon: selection is shape and
+   weight — a filled-in glyph stroke and a bolder label — not colour alone. */
+.tab__glyph {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  height: 27px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.tab.active .tab__glyph {
+  background: var(--accent-soft);
+}
+
+.tab.active .tab__glyph svg {
+  stroke-width: 2.15;
+}
+
 .tab:hover {
   background: transparent;
   border: none;
@@ -353,10 +517,7 @@
 
 .tab.active {
   color: var(--accent-strong);
-}
-
-.tab.active svg {
-  transform: translateY(-1px);
+  font-weight: 750;
 }
 
 .tab span {
@@ -425,8 +586,8 @@
 }
 
 .sheet__grab {
-  width: 38px;
-  height: 4px;
+  width: 44px;
+  height: 5px;
   border-radius: var(--radius-pill);
   background: var(--hairline-strong);
   margin: 10px auto 2px;
@@ -443,12 +604,13 @@
 }
 
 .sheet__head h2 {
-  font-size: 16.5px;
+  font-size: 18px;
+  letter-spacing: -0.01em;
 }
 
 .sheet__close {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -456,6 +618,12 @@
   border: 1px solid var(--hairline);
   color: var(--muted);
   background: var(--surface);
+}
+
+.sheet__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  color: var(--ink);
 }
 
 .sheet__body {
@@ -469,38 +637,113 @@
   overscroll-behavior: contain;
 }
 
-/* The "More" list inside its sheet. */
-.more-list {
+/* The "More" sheet: destinations and preferences as a grid of large tiles.
+   Every tile is a real link or button, presses like a card, and closes the
+   sheet the moment it is tapped. */
+.more-sheet {
+  display: grid;
+  gap: 12px;
+  padding: 2px 0 12px;
+}
+
+.more-sheet__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 2px 2px 0;
+}
+
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.more-tile {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.more-list__item {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 14px 14px;
-  border-radius: var(--radius-md);
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 98px;
+  padding: 14px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
   color: var(--ink);
   font-weight: 650;
-  font-size: 14.5px;
+  font-size: 13px;
+  line-height: 1.3;
   text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.more-list__item svg:first-child {
-  color: var(--muted);
-}
-
-.more-list__item:hover {
-  background: var(--surface-sunken);
+.more-tile:hover {
+  border-color: var(--hairline-strong);
   color: var(--ink-strong);
   text-decoration: none;
+  box-shadow: var(--shadow-card);
 }
 
-.more-list__item svg:last-child {
-  margin-left: auto;
-  color: var(--muted);
+.more-tile:active {
+  transform: scale(0.97);
+}
+
+.more-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.more-tile__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.more-tile--danger {
+  color: var(--money-out);
+}
+
+.more-tile--danger .more-tile__icon {
+  background: var(--money-out-soft);
+  color: var(--money-out);
+}
+
+/* The language choices, swapped into the More sheet (and opened directly
+   from the top bar's globe). Full-width chips so each name is one tap. */
+.lang-options {
+  display: grid;
+  gap: 10px;
+  padding: 2px 0 12px;
+}
+
+.chip--block {
+  width: 100%;
+  justify-content: center;
+  font-size: 14.5px;
+}
+
+/* The station switcher's rows. */
+.station-sheet {
+  display: grid;
+  gap: 10px;
+  padding: 2px 0 12px;
+}
+
+.station-sheet__check {
+  display: inline-flex;
+  color: var(--accent-strong);
 }
 
 /* Account content (tab and sheet share it). */

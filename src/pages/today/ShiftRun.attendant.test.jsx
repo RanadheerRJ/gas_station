@@ -177,7 +177,7 @@ describe("the running shift screen", () => {
 
   it("pins exactly one primary action: Close shift", async () => {
     await mountRun();
-    const primary = container.querySelectorAll(".action-bar .cta");
+    const primary = container.querySelectorAll(".sticky-cta .cta");
     expect(primary).toHaveLength(1);
     expect(primary[0].textContent.trim()).toBe("Close shift");
     await click(primary[0]);

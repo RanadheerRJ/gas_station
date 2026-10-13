@@ -154,7 +154,7 @@ describe("the nozzle picker", () => {
   it("keeps a running count in the sticky bar and gates Start on it", async () => {
     await mountStart();
 
-    const count = container.querySelector(".action-bar__count");
+    const count = container.querySelector(".sticky-cta__summary-main");
     expect(count.textContent).toContain("0 selected");
     expect(startButton().disabled).toBe(true);
 

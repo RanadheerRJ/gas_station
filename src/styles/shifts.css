@@ -127,7 +127,160 @@
   margin-bottom: 4px;
 }
 
+/* The close screen's list of what still needs fixing. */
+.problem-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
 /* ---------------- start-shift picker ---------------- */
+
+/* The board as a menu: pumps are sections, nozzles are tiles. */
+.start-shift {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.pump-group {
+  display: grid;
+  gap: 10px;
+}
+
+.pump-group__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 2px;
+}
+
+.pump-group__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pump-group__select {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 8px 2px 8px 10px;
+  color: var(--accent-strong);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Two chunky tiles across: a decision made standing up, one thumb. */
+.nozzle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nozzle-row--tile {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 88px;
+  padding: 12px;
+  border: 1.5px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.nozzle-row--tile:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--hairline-strong);
+}
+
+.nozzle-row--tile.selected {
+  background: var(--accent-soft);
+  border-color: var(--ink-strong);
+  box-shadow: inset 0 0 0 1px var(--ink-strong);
+}
+
+.nozzle-row--tile.busy {
+  background: var(--surface-sunken);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.nozzle-row--tile .nozzle-row__sub {
+  overflow-wrap: anywhere;
+}
+
+.nozzle-row--tile .nozzle-row__state {
+  margin-left: auto;
+  min-height: 22px;
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.nozzle-row__price {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+/* The round add button on the tile's corner: a plus until it is picked,
+   then a filled check. Colour is never the only signal — aria-pressed and
+   the strong border change with it. */
+.nozzle-row__add {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline-strong);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.nozzle-row--tile .nozzle-row__check,
+.nozzle-row--tile .nozzle-row__add {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+}
+
+.nozzle-row--tile {
+  position: relative;
+}
+
+.nozzle-row--tile .nozzle-row__check {
+  width: 28px;
+  height: 28px;
+}
+
+/* The roster search in the who-is-working sheet. */
+.sheet-search {
+  padding: 4px 0 12px;
+}
+
+.sheet-search input {
+  width: 100%;
+}
+
+.sheet-check {
+  color: var(--accent-strong);
+}
 
 .pick-board {
   display: grid;
