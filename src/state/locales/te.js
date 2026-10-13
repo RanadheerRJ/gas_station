@@ -120,6 +120,9 @@ const te = {
   "login.developerNote":
     "డెవలపర్ ఖాతాలు Supabase Auth లో సృష్టించబడతాయి, ఆపై README లో వివరించినట్లు admin ప్రొఫైల్ పాత్ర కేటాయించబడుతుంది.",
 
+  "login.welcome": "తిరిగి స్వాగతం",
+  "login.needUsername": "మీ యూజర్‌నేమ్ నమోదు చేయండి.",
+  "login.pinDigit": "పిన్ అంకె {index}",
   "ledger.title": "రోజువారీ ఖాతా",
   "ledger.subtitle": "ముగిసిన షిఫ్టుల నుండి మొత్తం చేయబడింది",
   "ledger.days": "{count} రోజులు",

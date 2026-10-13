@@ -154,117 +154,271 @@
 
 /* ---------------- login ---------------- */
 
-.login-wrap {
-  min-height: 100%;
-  display: grid;
-  /* Without this the single column sizes to its content, so the fixed-width
-     card never shrinks and overflows phones narrower than ~392px. */
-  grid-template-columns: minmax(0, 1fr);
-  place-items: center;
-  padding: 32px 16px;
+/* A full-screen welcome rather than a card on a grey page: a tinted hero
+   with a rounded bottom edge, then the form straight on the background.
+   The pinned sign-in pill lives in the StickyCta at the bottom. */
+.login {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.login__hero {
+  position: relative;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 30px;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
   background:
-    radial-gradient(1100px 520px at 15% -10%, var(--accent-soft), transparent 60%),
-    radial-gradient(900px 480px at 100% 0%, var(--accent-soft), transparent 55%),
-    var(--bg);
+    radial-gradient(420px 220px at 50% -40%, var(--accent-soft-strong), transparent 70%),
+    var(--accent-soft);
 }
 
-.login-card {
-  width: 390px;
-  max-width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-}
-
-.login-card .head {
-  background: transparent;
-  color: var(--ink-strong);
-  padding: 28px 24px 18px;
-  text-align: center;
-}
-
-/* The login lockup stacks the mark over the wordmark — one clean brand
-   moment before the form takes over. */
-.login-brand {
+.login__hero-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   color: var(--ink-strong);
 }
 
-.login-brand svg {
+.login__hero-inner svg {
   display: block;
 }
 
-.login-card .head p {
-  margin: 8px 0 0;
-  font-size: 12.5px;
+.login__welcome {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 550;
   color: var(--muted);
 }
 
-.login-tabs {
+/* Theme and the support menu sit at the hero's top corner. */
+.login__tools {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login__tool {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--surface-sunken);
-  margin: 0 20px;
-  border-radius: var(--radius-sm);
-  padding: 3px;
-  gap: 2px;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  box-shadow: var(--shadow-xs);
+  padding: 0;
 }
 
-.login-tab {
-  padding: 9px 14px;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 650;
-  text-align: center;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
+.login__tool:hover:not(:disabled) {
+  border-color: var(--hairline-strong);
+}
+
+.login__tool:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.login__body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px 12px;
+}
+
+.login__card {
+  width: 400px;
+  max-width: 100%;
+  display: grid;
+  gap: 18px;
+}
+
+.login__form {
+  display: grid;
+  gap: 16px;
+}
+
+/* The big rounded input with a floating label: the label rides inside the
+   field and lifts out of the way once there is something to see. */
+.login-field {
+  position: relative;
+  display: block;
+}
+
+.login-field input {
+  min-height: 56px;
+  border-radius: var(--radius-md);
+  padding: 22px 15px 7px;
+  font-size: 16px;
+}
+
+.login-field__label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--muted);
-  cursor: pointer;
+  font-size: 14.5px;
+  pointer-events: none;
+  transition:
+    top var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    font-size var(--duration-fast) var(--ease-out);
+}
+
+.login-field input:focus ~ .login-field__label,
+.login-field input:not(:placeholder-shown) ~ .login-field__label {
+  top: 13px;
+  transform: none;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.login-field input:focus ~ .login-field__label {
+  color: var(--accent-strong);
+}
+
+/* The PIN: four large digit boxes with a reveal toggle. */
+.login-pin {
+  display: grid;
+  gap: 8px;
+}
+
+.login-pin__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-pin__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.login-pin__reveal {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  padding: 0;
   box-shadow: none;
 }
 
-.login-tab:hover:not(.active) {
+.login-pin__reveal:hover:not(:disabled) {
   color: var(--ink);
-  background: transparent;
+  border-color: var(--hairline-strong);
 }
 
-.login-tab.active {
-  background: var(--surface);
-  color: var(--ink-strong);
-  font-weight: 650;
-  box-shadow: var(--shadow-xs);
+.login-pin__reveal:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-.login-card form {
-  padding: 22px 24px 24px;
+.pin-boxes {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  gap: 10px;
 }
 
-.login-card form button[type="submit"] {
-  min-height: 50px;
-  border-radius: 14px;
-  font-size: 15.5px;
-}
-
-.pin-input {
-  font-family: var(--mono) !important;
-  font-size: 24px;
-  letter-spacing: 0.55em;
+.pin-box {
+  width: 100%;
+  max-width: 64px;
+  height: 58px;
+  padding: 0;
   text-align: center;
-  padding: 11px;
+  font-size: 22px;
+  font-weight: 650;
+  border-radius: var(--radius-md);
 }
 
-.spin {
-  display: inline-block;
-  width: 10px;
+.pin-boxes--invalid .pin-box {
+  border-color: var(--rust);
+}
+
+/* Inline errors: an icon and text under the field, never colour alone. */
+.login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  color: var(--rust);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.login-error svg {
+  margin-top: 2px;
+  color: var(--rust);
+}
+
+.login__note {
+  margin: 0;
+}
+
+/* Language as tappable pills under the form. */
+.login-lang {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The pinned sign-in pill spans the viewport, but its content stays as
+   narrow as the form above it. */
+.login .sticky-cta {
+  left: 0;
+}
+
+.login .sticky-cta__inner {
+  max-width: 460px;
+}
+
+/* Desktop: brand panel on the left, the form on the right. */
+@media (min-width: 900px) {
+  .login {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .login__hero {
+    flex: 0 0 44%;
+    border-radius: 0;
+    padding: 40px;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(560px 300px at 50% 0%, var(--accent-soft-strong), transparent 70%),
+      var(--accent-soft);
+  }
+
+  .login__tools {
+    top: 20px;
+    right: 20px;
+  }
+
+  .login__hero-inner {
+    gap: 16px;
+  }
+
+  .login__welcome {
+    font-size: 15px;
+  }
+
+  .login__body {
+    padding: 48px 32px;
+  }
 }
 
 /* ---------------- boot screen ----------------

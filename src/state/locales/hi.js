@@ -120,6 +120,9 @@ const hi = {
   "login.developerNote":
     "डेवलपर खाते Supabase Auth में बनाए जाते हैं, फिर README के अनुसार admin प्रोफ़ाइल भूमिका दी जाती है।",
 
+  "login.welcome": "वापसी पर स्वागत है",
+  "login.needUsername": "अपना यूज़रनेम दर्ज करें।",
+  "login.pinDigit": "पिन अंक {index}",
   "ledger.title": "दैनिक बही",
   "ledger.subtitle": "बंद शिफ्टों से जोड़ा गया",
   "ledger.days": "{count} दिन",

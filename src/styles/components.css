@@ -2271,22 +2271,6 @@ tbody tr.money-row--variance:hover > td {
   padding: 8px 9px;
 }
 
-/* Language stays in view under the login form; theme and hard refresh live in
-   the overflow menu beside it. The row is inset to match the form above. */
-.login-prefs {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
-  padding: 0 24px 20px;
-}
-
-.login-prefs .language-select {
-  flex: 1 1 140px;
-  min-width: 0;
-}
-
 /* ---------------- overflow menu ---------------- */
 
 .overflow-menu {

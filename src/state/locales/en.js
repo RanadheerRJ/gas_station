@@ -124,6 +124,9 @@ const en = {
   "login.developerNote":
     "Developer accounts are created in Supabase Auth, then assigned the admin profile role as described in the README.",
 
+  "login.welcome": "Welcome back",
+  "login.needUsername": "Enter your username.",
+  "login.pinDigit": "PIN digit {index}",
   /* ---- daily ledger ---- */
   "ledger.title": "Daily ledger",
   "ledger.subtitle": "totalled from closed shifts",
