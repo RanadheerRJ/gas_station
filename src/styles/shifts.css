@@ -485,7 +485,301 @@
   font-weight: 650;
 }
 
-/* ---------------- open-shift cards (manager/owner list) ---------------- */
+/* ---------------- shift feed: tabs + order-style cards ---------------- */
+
+.shift-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  margin-inline: calc(-1 * var(--content-gutter));
+  padding: 6px var(--content-gutter) 10px;
+  background: var(--topbar-bg);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.shift-tabs__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.shift-tabs__row::-webkit-scrollbar {
+  display: none;
+}
+
+.shift-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  box-shadow: var(--shadow-xs);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.shift-tab:hover:not(.shift-tab--active) {
+  border-color: var(--muted);
+  background: var(--surface-raised);
+}
+
+.shift-tab--active {
+  background: var(--ink-strong);
+  border-color: var(--ink-strong);
+  color: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.shift-tab__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse-dot var(--duration-loop) ease-in-out infinite;
+}
+
+.shift-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.shift-tab--active .shift-tab__count {
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+}
+
+:root[data-theme="dark"] .shift-tab--active .shift-tab__count {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.shift-feed {
+  display: grid;
+  gap: 10px;
+}
+
+.shift-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+a.shift-card:hover {
+  color: var(--ink);
+  text-decoration: none;
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+a.shift-card:active {
+  transform: translateY(0);
+}
+
+.shift-card--live {
+  border-color: rgba(21, 163, 74, 0.35);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(21, 163, 74, 0.08);
+}
+
+.shift-card__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: hsl(var(--avatar-hue, 215) 72% 94%);
+  color: hsl(var(--avatar-hue, 215) 68% 30%);
+  border: 1px solid hsl(var(--avatar-hue, 215) 60% 86%);
+  font-weight: 750;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+:root[data-theme="dark"] .shift-card__avatar {
+  background: hsl(var(--avatar-hue, 215) 45% 20%);
+  color: hsl(var(--avatar-hue, 215) 80% 82%);
+  border-color: hsl(var(--avatar-hue, 215) 45% 30%);
+}
+
+.shift-card__avatar--live {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px rgba(21, 163, 74, 0.4);
+}
+
+.shift-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shift-card__name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shift-card__meta {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shift-card__amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+
+.shift-card__amount .k {
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.shift-card__amount .money {
+  font-size: 16px;
+}
+
+.shift-card__foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding-top: 11px;
+  border-top: 1px solid var(--hairline);
+}
+
+.shift-card__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.shift-card__stat .k {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.shift-card__stat .v {
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+.shift-card__chev {
+  margin-left: auto;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+}
+
+.shift-card__actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Closing a shift is the card's one decisive action, so it is a filled
+   button, pinned to the right. Add expense and Add nozzle stay outlined. */
+.shift-card__close,
+.open-card__close {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-strong);
+  background: var(--accent-strong);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.shift-card__close:hover,
+.open-card__close:hover {
+  background: var(--cta-bg-hover);
+  border-color: var(--cta-bg-hover);
+  color: #fff;
+  text-decoration: none;
+}
+
+.shift-card__close:focus-visible,
+.open-card__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+:root[data-theme="dark"] .shift-card__close,
+:root[data-theme="dark"] .open-card__close {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+:root[data-theme="dark"] .shift-card__close:hover,
+:root[data-theme="dark"] .open-card__close:hover {
+  color: var(--cta-ink);
+}
 
 .open-card {
   background: var(--surface);
@@ -515,46 +809,6 @@
   justify-content: flex-end;
   gap: 6px;
   max-width: 55%;
-}
-
-/* Closing a shift is the card's one decisive action, so it is a filled
-   button, pinned to the right. Add expense and Add nozzle stay outlined. */
-.open-card__close {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--accent-strong);
-  background: var(--accent-strong);
-  color: var(--accent-ink);
-  font-size: 13.5px;
-  font-weight: 650;
-  text-decoration: none;
-  box-shadow: var(--shadow-sm);
-}
-
-.open-card__close:hover {
-  background: var(--cta-bg-hover);
-  border-color: var(--cta-bg-hover);
-  color: #fff;
-  text-decoration: none;
-}
-
-.open-card__close:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-:root[data-theme="dark"] .open-card__close {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-:root[data-theme="dark"] .open-card__close:hover {
-  color: var(--cta-ink);
 }
 
 .open-card__actions {
