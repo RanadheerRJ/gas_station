@@ -95,7 +95,9 @@
     0 4px 12px -3px rgba(16, 24, 40, 0.09), 0 2px 5px -2px rgba(16, 24, 40, 0.05);
   --shadow-lg:
     0 16px 34px -10px rgba(16, 24, 40, 0.2), 0 6px 14px -6px rgba(16, 24, 40, 0.1);
-  --focus-ring: 0 0 0 3px var(--accent-soft-strong);
+  /* A solid two-tone ring: the surface gap keeps it visible on any
+     background and the accent band clears 3:1 against it. */
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -219,5 +221,5 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px -2px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 18px 36px -10px rgba(0, 0, 0, 0.55), 0 6px 14px -6px rgba(0, 0, 0, 0.4);
-  --focus-ring: 0 0 0 3px var(--accent-soft-strong);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }

@@ -6,6 +6,7 @@ import { LoadingPanels } from "../components/motion.jsx";
 import { ChevronIcon, PlusIcon } from "../components/icons.jsx";
 import Sheet from "../components/Sheet.jsx";
 import ResetStationSheet from "../components/ResetStationSheet.jsx";
+import OverflowMenu from "../components/OverflowMenu.jsx";
 import { useStations } from "../state/useStations.js";
 import { useRunner } from "../state/useRunner.js";
 import { addStation, listCustomers, listShifts, setStationState } from "../lib/api";
@@ -237,31 +238,30 @@ export default function OwnerHome() {
                       >
                         {t("nav.groundStock")}
                       </Link>
-                      {stationRef.state === "archived" ? (
-                        <button
-                          type="button"
-                          className="quiet small"
-                          disabled={busy}
-                          onClick={() => changeStationState(stationRef, "active")}
-                        >
-                          {t("owner.reopen")}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="quiet small"
-                          onClick={() => setArchiving(stationRef)}
-                        >
-                          {t("owner.archive")}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="quiet small danger"
-                        onClick={() => setResettingStation(stationRef)}
-                      >
-                        {t("station.resetShort")}
-                      </button>
+                      {/* Archiving and resetting are rare and consequential, so they
+                          sit behind a menu instead of next to the daily links. */}
+                      <OverflowMenu
+                        items={[
+                          stationRef.state === "archived"
+                            ? {
+                                key: "reopen",
+                                label: t("owner.reopen"),
+                                disabled: busy,
+                                onClick: () => changeStationState(stationRef, "active"),
+                              }
+                            : {
+                                key: "archive",
+                                label: t("owner.archive"),
+                                onClick: () => setArchiving(stationRef),
+                              },
+                          {
+                            key: "reset",
+                            label: t("station.resetShort"),
+                            danger: true,
+                            onClick: () => setResettingStation(stationRef),
+                          },
+                        ]}
+                      />
                     </div>
                   </div>
                 );

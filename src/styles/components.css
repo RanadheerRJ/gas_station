@@ -1679,25 +1679,133 @@ tbody tr.money-row--variance:hover > td {
   padding: 8px 9px;
 }
 
-/* Language and theme sit together under the login form. */
+/* Language stays in view under the login form; theme and hard refresh live in
+   the overflow menu beside it. The row is inset to match the form above. */
 .login-prefs {
   display: flex;
   align-items: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 18px;
+  margin-top: 4px;
+  padding: 0 24px 20px;
 }
 
 .login-prefs .language-select {
-  flex: 0 0 132px;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
-.login-prefs .theme-toggle {
-  margin-top: 0;
-  flex: 1;
-  display: flex;
+/* ---------------- overflow menu ---------------- */
+
+.overflow-menu {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.overflow-menu__trigger {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  border-radius: var(--radius-pill);
+}
+
+.overflow-menu__trigger:hover:not(:disabled),
+.overflow-menu.is-open .overflow-menu__trigger {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.overflow-menu__list {
+  position: absolute;
+  z-index: 40;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.overflow-menu__list--up {
+  bottom: calc(100% + 6px);
+}
+
+.overflow-menu__list--down {
+  top: calc(100% + 6px);
+}
+
+.overflow-menu__list--end {
+  right: 0;
+}
+
+.overflow-menu__list--start {
+  left: 0;
+}
+
+.overflow-menu .overflow-menu__item {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink);
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+.overflow-menu .overflow-menu__item:hover:not(:disabled),
+.overflow-menu .overflow-menu__item:focus-visible {
+  background: var(--surface-sunken);
+}
+
+.overflow-menu .overflow-menu__item.is-danger {
+  color: var(--money-out);
+}
+
+.overflow-menu .overflow-menu__item.is-danger:hover:not(:disabled),
+.overflow-menu .overflow-menu__item.is-danger:focus-visible {
+  background: var(--money-out-soft);
+}
+
+/* Labels double as inline link text elsewhere ("archive"), so capitalise the
+   first letter here; non-Latin scripts have no case and are unaffected. */
+.overflow-menu__item span::first-letter {
+  text-transform: uppercase;
+}
+
+/* A hairline above the first destructive item, inset like the item hover. */
+.overflow-menu .overflow-menu__item.has-divider {
+  position: relative;
+  margin-top: 7px;
+}
+
+.overflow-menu .overflow-menu__item.has-divider::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  background: var(--hairline);
 }
 
 /* ---------------- report & export controls (in a sheet) ---------------- */

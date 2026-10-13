@@ -11,7 +11,9 @@
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  /* Visible, not hidden: the footer's overflow menu opens above the card and
+     would otherwise be clipped. The inner corners are rounded explicitly. */
+  overflow: visible;
   display: flex;
   flex-direction: column;
 }
@@ -22,6 +24,7 @@
   color: var(--ink);
   text-decoration: none;
   flex: 1;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .station-card__main:hover {
@@ -81,9 +84,21 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 10px 18px;
+  padding: 2px 8px 2px 18px;
   border-top: 1px solid var(--hairline);
   background: var(--surface-sunken);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Footer links meet the 44px touch target; the overflow menu sits at the end. */
+.station-card__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.station-card__links .overflow-menu {
+  margin-left: auto;
 }
 
 /* ---------------- tank hero ---------------- */
@@ -142,6 +157,9 @@
 .login-wrap {
   min-height: 100%;
   display: grid;
+  /* Without this the single column sizes to its content, so the fixed-width
+     card never shrinks and overflows phones narrower than ~392px. */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 32px 16px;
   background:
