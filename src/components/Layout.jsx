@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import { watchConnection } from "../lib/pwa";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
-import { useRouteTransition } from "./motion.jsx";
+import { useStation } from "../state/useStation.js";
+import { routeDirection, useRouteTransition } from "./motion.jsx";
 import { PetravLockup } from "./branding.jsx";
 import Sheet from "./Sheet.jsx";
 import AccountPanel from "./AccountPanel.jsx";
+import ListRow from "./ListRow.jsx";
+import { Chip } from "./Chip.jsx";
 import {
   BackIcon,
   ChartIcon,
+  CheckIcon,
   ChevronIcon,
   CreditIcon,
+  GlobeIcon,
   HistoryIcon,
   HomeIcon,
   LedgerIcon,
@@ -52,7 +57,8 @@ const MOBILE_NAV_LABEL = {
  * menu.
  *
  * The same list drives the desktop sidebar (where everything is shown flat —
- * there is room) and the mobile tab bar, so the two never drift apart.
+ * there is room), the mobile tab bar and the More sheet's tile grid, so the
+ * three never drift apart.
  */
 export function destinationsFor(role) {
   switch (role) {
@@ -61,8 +67,8 @@ export function destinationsFor(role) {
         tabs: [
           { to: "/owner", label: "nav.overview", Icon: StationIcon, end: true },
           { to: "/owner/shifts", label: "nav.shifts", Icon: ShiftIcon },
-          { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
           { to: "/owner/stock", label: "nav.groundStock", Icon: TankIcon },
+          { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
         ],
         more: [
           { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
@@ -102,14 +108,19 @@ export function destinationsFor(role) {
 export default function Layout() {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language, setLanguage, languages, languageNames } = useLanguage();
   // Hooks must run before any early return, or signing out changes the hook
   // order between renders and React throws.
   const { online, restored } = useConnection();
   const install = useInstallPrompt();
   const { pathname } = useLocation();
+  const { stations, station, stationId, setStation } = useStation();
   const [accountOpen, setAccountOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // The More sheet shows the tile grid, or swaps to the language choices when
+  // a Language tile (or the top-bar globe) asked for them.
+  const [morePanel, setMorePanel] = useState("tiles");
+  const [stationOpen, setStationOpen] = useState(false);
 
   const { tabs, more } = useMemo(() => destinationsFor(profile?.role), [profile?.role]);
   // Tab switches fade rather than slide — sliding on a lateral move reads as
@@ -119,24 +130,89 @@ export default function Layout() {
   const moreActive = more.some(
     (item) => pathname === item.to || pathname.startsWith(`${item.to}/`)
   );
+  const mainRef = useRef(null);
+
+  // The station switcher belongs to the roles that can be shown more than one
+  // station. An attendant's station is a fact, not a choice, so it renders as
+  // a plain label; the developer and single-station accounts see the brand.
+  const canSwitchStation =
+    (profile?.role === "owner" || profile?.role === "manager") && stations.length > 1;
+  const accountInMore = more.some((item) => item.label === "nav.account");
+
+  useScrollMemory(pathname, tabPaths, mainRef);
 
   if (!profile) return null;
+
+  const openMoreTiles = () => {
+    setMorePanel("tiles");
+    setMoreOpen(true);
+  };
+  const openMoreLanguage = () => {
+    setMorePanel("language");
+    setMoreOpen(true);
+  };
 
   return (
     <div
       className={`shell shell--${profile.role}${tabs.length > 0 ? " shell--tabs" : ""}`}
     >
-      {/* Mobile top bar: brand at a glance, account one tap away. */}
+      {/* Mobile top bar: the station you are in (or the brand), then the
+          device-level controls — theme, language, account — one tap away. */}
       <header className="appbar">
-        <PetravLockup markSize={26} wordHeight={15} />
-        <button
-          type="button"
-          className="appbar__account"
-          onClick={() => setAccountOpen(true)}
-          aria-label={t("nav.account")}
-        >
-          <UserIcon size={17} />
-        </button>
+        <div className="appbar__lead">
+          {canSwitchStation ? (
+            <button
+              type="button"
+              className="appbar__station"
+              onClick={() => setStationOpen(true)}
+              aria-haspopup="dialog"
+              title={station?.name}
+            >
+              <StationIcon size={15} />
+              <span className="appbar__station-name">{station?.name}</span>
+              <span className="appbar__chevron" aria-hidden="true">
+                <ChevronIcon size={13} />
+              </span>
+            </button>
+          ) : profile.role === "attendant" && station ? (
+            <span
+              className="appbar__station appbar__station--static"
+              title={station.name}
+            >
+              <StationIcon size={15} />
+              <span className="appbar__station-name">{station.name}</span>
+            </span>
+          ) : (
+            <PetravLockup markSize={26} wordHeight={15} />
+          )}
+        </div>
+        <div className="appbar__tools">
+          <button
+            type="button"
+            className="appbar__tool"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
+          >
+            {theme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+          </button>
+          <button
+            type="button"
+            className="appbar__tool"
+            onClick={openMoreLanguage}
+            aria-label={t("chrome.language")}
+            aria-haspopup="dialog"
+          >
+            <GlobeIcon size={18} />
+          </button>
+          <button
+            type="button"
+            className="appbar__tool appbar__account"
+            onClick={() => setAccountOpen(true)}
+            aria-label={t("nav.account")}
+          >
+            <UserIcon size={18} />
+          </button>
+        </div>
       </header>
 
       {/* Desktop: the persistent side nav, unchanged in role, changed in icon. */}
@@ -149,6 +225,21 @@ export default function Layout() {
               {ROLE_LABEL[profile.role] ? t(ROLE_LABEL[profile.role]) : profile.role}
             </span>
           </div>
+          {canSwitchStation && (
+            <button
+              type="button"
+              className="sidebar__station"
+              onClick={() => setStationOpen(true)}
+              aria-haspopup="dialog"
+              title={station?.name}
+            >
+              <StationIcon size={15} />
+              <span className="sidebar__station-name">{station?.name}</span>
+              <span className="appbar__chevron" aria-hidden="true">
+                <ChevronIcon size={13} />
+              </span>
+            </button>
+          )}
         </div>
         <nav>
           {tabs.map((tab) => (
@@ -181,16 +272,16 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className="main">
+      <div className="main" ref={mainRef}>
         {!online && (
-          <div className="conn-banner">
+          <div className="conn-banner" role="status">
             <span className="live-dot">●</span>
             {t("chrome.offline")}
           </div>
         )}
 
         {online && restored && (
-          <div className="conn-banner restored">
+          <div className="conn-banner restored" role="status">
             <span>●</span>
             {t("chrome.backOnline")}
           </div>
@@ -198,7 +289,7 @@ export default function Layout() {
 
         {install.available && (
           <div className="install-bar">
-            <span style={{ flex: 1 }}>{t("chrome.installPrompt")}</span>
+            <span>{t("chrome.installPrompt")}</span>
             <button type="button" onClick={install.prompt}>
               {t("chrome.install")}
             </button>
@@ -219,7 +310,9 @@ export default function Layout() {
       {/* Mobile bottom tabs: four destinations plus "More" when a role has
           more sections than tabs. The visible label is allowed to be shorter
           than the desktop/sidebar label so 375px phones do not show ellipses,
-          while aria-label keeps the full destination name for assistive tech. */}
+          while aria-label keeps the full destination name for assistive tech.
+          The active tab carries a soft pill behind its icon and a bolder
+          stroke, so selection is shape and weight, not colour alone. */}
       {tabs.length > 0 && (
         <nav className="tabbar" aria-label={t("chrome.navigation")}>
           {tabs.map((tab) => {
@@ -234,7 +327,9 @@ export default function Layout() {
                 aria-label={fullLabel}
                 className={({ isActive }) => `tab${isActive ? " active" : ""}`}
               >
-                <Icon size={21} />
+                <span className="tab__glyph" aria-hidden="true">
+                  <Icon size={22} />
+                </span>
                 <span>{mobileLabel}</span>
               </NavLink>
             );
@@ -243,31 +338,149 @@ export default function Layout() {
             <button
               type="button"
               className={`tab${moreActive ? " active" : ""}`}
-              onClick={() => setMoreOpen(true)}
+              onClick={openMoreTiles}
               aria-haspopup="dialog"
+              aria-expanded={moreOpen}
               aria-label={t("nav.more")}
             >
-              <MoreIcon size={21} />
+              <span className="tab__glyph" aria-hidden="true">
+                <MoreIcon size={22} />
+              </span>
               <span>{t("nav.more")}</span>
             </button>
           )}
         </nav>
       )}
 
-      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={t("nav.more")}>
-        <div className="more-list">
-          {more.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end
-              className="more-list__item"
-              onClick={() => setMoreOpen(false)}
-            >
-              <item.Icon size={19} />
-              <span>{t(item.label)}</span>
-              <ChevronIcon size={15} />
-            </NavLink>
+      {/* The More sheet: destinations as a tile grid — every tile is a real
+          link or button, presses like a card, and closes the sheet on tap.
+          Preferences live here too, so language, theme and sign-out are two
+          taps from anywhere on a phone. */}
+      <Sheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title={morePanel === "language" ? t("chrome.language") : t("nav.more")}
+      >
+        {morePanel === "language" ? (
+          <div className="lang-options" role="group" aria-label={t("chrome.language")}>
+            {languages.map((code) => (
+              <Chip
+                key={code}
+                className="chip--block"
+                label={languageNames[code]}
+                selected={language === code}
+                onClick={() => {
+                  setLanguage(code);
+                  setMoreOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="more-sheet">
+            {more.length > 0 && (
+              <>
+                <div className="more-sheet__label">{t("more.places")}</div>
+                <div className="more-grid">
+                  {more.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end
+                      className="more-tile"
+                      onClick={() => setMoreOpen(false)}
+                    >
+                      <span className="more-tile__icon" aria-hidden="true">
+                        <item.Icon size={20} />
+                      </span>
+                      <span>{t(item.label)}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="more-sheet__label">{t("account.preferences")}</div>
+            <div className="more-grid">
+              {/* Attendants reach Account as a destination tile above (it is
+                  their More entry); owner and manager get the account sheet. */}
+              {!accountInMore && (
+                <button
+                  type="button"
+                  className="more-tile"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setAccountOpen(true);
+                  }}
+                >
+                  <span className="more-tile__icon" aria-hidden="true">
+                    <UserIcon size={20} />
+                  </span>
+                  <span>{t("nav.account")}</span>
+                </button>
+              )}
+              <button type="button" className="more-tile" onClick={openMoreLanguage}>
+                <span className="more-tile__icon" aria-hidden="true">
+                  <GlobeIcon size={20} />
+                </span>
+                <span>{t("chrome.language")}</span>
+              </button>
+              <button
+                type="button"
+                className="more-tile"
+                onClick={() => {
+                  toggleTheme();
+                  setMoreOpen(false);
+                }}
+              >
+                <span className="more-tile__icon" aria-hidden="true">
+                  {theme === "dark" ? <SunIcon size={20} /> : <MoonIcon size={20} />}
+                </span>
+                <span>
+                  {theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="more-tile more-tile--danger"
+                onClick={logout}
+              >
+                <span className="more-tile__icon" aria-hidden="true">
+                  <LogOutIcon size={20} />
+                </span>
+                <span>{t("chrome.signOut")}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </Sheet>
+
+      {/* The station switcher's sheet: the current station is checked, and
+          picking one re-filters every station-scoped screen via ?station=. */}
+      <Sheet
+        open={stationOpen}
+        onClose={() => setStationOpen(false)}
+        title={t("chrome.switchStation")}
+      >
+        <div className="station-sheet">
+          {stations.map((s) => (
+            <ListRow
+              key={s.id}
+              icon={StationIcon}
+              title={s.name}
+              chevron={false}
+              aria-current={s.id === stationId ? "true" : undefined}
+              trailing={
+                s.id === stationId ? (
+                  <span className="station-sheet__check">
+                    <CheckIcon size={18} />
+                  </span>
+                ) : null
+              }
+              onClick={() => {
+                setStation(s.id);
+                setStationOpen(false);
+              }}
+            />
           ))}
         </div>
       </Sheet>
@@ -283,6 +496,56 @@ export default function Layout() {
       </Sheet>
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* scroll memory: top on a new screen, back where you were on return   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Scroll behaviour between screens: drilling deeper starts the new screen at
+ * the top; anything else — going back, or switching between top-level tabs —
+ * returns a screen to wherever it was scrolled when the user left it, the
+ * way a browser's back button (or a delivery app's tab bar) does.
+ *
+ * Positions are remembered per pathname for the life of the session. A
+ * restored position is re-applied on the next frame because a lazy screen
+ * mounts after the navigation, and the browser clamps scrollTop to the
+ * content height it finds at that instant.
+ */
+function useScrollMemory(pathname, tabPaths, mainRef) {
+  const memory = useRef(new Map());
+  const prevPathname = useRef(null);
+  const tabPathsRef = useRef(tabPaths);
+  tabPathsRef.current = tabPaths;
+
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    const previous = prevPathname.current;
+    prevPathname.current = pathname;
+    if (!main || previous === pathname) return undefined;
+
+    if (previous) memory.current.set(previous, main.scrollTop);
+    const direction = routeDirection(previous, pathname, tabPathsRef.current);
+    const saved = memory.current.get(pathname);
+    // Drilling deeper starts the new screen at the top; going back — or
+    // switching between top-level tabs — returns to where it was left.
+    const target = direction === "forward" ? 0 : (saved ?? 0);
+    main.scrollTop = target;
+    if (!(target > 0)) return undefined;
+
+    const raf =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame(() => {
+            main.scrollTop = memory.current.get(pathname) ?? target;
+          })
+        : null;
+    return () => {
+      if (raf != null && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(raf);
+      }
+    };
+  }, [pathname, mainRef]);
 }
 
 function SidebarLink({ item, translate }) {

@@ -857,6 +857,10 @@ const hi = {
   "shifts.emptyReviewBody": "हर बंद शिफ्ट की समीक्षा और मंज़ूरी हो चुकी है।",
   "shifts.emptyClosedBody": "मंज़ूर की गई शिफ्टें यहाँ दर्ज होंगी।",
 
+  /* ---- app shell: station switcher, More sheet ---- */
+  "chrome.switchStation": "स्टेशन बदलें",
+  "more.places": "स्थान",
+
   /* ---- dev-only component kit (/__kit) ---- */
   "kit.title": "कंपोनेंट किट",
   "kit.devOnly": "केवल डेव पूर्वावलोकन — प्रोडक्शन बिल्ड में कभी शामिल नहीं होता।",

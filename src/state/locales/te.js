@@ -863,6 +863,10 @@ const te = {
   "shifts.emptyReviewBody": "ముగిసిన ప్రతి షిఫ్ట్ సమీక్షించి ఆమోదించబడింది.",
   "shifts.emptyClosedBody": "ఆమోదించబడిన షిఫ్టులు ఇక్కడ నిల్వ చేయబడతాయి.",
 
+  /* ---- app shell: station switcher, More sheet ---- */
+  "chrome.switchStation": "స్టేషన్ మార్చండి",
+  "more.places": "స్థానాలు",
+
   /* ---- dev-only component kit (/__kit) ---- */
   "kit.title": "కాంపోనెంట్ కిట్",
   "kit.devOnly": "డెవ్-మాత్రమే ప్రివ్యూ — ప్రొడక్షన్ బిల్డ్‌లో ఎప్పుడూ చేరదు.",

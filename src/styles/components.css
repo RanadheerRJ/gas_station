@@ -2125,25 +2125,53 @@ tbody tr.money-row--variance:hover > td {
   font-weight: 600;
 }
 
-/* ---------------- offline / install banners ---------------- */
+/* ---------------- offline / install toasts ---------------- */
 
+/* Slim rounded toasts floating above the tab bar (above the content edge on
+   screens with no tab bar, and on desktop), instead of full-width bars that
+   push the whole page down. The rise-from-below keeps the centring offset
+   from the toast's translateX in every frame. */
 .conn-banner {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  z-index: 60;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 28px;
+  max-width: min(560px, calc(100vw - 24px));
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
   font-size: 12.5px;
-  font-weight: 550;
+  font-weight: 600;
   background: var(--rust);
-  color: #fff;
-  animation: rise var(--duration-base) var(--ease-out) both;
+  color: var(--money-action-ink);
+  box-shadow: var(--shadow-lg);
+  animation: toast-rise var(--duration-base) var(--ease-out) both;
 }
 
 .conn-banner.restored {
-  background: var(--green);
+  background: var(--money-in-action);
   animation:
-    rise var(--duration-base) var(--ease-out) both,
+    toast-rise var(--duration-base) var(--ease-out) both,
     bar-collapse var(--duration-slow) var(--ease-in) 2.4s both;
+}
+
+/* Screens with no tab bar of their own sit the toast on the bottom edge. */
+.shell:not(.shell--tabs) .conn-banner {
+  bottom: 12px;
+}
+
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 @keyframes bar-collapse {
@@ -2160,23 +2188,41 @@ tbody tr.money-row--variance:hover > td {
 }
 
 .install-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  z-index: 59;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 28px;
+  gap: 10px;
+  max-width: min(680px, calc(100vw - 24px));
+  padding: 9px 10px 9px 18px;
   background: var(--surface-raised);
-  border-bottom: 1px solid var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   color: var(--ink);
-  font-size: 13px;
-  animation: rise var(--duration-slow) var(--ease-out) both;
+  font-size: 12.5px;
+  animation: toast-rise var(--duration-slow) var(--ease-out) both;
+}
+
+.shell:not(.shell--tabs) .install-bar {
+  bottom: 12px;
+}
+
+.install-bar > span {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .install-bar button {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: var(--accent-ink);
+  background: var(--cta-bg);
+  border-color: var(--cta-bg);
+  color: var(--cta-ink);
   font-weight: 650;
-  padding: 7px 14px;
+  font-size: 12.5px;
+  padding: 0 14px;
 }
 
 .install-bar button.ghost {

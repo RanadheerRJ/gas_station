@@ -878,6 +878,10 @@ const en = {
   "shifts.emptyReviewBody": "Every closed shift has been reviewed and signed off.",
   "shifts.emptyClosedBody": "Approved shifts will be filed here once signed off.",
 
+  /* ---- app shell: station switcher, More sheet ---- */
+  "chrome.switchStation": "Switch station",
+  "more.places": "Places",
+
   /* ---- dev-only component kit (/__kit) ---- */
   "kit.title": "Component kit",
   "kit.devOnly": "Dev-only preview — never included in a production build.",

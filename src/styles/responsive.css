@@ -383,6 +383,12 @@
   .tabbar {
     display: none;
   }
+
+  /* No tab bar to clear, so the toasts drop to the plain bottom edge. */
+  .conn-banner,
+  .install-bar {
+    bottom: 16px;
+  }
 }
 
 /* =====================================================================
@@ -1449,11 +1455,11 @@
 
   .install-bar {
     flex-wrap: wrap;
-    padding-inline: 16px;
+    padding-inline: 14px;
   }
 
   .install-bar > span {
-    flex: 1 1 100% !important;
+    flex: 1 1 100%;
     min-width: 0;
   }
 
