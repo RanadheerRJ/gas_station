@@ -845,6 +845,7 @@ const te = {
   "close.paymentsHelp": "ప్రతి విధంగా వచ్చిన డబ్బు రాయండి.",
   "close.draftKept": "ఏదీ పోలేదు — మీరు రాసినది ఈ ఫోన్‌లో భద్రమే.",
   "close.edited": "సవరించారు",
+  "close.sendHint": "సమర్పించగానే యజమాని సమీక్షకు వెళ్తుంది",
   "close.fixAndResend": "గుర్తు చేసిన లెక్కలు సరిచేసి మళ్ళీ పంపండి.",
   "today.runningSince": "{time} నుండి నడుస్తోంది",
   "today.continueShift": "షిఫ్ట్ కొనసాగించండి",

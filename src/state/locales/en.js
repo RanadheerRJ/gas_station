@@ -860,6 +860,7 @@ const en = {
   "close.paymentsHelp": "Type how much you collected in each way.",
   "close.draftKept": "Nothing is lost — what you typed stays saved on this phone.",
   "close.edited": "Edited",
+  "close.sendHint": "Goes to the owner for review once submitted",
   "close.fixAndResend": "Fix the flagged figures and send it again.",
   "today.runningSince": "Running since {time}",
   "today.continueShift": "Continue shift",

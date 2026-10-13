@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import Money from "../../components/Money.jsx";
-import { ActionBar, Empty, Notice } from "../../components/ui.jsx";
-import { LoadingPanels } from "../../components/motion.jsx";
-import { PlusIcon } from "../../components/icons.jsx";
+import { Empty, Notice } from "../../components/ui.jsx";
+import { Card } from "../../components/Card.jsx";
+import StickyCta from "../../components/StickyCta.jsx";
+import Skeleton from "../../components/Skeleton.jsx";
+import EmptyState from "../../components/EmptyState.jsx";
+import { PlusIcon, ShiftIcon } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
 import { listShifts, readableError } from "../../lib/api";
@@ -70,7 +73,7 @@ export default function ShiftRun() {
       <>
         <ScreenHeader title={t("today.yourShift")} back="/today" />
         <div className="content">
-          <LoadingPanels count={2} lines={3} label={t("common.loading")} />
+          <Skeleton shape="card" count={3} />
         </div>
       </>
     );
@@ -97,9 +100,9 @@ export default function ShiftRun() {
       <>
         <ScreenHeader title={t("today.yourShift")} back="/today" />
         <div className="content">
-          <div className="empty-card">
-            <h2>{t("shifts.notFound")}</h2>
-          </div>
+          <Card>
+            <EmptyState icon={ShiftIcon} headline={t("shifts.notFound")} />
+          </Card>
         </div>
       </>
     );
@@ -137,15 +140,13 @@ export default function ShiftRun() {
         {/* How long, and what you are holding. */}
         <section className="card run-hero" aria-labelledby="run-elapsed-title">
           <div className="run-hero__elapsed">
-            <span className="k" id="run-elapsed-title">
-              {t("shifts.runningFor")}
+            <span className="live-pill">
+              <span className="live-dot" aria-hidden="true" />
+              {t("today.runningSince", { time: formatStamp(shift.startTime) })}
             </span>
-            <strong className="v mono" data-testid="run-elapsed">
+            <strong className="v mono" data-testid="run-elapsed" id="run-elapsed-title">
               {elapsedLabel(elapsed, t)}
             </strong>
-            <span className="sub">
-              {t("shifts.started")} {formatStamp(shift.startTime)}
-            </span>
           </div>
           <div className="status-card__chips">
             {shift.nozzles.map((nozzle) => (
@@ -235,23 +236,21 @@ export default function ShiftRun() {
           </div>
         </section>
 
-        <ActionBar>
-          <button
-            type="button"
-            className="action-bar__with-icon"
-            onClick={() => setExpenseOpen(true)}
-          >
-            <PlusIcon size={16} />
-            {t("shifts.addExpense")}
-          </button>
-          <button
-            type="button"
-            className="cta"
-            onClick={() => navigate(`/today/shift/${shift.id}/close`)}
-          >
-            {t("shifts.closeShift")}
-          </button>
-        </ActionBar>
+        <StickyCta
+          summary={elapsedLabel(elapsed, t)}
+          secondary={
+            <button
+              type="button"
+              className="tool-btn"
+              onClick={() => setExpenseOpen(true)}
+            >
+              <PlusIcon size={16} />
+              {t("shifts.addExpense")}
+            </button>
+          }
+          ctaLabel={t("shifts.closeShift")}
+          onCta={() => navigate(`/today/shift/${shift.id}/close`)}
+        />
       </div>
 
       <ExpensesSheet

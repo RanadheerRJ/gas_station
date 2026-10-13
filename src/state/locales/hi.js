@@ -840,6 +840,7 @@ const hi = {
   "close.paymentsHelp": "हर तरीके से आपने कितना लिया, वह लिखें।",
   "close.draftKept": "कुछ नहीं खोया — आपने जो लिखा वह इस फ़ोन में सुरक्षित है।",
   "close.edited": "बदला गया",
+  "close.sendHint": "जमा होने पर मालिक के समीक्षा के लिए जाएगा",
   "close.fixAndResend": "बताई गई गलतियाँ ठीक करके दोबारा भेजें।",
   "today.runningSince": "{time} से चल रही है",
   "today.continueShift": "शिफ्ट जारी रखें",

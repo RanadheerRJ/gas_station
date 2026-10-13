@@ -127,6 +127,12 @@
   margin-bottom: 4px;
 }
 
+/* The close screen's list of what still needs fixing. */
+.problem-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
 /* ---------------- start-shift picker ---------------- */
 
 /* The board as a menu: pumps are sections, nozzles are tiles. */
