@@ -628,6 +628,7 @@ const en = {
     "{count} shifts awaiting your sign-off. Open a station’s shift register to review the figures, adjust expenses or testing, and approve.",
   "owner.pendingNoticeOne":
     "{count} shift awaiting your sign-off. Open a station’s shift register to review the figures, adjust expenses or testing, and approve.",
+  "owner.reviewShifts": "Review shifts",
   "owner.stations": "Stations",
   "owner.addStation": "Add station",
   "owner.stationName": "Station name",

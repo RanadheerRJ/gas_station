@@ -36,8 +36,42 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   color: var(--muted);
+}
+
+/* The station's monogram: a stable colour per name, the same scheme the
+   operator rows use, so cards are scannable without photographs. */
+.station-card__avatar {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  background: hsl(var(--avatar-hue, 215) 72% 94%);
+  color: hsl(var(--avatar-hue, 215) 68% 30%);
+  border: 1px solid hsl(var(--avatar-hue, 215) 60% 86%);
+}
+
+:root[data-theme="dark"] .station-card__avatar {
+  background: hsl(var(--avatar-hue, 215) 45% 20%);
+  color: hsl(var(--avatar-hue, 215) 80% 82%);
+  border-color: hsl(var(--avatar-hue, 215) 45% 30%);
+}
+
+/* "3 open" carries the same pulsing dot the running shift does. */
+.tag--live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tag--live .live-dot {
+  width: 6px;
+  height: 6px;
 }
 
 .station-card__name {
