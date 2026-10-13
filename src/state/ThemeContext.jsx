@@ -23,7 +23,7 @@ export function ThemeProvider({ children }) {
     // sinks into the dark surface at night.
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#0b0f16" : "#063b8f");
+      ?.setAttribute("content", theme === "dark" ? "#0a0e16" : "#002970");
   }, [theme]);
   const value = useMemo(
     () => ({
