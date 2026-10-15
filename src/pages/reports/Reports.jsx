@@ -14,12 +14,40 @@ import { fuelClass } from "../../lib/fuel.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 import {
   creditReport,
+  monthRange,
   monthlyReport,
   shiftStatementReport,
   stockReport,
 } from "../../lib/export.js";
 import { listCustomers, listTanks } from "../../lib/api";
-import { ChartIcon, CreditIcon, LedgerIcon, TankIcon } from "../../components/icons.jsx";
+import {
+  ChartIcon,
+  CreditIcon,
+  DownloadIcon,
+  LedgerIcon,
+  TankIcon,
+} from "../../components/icons.jsx";
+
+/**
+ * One export, as a card. The whole card is the control — it opens the export
+ * sheet — because a card that looks tappable and is not is the one thing the
+ * screens of this app are not allowed to have. The trailing pill is what the
+ * tap does, and is part of the same button rather than a second one.
+ */
+function ExportTile({ Icon, label, desc, open }) {
+  const { t } = useLanguage();
+  return (
+    <button type="button" className="report-tile report-tile--action" onClick={open}>
+      <Icon size={24} />
+      <b>{label}</b>
+      <span>{desc}</span>
+      <span className="report-tile__cta">
+        <DownloadIcon size={16} />
+        {t("report.title")}
+      </span>
+    </button>
+  );
+}
 
 /**
  * The month on one screen, for owners and managers: a month dial, the
@@ -78,23 +106,27 @@ export default function Reports() {
   }, [load]);
 
   const report = useMemo(() => monthReport(shifts, month), [shifts, month]);
+  // Which month the dial is on, as a window: the monthly export opens on it
+  // rather than on today's month-to-date, so the file always agrees with the
+  // figures on screen. The window is still editable — a quarter or a year of
+  // months comes out as one row each.
+  const monthWindow = useMemo(() => monthRange(month), [month]);
   const buildReport = useCallback(
     (range, filters = {}) =>
       monthlyReport({
-        shifts: shifts.filter(
-          (shift) => shift.date >= range.from && shift.date <= range.to
-        ),
-        month,
+        shifts,
+        range,
         stationName: station?.name || "",
         ...filters,
       }),
-    [shifts, month, station]
+    [shifts, station]
   );
 
   const buildShiftsReport = useCallback(
     (range, filters = {}) =>
       shiftStatementReport({
-        shifts: shifts.filter((x) => x.date >= range.from && x.date <= range.to),
+        shifts,
+        range,
         stationName: station?.name || "",
         ...filters,
       }),
@@ -183,8 +215,10 @@ export default function Reports() {
         actions={
           <ReportSheet
             report="monthly"
-            title="Monthly summary"
+            title={t("reports.monthlySummary")}
+            fileTitle="Monthly summary"
             stationName={station?.name || ""}
+            openingRange={monthWindow}
             buildReport={buildReport}
           />
         }
@@ -200,42 +234,54 @@ export default function Reports() {
             <div className="report-tiles">
               <a className="report-tile" href="#monthly-summary">
                 <ChartIcon size={24} />
-                <b>{t("reports.title")}</b>
+                <b>{t("reports.monthlySummary")}</b>
                 <span>{t("reports.tileMonthlyDesc")}</span>
               </a>
-              <div className="report-tile report-tile--action">
-                <LedgerIcon size={24} />
-                <b>{t("shifts.statement")}</b>
-                <span>{t("reports.tileShiftsDesc")}</span>
-                <ReportSheet
-                  report="shifts"
-                  title="Daily Sales Statement"
-                  stationName={station?.name || ""}
-                  buildReport={buildShiftsReport}
-                />
-              </div>
-              <div className="report-tile report-tile--action">
-                <CreditIcon size={24} />
-                <b>{t("credit.title")}</b>
-                <span>{t("reports.tileCreditDesc")}</span>
-                <ReportSheet
-                  report="credit"
-                  title={t("credit.reportExport")}
-                  stationName={station?.name || ""}
-                  buildReport={buildCreditReport}
-                />
-              </div>
-              <div className="report-tile report-tile--action">
-                <TankIcon size={24} />
-                <b>{t("stock.title")}</b>
-                <span>{t("reports.tileStockDesc")}</span>
-                <ReportSheet
-                  report="stock"
-                  title="Ground stock"
-                  stationName={station?.name || ""}
-                  buildReport={buildStockReport}
-                />
-              </div>
+              <ReportSheet
+                report="shifts"
+                title={t("shifts.statement")}
+                fileTitle="Daily Sales Statement"
+                stationName={station?.name || ""}
+                buildReport={buildShiftsReport}
+                trigger={(open) => (
+                  <ExportTile
+                    Icon={LedgerIcon}
+                    label={t("shifts.statement")}
+                    desc={t("reports.tileShiftsDesc")}
+                    open={open}
+                  />
+                )}
+              />
+              <ReportSheet
+                report="credit"
+                title={t("credit.title")}
+                fileTitle="Credit customers"
+                stationName={station?.name || ""}
+                buildReport={buildCreditReport}
+                trigger={(open) => (
+                  <ExportTile
+                    Icon={CreditIcon}
+                    label={t("credit.title")}
+                    desc={t("reports.tileCreditDesc")}
+                    open={open}
+                  />
+                )}
+              />
+              <ReportSheet
+                report="stock"
+                title={t("stock.reportTitle")}
+                fileTitle="Ground stock"
+                stationName={station?.name || ""}
+                buildReport={buildStockReport}
+                trigger={(open) => (
+                  <ExportTile
+                    Icon={TankIcon}
+                    label={t("stock.reportTitle")}
+                    desc={t("reports.tileStockDesc")}
+                    open={open}
+                  />
+                )}
+              />
             </div>
 
             {/* ---- which month ---- */}

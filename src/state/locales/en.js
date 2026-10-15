@@ -103,9 +103,17 @@ const en = {
   "report.exportCsv": "Export CSV",
   "report.exportPdf": "Export PDF",
   "report.thisMonth": "This month",
+  "report.thisYear": "This year",
+  "report.allTime": "Everything, all dates",
   "report.rowCount": "{count} rows in range",
+  "report.rowCountOne": "{count} row in range",
+  "report.statusOpen": "Open",
   "report.noRows": "Nothing in this date range to export.",
   "report.scopedToYou": "You can export your own shifts only.",
+  "report.saved": "{format} saved to your downloads.",
+  "report.opened": "{format} opened in a new tab — save it from there.",
+  "report.blocked":
+    "This browser would not save the {format} file. Try Chrome or Safari.",
   "report.note":
     "Exports contain exactly the rows shown for the selected station and date range.",
 
@@ -169,6 +177,7 @@ const en = {
 
   /* ---- monthly reports ---- */
   "nav.reports": "Reports",
+  "reports.monthlySummary": "Monthly summary",
   "reports.title": "Monthly report",
   "reports.subtitle": "settled shifts, month by month",
   "reports.prevMonth": "Previous month",
@@ -465,6 +474,7 @@ const en = {
   "credit.outstandingBalance": "Outstanding balance",
   "credit.moreActions": "More actions",
   "credit.statement": "Statement",
+  "credit.statementReport": "Customer statement",
   "credit.periodThisMonth": "This month",
   "credit.periodLastMonth": "Last month",
   "credit.periodLast3Months": "Last 3 months",
@@ -555,6 +565,7 @@ const en = {
 
   /* ---- ground stock ---- */
   "stock.title": "Ground stock",
+  "stock.reportTitle": "Ground stock",
   "stock.healthy": "Healthy",
   "stock.low": "Low",
   "stock.critical": "Critical",
@@ -987,5 +998,7 @@ const en = {
   "kit.sheetBody":
     "A sheet holds one quick action over the screen and dismisses back to where you were.",
   "kit.steps": "Step progress",
+  "kit.exportSheet": "Export sheet",
+  "kit.exportOneDay": "Export one day",
 };
 export default en;

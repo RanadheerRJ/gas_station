@@ -1002,12 +1002,35 @@
 .report-tile:active {
   transform: scale(0.98);
 }
+/* An export card: the whole tile is the button that opens the sheet, so it
+   carries the same press and focus states as every other card in the app. */
 .report-tile--action {
-  cursor: default;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
 }
-.report-tile--action .tool-btn {
+.report-tile__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   justify-self: start;
   margin-top: 4px;
+  padding: 8px 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.report-tile--action:hover .report-tile__cta {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.report-tile--action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 @media (prefers-reduced-motion: reduce) {
   .report-tile:active {

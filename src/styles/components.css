@@ -2384,38 +2384,182 @@ tbody tr.money-row--variance:hover > td {
   background: var(--hairline);
 }
 
-/* ---------------- report & export controls (in a sheet) ---------------- */
+/* ---------------- report & export (the sheet) ----------------
 
-.report-tools {
+   One task, top to bottom: what will be written, what is in scope, the
+   window, then two checkout-style buttons that stay under the thumb. The
+   summary card is the only place the row count is stated, so the sheet
+   cannot contradict itself the way three copies of it did. */
+
+.report-sheet {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 4px;
+}
+
+.export-summary {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--accent-soft-strong);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+
+.export-summary__main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.export-summary__label {
+  color: var(--accent-strong);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.export-summary__title {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.export-summary__station {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-summary__range {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.export-summary__count {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.export-summary__count.is-empty {
+  color: var(--muted);
+  background: var(--surface);
+}
+
+/* ---- scope: fuel chips beside the two lists that can grow long ---- */
+
+.report-filters {
+  display: grid;
   gap: 12px;
 }
 
-.report-tools__dates {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  flex: 1;
+.report-filters__group {
+  display: grid;
+  gap: 6px;
 }
 
-.report-tools__dates .field {
+.report-filters__label,
+.report-tools .field > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.report-filters .field {
   min-width: 150px;
-  flex: 1;
+}
+
+/* ---- window + downloads ---- */
+
+.report-tools {
+  display: grid;
+  gap: 14px;
+}
+
+.report-tools__dates {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.report-tools__fixed {
+  margin: 0;
 }
 
 .report-tools__actions {
-  display: flex;
+  display: grid;
   gap: 8px;
-  flex: 1;
 }
 
-.report-tools__actions button {
-  flex: 1;
-  min-height: 44px;
+.report-tools__buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.report-tools__buttons > button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  padding-inline: 12px;
 }
 
 .report-tools__meta {
-  flex: 1 1 100%;
+  margin: 0;
+}
+
+.report-tools__result {
+  margin: 0;
+  color: var(--money-in);
+  font-weight: 650;
+}
+
+.report-tools__result.is-error {
+  color: var(--money-out);
+}
+
+.report-sheet__note {
+  margin: 0;
+}
+
+/*
+ * On a phone the sheet is the whole export workflow, so the two buttons are
+ * pinned to the bottom of it — the thumb lands there without scrolling past
+ * the range controls. The bar bleeds to the sheet's own edges and keeps an
+ * opaque surface behind it, so rows scroll under rather than through it.
+ */
+@media (max-width: 860px) {
+  .report-tools__actions {
+    position: sticky;
+    /* Sticky offsets are measured from the body's padding box, so 0 pins the
+       bar to the sheet's own bottom edge; the opaque background hides the
+       rows scrolling behind it. */
+    bottom: 0;
+    z-index: 1;
+    margin-inline: calc(var(--content-gutter) * -1);
+    padding: 12px var(--content-gutter) calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--hairline);
+    background: var(--surface);
+  }
+}
+
+@media (max-width: 460px) {
+  .export-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }
