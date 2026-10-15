@@ -202,9 +202,8 @@
   position: relative;
   padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 30px;
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-  background:
-    radial-gradient(420px 220px at 50% -40%, var(--accent-soft-strong), transparent 70%),
-    var(--accent-soft);
+  background: var(--hero-bg);
+  box-shadow: var(--hero-shadow);
 }
 
 .login__hero-inner {
@@ -212,7 +211,16 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: var(--ink-strong);
+  color: var(--hero-ink);
+}
+
+/* The mark sits on a white tile so its blue pump stays legible on the
+   gradient, the way an app icon sits on a banking home header. */
+.login__hero-inner > svg:first-child {
+  background: var(--surface);
+  border-radius: 22px;
+  padding: 8px;
+  box-sizing: content-box;
 }
 
 .login__hero-inner svg {
@@ -223,7 +231,7 @@
   margin: 4px 0 0;
   font-size: 14px;
   font-weight: 550;
-  color: var(--muted);
+  color: var(--hero-muted);
 }
 
 /* Theme and the support menu sit at the hero's top corner. */
@@ -432,9 +440,7 @@
     padding: 40px;
     display: grid;
     place-items: center;
-    background:
-      radial-gradient(560px 300px at 50% 0%, var(--accent-soft-strong), transparent 70%),
-      var(--accent-soft);
+    background: var(--hero-bg);
   }
 
   .login__tools {

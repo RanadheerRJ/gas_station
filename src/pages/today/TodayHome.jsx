@@ -14,11 +14,13 @@ import { elapsedLabel } from "../../lib/elapsed.js";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 import {
   CheckIcon,
+  CreditIcon,
   HistoryIcon,
   PlusIcon,
   PumpIcon,
   RefreshIcon,
   ShiftIcon,
+  TankIcon,
 } from "../../components/icons.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
@@ -36,12 +38,6 @@ import { fuelClass } from "../../lib/fuel.js";
 import { StatusTag } from "../shifts/parts.jsx";
 import { shiftPaths } from "../shifts/paths.js";
 import ExpensesSheet from "../shifts/ExpensesSheet.jsx";
-
-function greetingKey(hour) {
-  if (hour < 12) return "today.goodMorning";
-  if (hour < 17) return "today.goodAfternoon";
-  return "today.goodEvening";
-}
 
 /**
  * The attendant's home feed, drawn like a delivery app's: a greeting that
@@ -156,7 +152,6 @@ export default function TodayHome() {
   const elapsedMs = myShift
     ? Math.max(0, now - new Date(myShift.startTime).getTime())
     : 0;
-  const greeting = `${t(greetingKey(new Date().getHours()))}, ${profile.name}`;
   const canStart = pumps.length > 0 && freeNozzleCount > 0;
 
   const statusChip = sentBack ? (
@@ -170,7 +165,7 @@ export default function TodayHome() {
   return (
     <>
       <ScreenHeader
-        title={greeting}
+        title={t("today.title")}
         sub={
           station?.name
             ? `${station.name} · ${formatDate(todayISO())}`
@@ -323,6 +318,45 @@ export default function TodayHome() {
                   </div>
                 </div>
               )}
+            </section>
+
+            {/* Quick actions: the banking-home icon grid — four big,
+                labelled targets for the places an attendant actually goes. */}
+            <section className="dashboard-section" aria-labelledby="quick-actions-title">
+              <div className="section-label">
+                <h2 id="quick-actions-title">{t("today.quickActions")}</h2>
+              </div>
+              <div className="quick-grid">
+                <Link
+                  to={myShift ? paths.run(myShift.id) : paths.start}
+                  className="quick-tile"
+                >
+                  <span className="quick-tile__icon" aria-hidden="true">
+                    {myShift ? <ShiftIcon size={23} /> : <PlusIcon size={23} />}
+                  </span>
+                  <span>
+                    {myShift ? t("today.continueShift") : t("shifts.startShift")}
+                  </span>
+                </Link>
+                <Link to={paths.list} className="quick-tile">
+                  <span className="quick-tile__icon" aria-hidden="true">
+                    <HistoryIcon size={23} />
+                  </span>
+                  <span>{t("nav.history")}</span>
+                </Link>
+                <Link to="/today/credit" className="quick-tile">
+                  <span className="quick-tile__icon" aria-hidden="true">
+                    <CreditIcon size={23} />
+                  </span>
+                  <span>{t("nav.creditCustomers")}</span>
+                </Link>
+                <Link to="/today/stock" className="quick-tile">
+                  <span className="quick-tile__icon" aria-hidden="true">
+                    <TankIcon size={23} />
+                  </span>
+                  <span>{t("nav.groundStock")}</span>
+                </Link>
+              </div>
             </section>
 
             {/* Today's numbers as a scrolling row of stat cards. */}

@@ -375,14 +375,33 @@ describe("the station switcher", () => {
     expect(container.querySelector("button.appbar__station")).toBeNull();
   });
 
-  it("keeps the brand in the top bar for an owner with one station", async () => {
+  it("greets an owner with one station by name, with no station switcher", async () => {
     stationsMock.list = [{ id: "s1", name: "Station One" }];
     await renderLayout(
       { uid: "u-owner", role: "owner", name: "Owner User", username: "owner" },
       "/owner"
     );
     expect(container.querySelector(".appbar__station")).toBeNull();
-    expect(container.querySelector(".appbar .brand-lockup")).toBeTruthy();
+    // The banking-style greeting row replaces the brand lockup: initials
+    // avatar + "Hello, <first name>!", station named underneath as text.
+    const avatar = container.querySelector(".appbar__avatar");
+    expect(avatar).toBeTruthy();
+    expect(avatar.textContent).toBe("OU");
+    expect(container.querySelector(".appbar__hello").textContent).toBe("Hello, Owner!");
+    expect(container.querySelector(".appbar__sub").textContent).toBe("Station One");
+  });
+
+  it("raises a centre Start-shift button in the tab bar for every working role", async () => {
+    await renderLayout(
+      { uid: "u-owner", role: "owner", name: "Owner User", username: "owner" },
+      "/owner"
+    );
+    const fab = container.querySelector(".tabbar__fab");
+    expect(fab).toBeTruthy();
+    expect(fab.getAttribute("href")).toBe("/owner/shifts/start");
+    expect(fab.getAttribute("aria-label")).toBe("Start shift");
+    // The five destinations are untouched by the centre button.
+    expect(container.querySelectorAll(".tabbar .tab")).toHaveLength(5);
   });
 });
 

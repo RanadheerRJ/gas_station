@@ -80,6 +80,21 @@
   --cta-ink: #ffffff;
   --cta-shadow: 0 10px 24px -10px rgba(17, 24, 39, 0.45);
 
+  /* Banking-style home hero: a deep brand-blue → violet gradient card (the
+     layout pattern of a consumer banking home, in PÉTRAV's own colours —
+     not any bank's). Text on it is always --hero-ink; the soft/line tokens
+     keep secondary text and hairlines legible on the gradient. */
+  --hero-bg: linear-gradient(128deg, #063b8f 0%, #0b5bc6 52%, #6d28d9 108%);
+  --hero-ink: #ffffff;
+  --hero-muted: rgba(255, 255, 255, 0.78);
+  --hero-line: rgba(255, 255, 255, 0.38);
+  --hero-chip: rgba(255, 255, 255, 0.16);
+  --hero-shadow: 0 18px 34px -16px rgba(6, 59, 143, 0.55);
+  /* The raised centre button of the bottom bar. */
+  --fab-bg: linear-gradient(145deg, #7c3aed 0%, #0b5bc6 130%);
+  --fab-ink: #ffffff;
+  --fab-shadow: 0 10px 22px -8px rgba(109, 40, 217, 0.65);
+
   /* Filter chips: the horizontal scrollers every list is filtered with.
      Selected echoes the checkout button (near-black here, white in dark
      mode) so "this is the active filter" reads the same as "this is the
@@ -237,6 +252,9 @@
   --cta-bg-hover: #ffffff;
   --cta-ink: #0b0f16;
   --cta-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65);
+
+  --hero-bg: linear-gradient(128deg, #082c66 0%, #0a4496 52%, #4c1d95 108%);
+  --hero-shadow: 0 18px 34px -16px rgba(0, 0, 0, 0.7);
 
   --chip-bg: #1c2635;
   --chip-ink: #c6cfdd;
