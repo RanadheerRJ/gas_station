@@ -1,34 +1,70 @@
+import { useEffect, useMemo, useState } from "react";
+import { Chip, ChipRow } from "./Chip.jsx";
+import { Field } from "./ui.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 import {
+  DOWNLOAD_MODE,
   downloadCsv,
   downloadPdf,
+  matchingRangeName,
+  quickRanges,
   reportFilename,
   reportSubtitle,
 } from "../lib/export.js";
+import { formatDate } from "../lib/format.js";
+
+/** The chip-able windows, in the order a month-end job walks them. */
+const PRESETS = [
+  ["thisMonth", "credit.periodThisMonth"],
+  ["lastMonth", "credit.periodLastMonth"],
+  ["last3Months", "credit.periodLast3Months"],
+  ["thisYear", "report.thisYear"],
+];
+
+/** Both ends of a window, human-formatted; "—" where there is no date. */
+function rangeText(range = {}) {
+  return `${range.from ? formatDate(range.from) : "—"} → ${
+    range.to ? formatDate(range.to) : "—"
+  }`;
+}
 
 /**
- * The date-range control and the two export buttons, shared by every
- * reportable screen.
+ * The working half of the export sheet: pick a window, narrow it, download.
  *
- * The range it edits is the same state the screen filters its table with, so
- * a download can never contain a row the operator was not looking at. The
- * report itself is built by the caller — this component never fetches
- * anything, which keeps `src/lib/api.js` the only way data enters the app.
+ * Everything the operator can change lives here, and the report is built by
+ * the caller, so the sheet never fetches anything — `src/lib/api.js` stays
+ * the only way data enters the app. The buttons say what they will write
+ * ("CSV · Excel, Sheets") rather than naming a file format, and the result
+ * of the last download is reported underneath: silence is what makes an
+ * export feel broken.
  */
 export default function ReportTools({
   report,
   title,
+  fileTitle,
   buildReport,
   stationName,
+  subject = "",
   range,
   onRangeChange,
   rowCount,
   note,
+  meta = "",
   disabled = false,
+  fixedRange = false,
   filters = {},
 }) {
   const { t } = useLanguage();
+  const [result, setResult] = useState(null);
   const empty = !rowCount;
+  const presets = useMemo(() => quickRanges(), []);
+  const activePreset = fixedRange ? "" : matchingRangeName(range);
+
+  // A confirmation belongs to the file it describes: changing the window or a
+  // filter clears it, so "CSV saved" can never sit under a different export.
+  useEffect(() => {
+    setResult(null);
+  }, [range.from, range.to, filters.fuelGroup, filters.employeeId, filters.status]);
 
   const run = (kind) => {
     const built = buildReport();
@@ -42,82 +78,108 @@ export default function ReportTools({
       fuelGroup: filters.fuelGroup === "ALL" ? "" : filters.fuelGroup,
       employeeName: filters.employeeName || "",
     });
-    if (kind === "csv") {
-      downloadCsv(built, filename);
-      return;
-    }
-    downloadPdf(
-      {
-        ...built,
-        title: title || report,
-        subtitle: reportSubtitle({ stationName, from: range.from, to: range.to }),
-      },
-      filename
-    );
+    const outcome =
+      kind === "csv"
+        ? downloadCsv(built, filename)
+        : downloadPdf(
+            {
+              ...built,
+              title: fileTitle || title || report,
+              subtitle: reportSubtitle({
+                subject,
+                stationName,
+                from: range.from,
+                to: range.to,
+              }),
+              meta,
+            },
+            filename
+          );
+    const format = kind === "csv" ? "CSV" : "PDF";
+    setResult({
+      ok: Boolean(outcome?.ok),
+      text: !outcome?.ok
+        ? t("report.blocked", { format })
+        : outcome.mode === DOWNLOAD_MODE.OPENED
+          ? t("report.opened", { format })
+          : t("report.saved", { format }),
+    });
   };
 
   return (
     <div className="report-tools">
-      <div className="report-summary">
-        <div>
-          <span className="report-summary__label">{t("report.readyTitle")}</span>
-          <strong>{title || report}</strong>
-          {stationName && (
-            <span className="business-name" title={stationName}>
-              {stationName}
-            </span>
-          )}
-        </div>
-        <span className="report-summary__count">
-          {empty ? t("report.noRowsShort") : t("report.rowCount", { count: rowCount })}
-        </span>
-      </div>
+      {fixedRange ? (
+        <p className="report-tools__fixed small muted">{rangeText(range)}</p>
+      ) : (
+        <>
+          <div
+            className="report-tools__presets"
+            role="group"
+            aria-label={t("report.dateRange")}
+          >
+            <ChipRow label={t("report.dateRange")}>
+              {PRESETS.map(([value, key]) => (
+                <Chip
+                  key={value}
+                  label={t(key)}
+                  selected={activePreset === value}
+                  onClick={() => onRangeChange({ ...presets[value] })}
+                />
+              ))}
+            </ChipRow>
+          </div>
 
-      <div className="report-tools__dates">
-        <label className="field">
-          <span>{t("report.from")}</span>
-          <input
-            type="date"
-            className="mono"
-            value={range.from}
-            max={range.to || undefined}
-            onChange={(event) => onRangeChange({ ...range, from: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          <span>{t("report.to")}</span>
-          <input
-            type="date"
-            className="mono"
-            value={range.to}
-            min={range.from || undefined}
-            onChange={(event) => onRangeChange({ ...range, to: event.target.value })}
-          />
-        </label>
-      </div>
+          <div className="report-tools__dates">
+            <Field label={t("report.from")}>
+              <input
+                type="date"
+                className="mono"
+                value={range.from}
+                max={range.to || undefined}
+                onChange={(event) =>
+                  onRangeChange({ ...range, from: event.target.value })
+                }
+              />
+            </Field>
+            <Field label={t("report.to")}>
+              <input
+                type="date"
+                className="mono"
+                value={range.to}
+                min={range.from || undefined}
+                onChange={(event) => onRangeChange({ ...range, to: event.target.value })}
+              />
+            </Field>
+          </div>
+        </>
+      )}
 
       <div className="report-tools__actions">
-        <button
-          type="button"
-          disabled={disabled || empty}
-          onClick={() => run("csv")}
-          title={empty ? t("report.noRows") : undefined}
-        >
-          {t("report.exportCsv")}
-        </button>
-        <button
-          type="button"
-          disabled={disabled || empty}
-          onClick={() => run("pdf")}
-          title={empty ? t("report.noRows") : undefined}
-        >
-          {t("report.exportPdf")}
-        </button>
-      </div>
-
-      <div className="report-tools__meta small muted">
-        {empty ? t("report.noRows") : t("report.rowCount", { count: rowCount })}
-        {note ? ` · ${note}` : ""}
+        <div className="report-tools__buttons">
+          <button
+            type="button"
+            className="cta"
+            disabled={disabled || empty}
+            onClick={() => run("csv")}
+          >
+            {t("report.exportCsv")}
+          </button>
+          <button type="button" disabled={disabled || empty} onClick={() => run("pdf")}>
+            {t("report.exportPdf")}
+          </button>
+        </div>
+        <p className="report-tools__meta small muted">
+          {empty ? t("report.noRows") : rangeText(range)}
+          {note ? ` · ${note}` : ""}
+        </p>
+        {result && (
+          <p
+            className={`report-tools__result small${result.ok ? "" : " is-error"}`}
+            role="status"
+          >
+            {result.text}
+          </p>
+        )}
       </div>
     </div>
   );

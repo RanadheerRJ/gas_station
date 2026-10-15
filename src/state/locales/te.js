@@ -99,9 +99,17 @@ const te = {
   "report.exportCsv": "CSV ఎగుమతి",
   "report.exportPdf": "PDF ఎగుమతి",
   "report.thisMonth": "ఈ నెల",
+  "report.thisYear": "ఈ సంవత్సరం",
+  "report.allTime": "అన్ని తేదీలు",
   "report.rowCount": "పరిధిలో {count} వరుసలు",
+  "report.rowCountOne": "పరిధిలో {count} వరుస",
+  "report.statusOpen": "తెరిచి ఉంది",
   "report.noRows": "ఈ తేదీ పరిధిలో ఎగుమతి చేయడానికి ఏమీ లేదు.",
   "report.scopedToYou": "మీరు మీ సొంత షిఫ్టులను మాత్రమే ఎగుమతి చేయగలరు.",
+  "report.saved": "{format} మీ డౌన్‌లోడ్‌లలో సేవ్ అయింది.",
+  "report.opened": "{format} కొత్త ట్యాబ్‌లో తెరిచాం — అక్కడ నుండి సేవ్ చేయండి.",
+  "report.blocked":
+    "ఈ బ్రౌజర్ {format} ఫైల్‌ను సేవ్ చేయలేదు. Chrome లేదా Safari వాడి చూడండి.",
   "report.note":
     "ఎంచుకున్న స్టేషన్ మరియు తేదీ పరిధికి చూపిన వరుసలు మాత్రమే ఎగుమతిలో ఉంటాయి.",
 
@@ -162,6 +170,7 @@ const te = {
   "ledger.fuel": "ఇంధనం",
 
   "nav.reports": "నివేదికలు",
+  "reports.monthlySummary": "నెలవారీ సారాంశం",
   "reports.title": "నెలవారీ నివేదిక",
   "reports.subtitle": "ముగిసిన షిఫ్టులు, నెల వారీగా",
   "reports.prevMonth": "క్రితం నెల",
@@ -456,6 +465,7 @@ const te = {
   "credit.outstandingBalance": "బాకీ బ్యాలెన్స్",
   "credit.moreActions": "మరిన్ని చర్యలు",
   "credit.statement": "స్టేట్‌మెంట్",
+  "credit.statementReport": "కస్టమర్ స్టేట్‌మెంట్",
   "credit.periodThisMonth": "ఈ నెల",
   "credit.periodLastMonth": "గత నెల",
   "credit.periodLast3Months": "గత 3 నెలలు",
@@ -543,6 +553,7 @@ const te = {
   "shifts.creditVoidedCount": "{count} రద్దు చేసినవి",
 
   "stock.title": "భూగర్భ నిల్వ",
+  "stock.reportTitle": "భూగర్భ నిల్వ నివేదిక",
   "stock.healthy": "బాగుంది",
   "stock.low": "తక్కువ",
   "stock.critical": "క్లిష్టం",
@@ -972,5 +983,7 @@ const te = {
   "kit.sheetBody":
     "షీట్ స్క్రీన్ మీద ఒక త్వరిత పనిని ఉంచుతుంది, తెరిచిన చోటికే తిరిగి మూసుకుంటుంది.",
   "kit.steps": "దశ పురోగతి",
+  "kit.exportSheet": "ఎగుమతి షీట్",
+  "kit.exportOneDay": "ఒక రోజు ఎగుమతి",
 };
 export default te;

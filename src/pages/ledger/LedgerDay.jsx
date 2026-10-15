@@ -134,19 +134,23 @@ export default function LedgerDay() {
         sub={station ? station.name : ""}
         back={link(base)}
         actions={
+          // The day is the day: `fixedRange` pins the window, so the sheet
+          // offers no range input that could not lead anywhere.
           <ReportSheet
             report="shifts"
-            title="Daily Sales Statement"
+            title={t("shifts.statement")}
+            fileTitle="Daily Sales Statement"
             stationName={station?.name || ""}
             buildReport={(range, filters = {}) =>
               shiftStatementReport({
                 shifts: filterByRange(shifts, range),
                 stationName: station?.name || "",
+                range,
                 ...filters,
               })
             }
             range={{ from: date, to: date }}
-            onRangeChange={() => {}}
+            fixedRange
           />
         }
       />

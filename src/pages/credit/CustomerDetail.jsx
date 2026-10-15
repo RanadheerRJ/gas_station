@@ -398,7 +398,8 @@ export default function CustomerDetail() {
   const exportTools = (
     <ReportSheet
       report="statement"
-      title={t("credit.statement")}
+      title={t("credit.statementReport")}
+      fileTitle="Customer statement"
       label={t("credit.reportExport")}
       triggerClassName="tool-btn tool-btn--compact"
       stationName={station?.name || ""}

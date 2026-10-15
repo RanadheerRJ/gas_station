@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { AuthProvider } from "../state/AuthContext.jsx";
 import { useTheme } from "../state/ThemeContext.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
-import { money, num } from "../lib/format.js";
+import { money, num, todayISO } from "../lib/format.js";
 import { Card } from "../components/Card.jsx";
 import { Chip, ChipRow } from "../components/Chip.jsx";
 import StickyCta from "../components/StickyCta.jsx";
@@ -10,6 +11,7 @@ import Skeleton from "../components/Skeleton.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { Notice, Panel, Segmented, Stat } from "../components/ui.jsx";
 import Sheet from "../components/Sheet.jsx";
+import ReportSheet from "../components/ReportSheet.jsx";
 import StepProgress from "../components/StepProgress.jsx";
 import Money from "../components/Money.jsx";
 import VariancePill from "../components/VariancePill.jsx";
@@ -33,6 +35,7 @@ import {
  */
 export default function Kit() {
   const { t } = useLanguage();
+  const today = todayISO();
   const { theme, toggleTheme } = useTheme();
   const [tab, setTab] = useState("all");
   const [view, setView] = useState("overview");
@@ -319,6 +322,36 @@ export default function Kit() {
 
           <section className="kit__section">
             <div className="section-label">
+              <h2>{t("kit.exportSheet")}</h2>
+            </div>
+            {/* The export sheet reads the signed-in profile to decide what it
+                may scope by, so the demo brings its own provider rather than
+                leaning on the shell's. */}
+            <AuthProvider>
+              <div className="kit__row">
+                <ReportSheet
+                  report="shifts"
+                  title={t("shifts.statement")}
+                  fileTitle="Daily Sales Statement"
+                  stationName="Sri Laxmi Narasimha Filling Station"
+                  buildReport={kitReport}
+                />
+                <ReportSheet
+                  report="shifts"
+                  title={t("shifts.statement")}
+                  fileTitle="Daily Sales Statement"
+                  label={t("kit.exportOneDay")}
+                  stationName="Sri Laxmi Narasimha Filling Station"
+                  range={{ from: today, to: today }}
+                  fixedRange
+                  buildReport={kitReport}
+                />
+              </div>
+            </AuthProvider>
+          </section>
+
+          <section className="kit__section">
+            <div className="section-label">
               <h2>{t("kit.steps")}</h2>
             </div>
             <Card>
@@ -356,6 +389,26 @@ export default function Kit() {
       </Sheet>
     </div>
   );
+}
+
+/**
+ * Rows for the export sheet's demo. They are fixture data on purpose: the
+ * sheet takes a `buildReport` from its screen and this screen has no shifts,
+ * so the kit hands it something to count.
+ */
+function kitReport(range) {
+  const days = range.from === "2026-09-01" && range.to === "2026-09-30" ? 12 : 4;
+  return {
+    columns: ["Date", "Employee", "Litres sold", "Total sale", "Variance", "Status"],
+    rows: Array.from({ length: days }, (_, index) => [
+      `2026-09-${String(index + 1).padStart(2, "0")}`,
+      "Ravi Kumar",
+      "180.00",
+      "19170.00",
+      "-170.00",
+      "Approved",
+    ]),
+  };
 }
 
 /** The chevron a pressable card carries, drawn inline so the kit stays flat. */

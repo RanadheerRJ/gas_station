@@ -201,7 +201,8 @@ export default function StockList() {
           <>
             <ReportSheet
               report="stock"
-              title="Ground stock"
+              title={t("stock.reportTitle")}
+              fileTitle="Ground stock"
               stationName={station?.name || ""}
               buildReport={buildReport}
             />

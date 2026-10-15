@@ -99,9 +99,17 @@ const hi = {
   "report.exportCsv": "CSV निर्यात",
   "report.exportPdf": "PDF निर्यात",
   "report.thisMonth": "इस महीने",
+  "report.thisYear": "इस वर्ष",
+  "report.allTime": "सभी तिथियाँ",
   "report.rowCount": "सीमा में {count} पंक्तियाँ",
+  "report.rowCountOne": "सीमा में {count} पंक्ति",
+  "report.statusOpen": "खुली है",
   "report.noRows": "इस तिथि सीमा में निर्यात करने योग्य कुछ नहीं है।",
   "report.scopedToYou": "आप केवल अपनी शिफ्ट निर्यात कर सकते हैं।",
+  "report.saved": "{format} आपके डाउनलोड में सेव हो गया।",
+  "report.opened": "{format} नए टैब में खुला — वहीं से सेव करें।",
+  "report.blocked":
+    "यह ब्राउज़र {format} फ़ाइल सेव नहीं कर सका। Chrome या Safari आज़माएँ।",
   "report.note":
     "निर्यात में चुने गए स्टेशन और तिथि सीमा के लिए दिखाई गई पंक्तियाँ ही होती हैं।",
 
@@ -162,6 +170,7 @@ const hi = {
   "ledger.fuel": "ईंधन",
 
   "nav.reports": "रिपोर्ट",
+  "reports.monthlySummary": "मासिक सारांश",
   "reports.title": "मासिक रिपोर्ट",
   "reports.subtitle": "बंद शिफ्टें, महीने दर महीने",
   "reports.prevMonth": "पिछला महीना",
@@ -453,6 +462,7 @@ const hi = {
   "credit.outstandingBalance": "बकाया शेष",
   "credit.moreActions": "और विकल्प",
   "credit.statement": "विवरण",
+  "credit.statementReport": "ग्राहक विवरण",
   "credit.periodThisMonth": "इस माह",
   "credit.periodLastMonth": "पिछला माह",
   "credit.periodLast3Months": "पिछले 3 माह",
@@ -542,6 +552,7 @@ const hi = {
   "shifts.creditVoidedCount": "{count} रद्द",
 
   "stock.title": "भूमिगत स्टॉक",
+  "stock.reportTitle": "भूमिगत स्टॉक रिपोर्ट",
   "stock.healthy": "ठीक है",
   "stock.low": "कम",
   "stock.critical": "गंभीर",
@@ -965,5 +976,7 @@ const hi = {
   "kit.sheetBody":
     "शीट स्क्रीन के ऊपर एक त्वरित काम रखती है और वहीं बंद होती है जहाँ से खोली गई थी।",
   "kit.steps": "चरण की प्रगति",
+  "kit.exportSheet": "निर्यात शीट",
+  "kit.exportOneDay": "एक दिन निर्यात",
 };
 export default hi;

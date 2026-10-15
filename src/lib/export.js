@@ -23,6 +23,7 @@
 import { formatDate, formatStamp } from "./format.js";
 import { buildStatement } from "./statement.js";
 import { classifyFuel, SHIFT_STATUS, shiftTotals } from "./shiftMath.js";
+import { monthOf, shiftMonth } from "./reportMath.js";
 import { tankStatus } from "./tankMath.js";
 
 /** Everything this app exports is prefixed so downloads sort together. */
@@ -32,6 +33,8 @@ const num = (value) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 };
+
+const round2 = (n) => Math.round(n * 100) / 100;
 
 /** Two-decimal plain number: spreadsheet-safe, no thousands separators. */
 export function decimal(value) {
@@ -160,6 +163,54 @@ export function defaultRange(today = new Date()) {
   return { from: `${to.slice(0, 7)}-01`, to };
 }
 
+/**
+ * The calendar window of a "YYYY-MM" key, as an inclusive ISO range.
+ *
+ * Used where a screen already knows the month it is showing — the monthly
+ * report dials a month, so its export opens on that month rather than on
+ * today's month-to-date, and the file can never disagree with the screen.
+ * `{}` for a key that is not a month.
+ */
+export function monthRange(key) {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(key || ""));
+  if (!match) return {};
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  // Day 0 of the next month is the last day of this one.
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return {
+    from: `${match[1]}-${match[2]}-01`,
+    to: `${match[1]}-${match[2]}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+/**
+ * The windows a sheet offers as one-tap chips, keyed by name.
+ *
+ * They are computed from `defaultRange` and `monthRange`, so a preset and a
+ * hand-typed window are the same kind of value and comparing them tells the
+ * sheet which chip to light up.
+ */
+export function quickRanges(today = new Date()) {
+  const day = isoDay(today);
+  const month = day.slice(0, 7);
+  return {
+    thisMonth: defaultRange(today),
+    lastMonth: monthRange(shiftMonth(month, -1)),
+    last3Months: { from: monthRange(shiftMonth(month, -2)).from, to: day },
+    thisYear: { from: `${day.slice(0, 4)}-01-01`, to: `${day.slice(0, 4)}-12-31` },
+  };
+}
+
+/** The preset a window matches exactly, or "" when it is a custom window. */
+export function matchingRangeName(range = {}, today = new Date()) {
+  const entries = Object.entries(quickRanges(today));
+  const hit = entries.find(
+    ([, preset]) => preset.from === isoDay(range.from) && preset.to === isoDay(range.to)
+  );
+  return hit ? hit[0] : "";
+}
+
 /* ------------------------------------------------------------------ */
 /* Role scoping                                                         */
 /* ------------------------------------------------------------------ */
@@ -274,11 +325,12 @@ function fuelBreakdown(fuels = {}) {
 
 function reportScopedShifts({
   shifts = [],
+  range = {},
   fuelGroup = "ALL",
   employeeId = "",
   status = "ALL",
 } = {}) {
-  return shifts
+  return filterByRange(shifts, range, (shift) => shift?.date || shift?.startTime)
     .filter(
       (shift) =>
         !employeeId || shift.employeeId === employeeId || shift.userId === employeeId
@@ -299,15 +351,20 @@ function reportScopedShifts({
 /**
  * Shifts: one row per handed-in shift.
  * date · employee · nozzles · readings · sales by fuel · expenses · variance · status
+ *
+ * `range` is filtered here as well as by the caller: a screen that hands over
+ * its whole month and then narrows the window in the export sheet still gets
+ * a file that matches the rows it is showing.
  */
 export function shiftsReport({
   shifts = [],
+  range = {},
   stationName = "",
   fuelGroup = "ALL",
   employeeId = "",
   status = "ALL",
 } = {}) {
-  const selected = reportScopedShifts({ shifts, fuelGroup, employeeId, status });
+  const selected = reportScopedShifts({ shifts, range, fuelGroup, employeeId, status });
   return {
     columns: [
       "Date",
@@ -542,19 +599,24 @@ function shiftStatementTotalRow(rows, label, fuelGroup) {
 /** Bank-statement-style, chronological shift sales and settlement detail. */
 export function shiftStatementReport({
   shifts = [],
+  range = {},
   stationName = "",
   fuelGroup = "ALL",
   employeeId = "",
   status = "ALL",
 } = {}) {
-  const selected = reportScopedShifts({ shifts, fuelGroup, employeeId, status }).sort(
-    (a, b) => {
-      const day = String(a.date || isoDay(a.startTime)).localeCompare(
-        String(b.date || isoDay(b.startTime))
-      );
-      return day || String(a.startTime || "").localeCompare(String(b.startTime || ""));
-    }
-  );
+  const selected = reportScopedShifts({
+    shifts,
+    range,
+    fuelGroup,
+    employeeId,
+    status,
+  }).sort((a, b) => {
+    const day = String(a.date || isoDay(a.startTime)).localeCompare(
+      String(b.date || isoDay(b.startTime))
+    );
+    return day || String(a.startTime || "").localeCompare(String(b.startTime || ""));
+  });
   const rawRows = selected.map((shift) => shiftStatementDataRow(shift, fuelGroup));
   const rows = [];
   let dayRows = [];
@@ -804,61 +866,153 @@ export function stockReport({
   };
 }
 
-/** Build a monthly summary from the same settled shifts as the dashboard. */
+/**
+ * Monthly summary: one row per calendar month in the window, with a TOTAL
+ * row whenever the window covers more than one month.
+ *
+ * The range decides the rows — not a month picked elsewhere on the screen —
+ * so the summary can be taken for a single month, a whole quarter, or the
+ * year to date without the operator editing anything by hand. The figures
+ * come from the same `shiftTotals` the ledger and the shift statement use,
+ * so the three can never disagree about what a month earned.
+ *
+ * `month` is kept as a fallback for callers that hold a month but no range;
+ * an explicit `range` always wins.
+ */
 export function monthlyReport({
   shifts = [],
-  month,
+  range = {},
+  month = "",
   stationName = "",
   fuelGroup = "ALL",
   employeeId = "",
+  status = "ALL",
 } = {}) {
-  const selected = shiftsReport({
-    shifts: shifts.filter((s) => String(s.date || "").startsWith(month)),
-    stationName,
+  const window = range?.from || range?.to ? range : month ? monthRange(month) : {};
+  const selected = reportScopedShifts({
+    shifts,
+    range: window,
     fuelGroup,
     employeeId,
+    status,
   });
-  const totals = selected.rows.reduce(
-    (out, row) => {
-      out.shifts += 1;
-      out.litres += num(row[6]);
-      out.sales += num(row[8]);
-      out.expenses += num(row[10]);
-      out.variance += num(row[14]);
-      return out;
-    },
-    { shifts: 0, litres: 0, sales: 0, expenses: 0, variance: 0 }
-  );
+
+  const months = new Map();
+  selected.forEach((shift) => {
+    const key = monthOf(shift.date || isoDay(shift.startTime));
+    if (!key) return;
+    const totals = shiftTotals(shift);
+    const bucket = months.get(key) || {
+      key,
+      dates: new Set(),
+      shifts: 0,
+      litres: 0,
+      sales: 0,
+      credit: 0,
+      expenses: 0,
+      variance: 0,
+    };
+    bucket.dates.add(shift.date || isoDay(shift.startTime));
+    bucket.shifts += 1;
+    bucket.litres = round2(bucket.litres + totals.totalLitres);
+    bucket.sales = round2(bucket.sales + totals.gross);
+    bucket.credit = round2(bucket.credit + num(totals.payments?.credit));
+    bucket.expenses = round2(bucket.expenses + totals.expensesTotal);
+    bucket.variance = round2(bucket.variance + (totals.variance ?? 0));
+    months.set(key, bucket);
+  });
+
+  const ordered = [...months.values()].sort((a, b) => a.key.localeCompare(b.key));
+  const rows = ordered.map((bucket) => monthRow(bucket, stationName));
+
+  // A window covering several months closes with one row that adds them up.
+  // It is folded into the same bucket shape and written by the same function,
+  // so the totals can never be formatted differently from the rows above.
+  if (ordered.length > 1) {
+    const total = ordered.reduce(
+      (out, bucket) => {
+        bucket.dates.forEach((date) => out.dates.add(date));
+        out.shifts += bucket.shifts;
+        out.litres = round2(out.litres + bucket.litres);
+        out.sales = round2(out.sales + bucket.sales);
+        out.credit = round2(out.credit + bucket.credit);
+        out.expenses = round2(out.expenses + bucket.expenses);
+        out.variance = round2(out.variance + bucket.variance);
+        return out;
+      },
+      {
+        key: "TOTAL",
+        dates: new Set(),
+        shifts: 0,
+        litres: 0,
+        sales: 0,
+        credit: 0,
+        expenses: 0,
+        variance: 0,
+      }
+    );
+    rows.push(monthRow(total, stationName));
+  }
+
   return {
-    columns: [
-      "Month",
-      "Station",
-      "Shift count",
-      "Litres sold",
-      "Gross sales",
-      "Expenses",
-      "Cash variance",
-    ],
-    rows: totals.shifts
-      ? [
-          [
-            month,
-            stationName,
-            totals.shifts,
-            decimal(totals.litres),
-            decimal(totals.sales),
-            decimal(totals.expenses),
-            decimal(totals.variance),
-          ],
-        ]
-      : [],
+    columns: MONTHLY_COLUMNS,
+    rows,
     meta: { station: stationName },
   };
 }
 
+/** Cash left after the month's expenses: sales less what was spent. */
+function monthNet(bucket) {
+  return num(bucket.sales) - num(bucket.expenses);
+}
+
+/** One month of the summary, in column order. */
+function monthRow(bucket, stationName) {
+  return [
+    bucket.key,
+    stationName,
+    String(bucket.shifts),
+    String(bucket.dates.size),
+    decimal(bucket.litres),
+    decimal(bucket.sales),
+    decimal(bucket.credit),
+    decimal(bucket.expenses),
+    decimal(monthNet(bucket)),
+    decimal(bucket.variance),
+  ];
+}
+
+const MONTHLY_COLUMNS = [
+  "Month",
+  "Station",
+  "Shift count",
+  "Days worked",
+  "Litres sold",
+  "Gross sales",
+  "Credit sales",
+  "Expenses",
+  "Net cash",
+  "Cash variance",
+];
+
 /* ------------------------------------------------------------------ */
 /* PDF                                                                  */
 /* ------------------------------------------------------------------ */
+
+/**
+ * The PDF writer.
+ *
+ * A report is a table, so the document is drawn as one: a title block, a
+ * banded header row repeated on every page, a body in a fixed-pitch font so
+ * the figures line up column for column, and a footer that says which page
+ * of how many the operator is holding. Everything is measured in points
+ * before anything is written, so a full page can never push its own footer
+ * off the paper — the fault that made the old export look broken.
+ *
+ * Written by hand rather than through a PDF library: one font pair, one text
+ * object per line and a handful of filled rectangles is the whole document,
+ * and it keeps the bundle small.
+ */
 
 /** A4 landscape in PDF points, which is what a forecourt table needs. */
 export const PAGE = { width: 842, height: 595, margin: 32 };
@@ -869,10 +1023,59 @@ const MIN_FONT_SIZE = 4.5;
 const CHAR_WIDTH = FONT_SIZE * 0.6;
 export const MAX_CHARS = Math.floor((PAGE.width - PAGE.margin * 2) / CHAR_WIDTH);
 
+/** Title block and footer geometry, in points, above the table. */
+const TITLE_SIZE = 13;
+const SUBTITLE_SIZE = 8.5;
+const META_SIZE = 7.5;
+const SUBTITLE_LINE = 13;
+const META_LINE = 11.5;
+const TITLE_GAP = 9;
+/** Breathing space kept clear above the footer line. */
+const FOOTER_LINE = 18;
+
+/**
+ * Where every band of a page sits, measured from the top of the sheet down.
+ * `buildPdf` draws against these numbers and `rowsPerPage` counts rows from
+ * them, so pagination and drawing can never drift apart.
+ */
+function pdfLayout(leading = LEADING) {
+  const top = PAGE.height - PAGE.margin;
+  const title = top - 14;
+  const subtitle = title - SUBTITLE_LINE;
+  const meta = subtitle - META_LINE;
+  const headerTop = meta - TITLE_GAP;
+  const headerBottom = headerTop - leading;
+  const bodyTop = headerBottom;
+  const footer = PAGE.margin + 3;
+  const bodyBottom = footer + FOOTER_LINE;
+  return {
+    leading,
+    top,
+    title,
+    subtitle,
+    meta,
+    headerTop,
+    headerBottom,
+    headerBaseline: headerBottom + leading * 0.28,
+    bodyTop,
+    bodyBottom,
+    footer,
+    firstRowBaseline: bodyTop - leading + 2.5,
+    rows: Math.max(1, Math.floor((bodyTop - bodyBottom) / leading)),
+  };
+}
+
+const printableWidth = PAGE.width - PAGE.margin * 2;
+
 /**
  * PDF standard fonts cannot draw Devanagari, Telugu, or a rupee sign, and a
  * byte they cannot map renders as a blank or a wrong glyph. Reduce to the
- * printable Latin-1 range and spell the currency out instead.
+ * printable Latin-1 range — which is exactly what the /WinAnsiEncoding the
+ * document declares can draw — and spell the currency out instead.
+ *
+ * Smart punctuation is folded to its ASCII twin so a pasted note keeps
+ * reading, and a station name in Telugu or Hindi becomes "???" rather than a
+ * row of broken glyphs: an unreadable line is better than a misleading one.
  */
 export function pdfSafe(text) {
   return String(text ?? "")
@@ -880,7 +1083,24 @@ export function pdfSafe(text) {
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201c\u201d]/g, '"')
     .replace(/[\u2013\u2014]/g, "-")
-    .replace(/[^\x20-\x7e]/g, "?");
+    .replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
+}
+
+/**
+ * The document as bytes.
+ *
+ * A PDF's own string literals are WinAnsi single bytes, but a Blob built from
+ * a JavaScript string would encode them as UTF-8 and turn "·" into two bytes
+ * the page cannot draw. Building the file as bytes keeps every character in
+ * `pdfSafe`'s range exactly one byte wide, which is also why the cross-
+ * reference offsets — counted in characters — are still correct.
+ */
+export function pdfBytes(document = "") {
+  const bytes = new Uint8Array(document.length);
+  for (let index = 0; index < document.length; index += 1) {
+    bytes[index] = document.charCodeAt(index) & 0xff;
+  }
+  return bytes;
 }
 
 /** Escape the three characters a PDF string literal reserves. */
@@ -913,7 +1133,6 @@ function pdfLayoutProfile({ columns = [], rows = [] } = {}) {
   if (neededChars <= MAX_CHARS) {
     return { fontSize: FONT_SIZE, leading: LEADING, maxChars: MAX_CHARS };
   }
-  const printableWidth = PAGE.width - PAGE.margin * 2;
   const fontSize = Math.max(
     MIN_FONT_SIZE,
     Math.min(FONT_SIZE, printableWidth / (Math.max(neededChars, 1) * 0.6))
@@ -925,6 +1144,31 @@ function pdfLayoutProfile({ columns = [], rows = [] } = {}) {
   };
 }
 
+/** A cell that reads as a figure: a number, a percentage, or an empty cell. */
+const NUMERIC_CELL = /^-?[\d,]+(\.\d+)?%?$/;
+
+function looksNumeric(value) {
+  const text = String(value ?? "").trim();
+  return text !== "" && NUMERIC_CELL.test(text);
+}
+
+/**
+ * Which columns are figures and so read right-aligned under their heading.
+ *
+ * A column counts as numeric when every non-empty cell in it is one. The
+ * test runs on the ORIGINAL values, not the padded text, so "2026-09-18" and
+ * "09:30" stay left-aligned where they belong.
+ */
+export function pdfColumnAligns(columns = [], rows = []) {
+  return columns.map((_, index) => {
+    const cells = rows
+      .map((row) => (Array.isArray(row) ? row[index] : undefined))
+      .filter((value) => String(value ?? "").trim() !== "");
+    if (cells.length === 0) return "left";
+    return cells.every(looksNumeric) ? "right" : "left";
+  });
+}
+
 /**
  * Lay a report out as fixed-width text rows.
  *
@@ -933,33 +1177,31 @@ function pdfLayoutProfile({ columns = [], rows = [] } = {}) {
  */
 export function pdfTextRows(
   { columns = [], rows = [] } = {},
-  { maxChars = MAX_CHARS } = {}
+  { maxChars = MAX_CHARS, aligns } = {}
 ) {
   const safeColumns = columns.map(pdfSafe);
   const safeRows = rows.map((row) => row.map(pdfSafe));
   const widths = pdfColumnWidths(safeColumns, safeRows);
-  const line = (cells) =>
-    cells
-      .map((cell, index) =>
-        String(cell ?? "")
-          .slice(0, widths[index])
-          .padEnd(widths[index])
-      )
-      .join("  ")
-      .slice(0, maxChars)
-      .trimEnd();
+  const alignment = aligns || pdfColumnAligns(columns, rows);
+  const cell = (value, index) => {
+    const text = String(value ?? "").slice(0, widths[index]);
+    return alignment[index] === "right"
+      ? text.padStart(widths[index])
+      : text.padEnd(widths[index]);
+  };
+  const line = (cells) => cells.map(cell).join("  ").slice(0, maxChars).trimEnd();
+  const header = line(safeColumns);
 
   return {
-    header: line(safeColumns),
-    rule: "-".repeat(Math.min(maxChars, line(safeColumns).length)),
+    header,
+    rule: "-".repeat(Math.min(maxChars, header.length)),
     body: safeRows.map(line),
   };
 }
 
 /** How many body rows fit under the title block on one page. */
 export function rowsPerPage(leading = LEADING) {
-  const usable = PAGE.height - PAGE.margin * 2 - leading * 5;
-  return Math.max(1, Math.floor(usable / leading));
+  return pdfLayout(leading).rows;
 }
 
 /** Split body lines into pages. An empty report still produces one page. */
@@ -971,66 +1213,187 @@ export function paginate(lines = [], perPage = rowsPerPage()) {
 }
 
 /**
+ * A row that closes a group — "Day total", "GRAND TOTAL", "TOTAL" — and is
+ * drawn in bold with a rule above it, the way a statement ends a section.
+ */
+export function pdfRowEmphasis(row = []) {
+  return /^\s*(day\s+)?(grand\s+)?total\s*$/i.test(String(row[0] ?? "")) ||
+    /^\s*(day\s+)?(grand\s+)?total\s*$/i.test(String(row[1] ?? ""))
+    ? "total"
+    : "";
+}
+
+/** Width of a Courier run in points, which is what right-aligning needs. */
+function pdfTextWidth(text, size = FONT_SIZE, bold = false) {
+  // Courier is fixed-pitch at 0.6 em; bold is a hair wider.
+  const factor = bold ? 0.61 : 0.6;
+  return String(text).length * size * factor;
+}
+
+/** One text object, positioned by its baseline. */
+function pdfText(x, y, text, { size = FONT_SIZE, bold = false } = {}) {
+  if (!text) return "";
+  return [
+    "BT",
+    `/${bold ? "F2" : "F1"} ${size.toFixed(2)} Tf`,
+    `1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm`,
+    `(${pdfEscape(text)}) Tj`,
+    "ET",
+  ].join("\n");
+}
+
+/** A filled rectangle: header bands, zebra rows, hairlines. */
+function pdfRect(x, y, width, height, grey) {
+  return `${grey} g\n${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(
+    2
+  )} re f\n0 g`;
+}
+
+/**
+ * One page: the title block, the column headings, the rows handed to it and
+ * the footer. `page` and `pages` are one-based.
+ */
+function pdfPage({
+  page,
+  pages,
+  title,
+  subtitle,
+  meta,
+  header = "",
+  rows = [],
+  emphasis = [],
+  leading,
+  fontSize,
+}) {
+  const layout = pdfLayout(leading);
+  const ops = [];
+
+  // ---- title block ----
+  ops.push(
+    pdfText(PAGE.margin, layout.title, pdfSafe(title), { size: TITLE_SIZE, bold: true })
+  );
+  if (subtitle) {
+    ops.push(
+      pdfText(PAGE.margin, layout.subtitle, pdfSafe(subtitle), { size: SUBTITLE_SIZE })
+    );
+  }
+  if (meta) {
+    ops.push(pdfText(PAGE.margin, layout.meta, pdfSafe(meta), { size: META_SIZE }));
+  }
+  const stamp = `Page ${page} of ${pages}`;
+  ops.push(
+    pdfText(
+      PAGE.width - PAGE.margin - pdfTextWidth(stamp, META_SIZE),
+      layout.meta,
+      stamp,
+      { size: META_SIZE }
+    )
+  );
+
+  // ---- column headings, banded so the eye finds them at a glance ----
+  ops.push(
+    pdfRect(
+      PAGE.margin,
+      layout.headerBottom,
+      printableWidth,
+      layout.headerTop - layout.headerBottom,
+      0.93
+    )
+  );
+  ops.push(
+    pdfText(PAGE.margin, layout.headerBaseline, header, {
+      size: fontSize,
+      bold: true,
+    })
+  );
+  ops.push(pdfRect(PAGE.margin, layout.headerBottom - 1, printableWidth, 0.8, 0.45));
+
+  // ---- body ----
+  rows.forEach((row, index) => {
+    const baseline = layout.firstRowBaseline - index * leading;
+    const total = emphasis[index];
+    if (total) {
+      ops.push(pdfRect(PAGE.margin, baseline + 4.2, printableWidth, 0.6, 0.45));
+    } else if (index % 2 === 1) {
+      ops.push(pdfRect(PAGE.margin, baseline - 2.4, printableWidth, leading, 0.972));
+    }
+    ops.push(
+      pdfText(PAGE.margin, baseline, row, {
+        size: fontSize,
+        bold: Boolean(total),
+      })
+    );
+  });
+
+  // ---- footer ----
+  ops.push(pdfRect(PAGE.margin, layout.bodyBottom - 3, printableWidth, 0.5, 0.8));
+  const left = pdfSafe([title, subtitle].filter(Boolean).join("  |  "));
+  ops.push(pdfText(PAGE.margin, layout.footer, left.slice(0, 90), { size: META_SIZE }));
+  ops.push(
+    pdfText(
+      PAGE.width - PAGE.margin - pdfTextWidth(stamp, META_SIZE),
+      layout.footer,
+      stamp,
+      { size: META_SIZE }
+    )
+  );
+
+  return ops.filter(Boolean).join("\n");
+}
+
+/**
  * A complete, minimal PDF 1.4 document.
  *
- * Writing the file by hand rather than pulling in a PDF library keeps the
- * bundle small — a report is a monospaced table, which needs one font, one
- * text object per line, and nothing else.
+ * The header row repeats on every page, the figures are right-aligned under
+ * their headings, total rows are bold with a rule above them, and the footer
+ * says which page of how many this is — so a statement printed on the
+ * forecourt counter reads on its own, without the phone next to it.
  */
-export function buildPdf({ title = "", subtitle = "", columns = [], rows = [] } = {}) {
+export function buildPdf({
+  title = "",
+  subtitle = "",
+  meta = "",
+  columns = [],
+  rows = [],
+} = {}) {
   const profile = pdfLayoutProfile({ columns, rows });
-  const laid = pdfTextRows({ columns, rows }, { maxChars: profile.maxChars });
-  const pages = paginate(laid.body, rowsPerPage(profile.leading));
+  const aligns = pdfColumnAligns(columns, rows);
+  const laid = pdfTextRows({ columns, rows }, { maxChars: profile.maxChars, aligns });
+  const emphasis = rows.map(pdfRowEmphasis);
+  const bodyPages = paginate(laid.body, rowsPerPage(profile.leading));
+  const totalPages = bodyPages.length;
 
   const objects = [];
   const pageObjectIds = [];
   // 1 = catalog, 2 = pages, 3 = regular font, 4 = bold font, then page/content pairs.
   const firstPageId = 5;
-  pages.forEach((_, index) => pageObjectIds.push(firstPageId + index * 2));
+  bodyPages.forEach((_, index) => pageObjectIds.push(firstPageId + index * 2));
 
   objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
   objects[2] =
-    `<< /Type /Pages /Count ${pages.length} /Kids [` +
+    `<< /Type /Pages /Count ${totalPages} /Kids [` +
     `${pageObjectIds.map((id) => `${id} 0 R`).join(" ")}] >>`;
   objects[3] =
     "<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>";
   objects[4] =
     "<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>";
 
-  pages.forEach((pageLines, index) => {
+  bodyPages.forEach((pageLines, index) => {
     const pageId = pageObjectIds[index];
     const contentId = pageId + 1;
-    const heading = [
-      { text: pdfSafe(title), bold: true },
-      { text: pdfSafe(subtitle), bold: false },
-      { text: "", bold: false },
-      { text: laid.header, bold: true },
-      { text: laid.rule, bold: false },
-    ];
-    const footer = [
-      { text: "", bold: false },
-      { text: `Page ${index + 1} of ${pages.length}`, bold: false },
-    ];
-    const all = [
-      ...heading,
-      ...pageLines.map((text) => ({ text, bold: false })),
-      ...footer,
-    ];
-
-    let y = PAGE.height - PAGE.margin - profile.leading;
-    const stream = all
-      .map(({ text, bold }) => {
-        const chunk = [
-          "BT",
-          `/${bold ? "F2" : "F1"} ${profile.fontSize.toFixed(2)} Tf`,
-          `1 0 0 1 ${PAGE.margin} ${y.toFixed(2)} Tm`,
-          `(${pdfEscape(text)}) Tj`,
-          "ET",
-        ].join("\n");
-        y -= profile.leading;
-        return chunk;
-      })
-      .join("\n");
+    const offset = index * pageLines.length;
+    const stream = pdfPage({
+      page: index + 1,
+      pages: totalPages,
+      title: index === 0 ? title : `${title} (continued)`,
+      subtitle: index === 0 ? subtitle : "",
+      meta: index === 0 ? meta : "",
+      header: laid.header,
+      rows: pageLines,
+      emphasis: emphasis.slice(offset, offset + pageLines.length),
+      leading: profile.leading,
+      fontSize: profile.fontSize,
+    });
 
     objects[pageId] =
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE.width} ${PAGE.height}] ` +
@@ -1058,22 +1421,68 @@ export function buildPdf({ title = "", subtitle = "", columns = [], rows = [] } 
 /* Download                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Hand a generated file to the browser. No network call, nothing stored. */
+/**
+ * How a download ended. The sheet shows a line of confirmation either way:
+ * silence is what makes an export feel broken when a browser quietly refuses
+ * to hand over the file.
+ *
+ *   "saved"       — the browser took the file and will put it in Downloads
+ *   "opened"      — the anchor had no `download` support, so the file was
+ *                   opened in a tab instead (older iOS Safari and some
+ *                   in-app browsers) and the operator can save it from there
+ *   "unsupported" — no document/object-URL API at all (server rendering, a
+ *                   test environment): nothing was written
+ */
+export const DOWNLOAD_MODE = {
+  SAVED: "saved",
+  OPENED: "opened",
+  UNSUPPORTED: "unsupported",
+};
+
+/** True when this environment can hand a generated file to the browser. */
+export function canDownload() {
+  return (
+    typeof document !== "undefined" &&
+    typeof document.createElement === "function" &&
+    typeof URL !== "undefined" &&
+    typeof URL.createObjectURL === "function"
+  );
+}
+
+/**
+ * Hand a generated file to the browser. No network call, nothing stored.
+ *
+ * The object URL is deliberately NOT revoked in the same tick: Safari starts
+ * the download asynchronously and cancels it if the blob it points at has
+ * already gone, which is exactly how "the button did nothing" is reported.
+ * A minute is enough for any browser to have taken the file.
+ */
 export function downloadFile(filename, mimeType, contents) {
-  if (typeof document === "undefined" || typeof URL?.createObjectURL !== "function") {
-    return false;
-  }
+  if (!canDownload()) return { ok: false, mode: DOWNLOAD_MODE.UNSUPPORTED };
   const blob = new Blob([contents], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
-  document.body.appendChild(link);
-  link.click();
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body?.appendChild(link);
+
+  // Without `download` support the attribute is ignored and a click navigates;
+  // opening the blob in a tab shows the file and lets the operator save it.
+  const supportsDownload = "download" in link;
+  let mode = DOWNLOAD_MODE.SAVED;
+  if (supportsDownload) {
+    link.click();
+  } else {
+    mode = DOWNLOAD_MODE.OPENED;
+    if (typeof window !== "undefined" && typeof window.open === "function") {
+      window.open(url, "_blank", "noopener");
+    }
+  }
   link.remove();
-  // Revoking immediately can cancel the download in Safari; one tick is enough.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-  return true;
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return { ok: true, mode };
 }
 
 export function downloadCsv(report, filename) {
@@ -1081,14 +1490,65 @@ export function downloadCsv(report, filename) {
 }
 
 export function downloadPdf(report, filename) {
-  return downloadFile(filename, "application/pdf", buildPdf(report));
+  return downloadFile(filename, "application/pdf", pdfBytes(buildPdf(report)));
 }
 
-/** Title line a PDF carries, e.g. "Shifts · City Ctr · 2026-09-01 to 2026-09-19". */
-export function reportSubtitle({ stationName, from, to } = {}) {
-  return [stationName, `${isoOrToday(from)} to ${isoOrToday(to)}`]
+/**
+ * The line under a PDF's title, e.g. "Ameena Stores | City Ctr | 2026-09-01 to
+ * 2026-09-19". `subject` names the thing the report is about when that is
+ * narrower than the station — one credit customer's statement, say.
+ */
+export function reportSubtitle({ subject, stationName, from, to } = {}) {
+  return [subject, stationName, `${isoOrToday(from)} to ${isoOrToday(to)}`]
     .filter(Boolean)
     .join(" | ");
+}
+
+/**
+ * The scope line under a PDF's title: only the filters that actually narrow
+ * the rows are named, so a full-station export does not read as if it had
+ * been cut down, and the stamp says when the file was produced — the first
+ * question an accountant asks about a printed statement.
+ *
+ * English on purpose, like the column headings: a PDF is drawn with the
+ * standard fonts, which cannot render Telugu or Devanagari at all.
+ */
+/**
+ * When a report was produced, written out in full: "15 Oct 2026, 06:34".
+ * `formatStamp` is the app's short on-screen form (day, month, time) and has
+ * no year, which is the first thing a filed statement needs.
+ */
+export function generatedStamp(when = new Date()) {
+  const date = when?.toDate ? when.toDate() : new Date(when);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
+export function reportScopeLine({
+  fuelGroup = "ALL",
+  showFuel = true,
+  employeeName = "",
+  showEmployee = false,
+  status = "ALL",
+  showStatus = false,
+  generatedAt = new Date(),
+} = {}) {
+  const parts = [];
+  if (showFuel) {
+    parts.push(fuelGroup && fuelGroup !== "ALL" ? `Fuel: ${fuelGroup}` : "All fuels");
+  }
+  if (showEmployee && employeeName) parts.push(`Employee: ${employeeName}`);
+  if (showStatus && status !== "ALL") parts.push(`Status: ${statusText(status)}`);
+  parts.push(`Generated ${generatedStamp(generatedAt)}`);
+  // ASCII separators: this line is drawn with the PDF standard fonts.
+  return parts.join("  |  ");
 }
 
 /** Human date helpers re-exported so report screens keep one import. */

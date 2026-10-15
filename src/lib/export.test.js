@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPdf,
+  canDownload,
   creditReport,
   csvCell,
   dayReviewStatus,
@@ -9,7 +10,15 @@ import {
   inRange,
   isoDay,
   ledgerReport,
+  pdfBytes,
+  matchingRangeName,
   MAX_CHARS,
+  monthRange,
+  monthlyReport,
+  pdfColumnAligns,
+  pdfRowEmphasis,
+  quickRanges,
+  reportScopeLine,
   paginate,
   pdfSafe,
   pdfTextRows,
@@ -226,6 +235,50 @@ describe("defaultRange", () => {
       from: "2026-09-01",
       to: "2026-09-19",
     });
+  });
+});
+
+describe("monthRange", () => {
+  it("spans the whole calendar month", () => {
+    expect(monthRange("2026-09")).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    expect(monthRange("2026-02")).toEqual({ from: "2026-02-01", to: "2026-02-28" });
+    expect(monthRange("2024-02")).toEqual({ from: "2024-02-01", to: "2024-02-29" });
+  });
+
+  it("returns an empty window for anything that is not a month", () => {
+    expect(monthRange("")).toEqual({});
+    expect(monthRange("2026-9")).toEqual({});
+    expect(monthRange(undefined)).toEqual({});
+  });
+});
+
+describe("quickRanges", () => {
+  it("computes the windows a sheet offers, from one date", () => {
+    const presets = quickRanges(new Date("2026-10-15T06:00:00Z"));
+    expect(presets.thisMonth).toEqual({ from: "2026-10-01", to: "2026-10-15" });
+    expect(presets.lastMonth).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    expect(presets.last3Months).toEqual({ from: "2026-08-01", to: "2026-10-15" });
+    expect(presets.thisYear).toEqual({ from: "2026-01-01", to: "2026-12-31" });
+  });
+
+  it("wraps the year going back from January", () => {
+    const presets = quickRanges(new Date("2026-01-10T06:00:00Z"));
+    expect(presets.lastMonth).toEqual({ from: "2025-12-01", to: "2025-12-31" });
+  });
+});
+
+describe("matchingRangeName", () => {
+  const today = new Date("2026-10-15T06:00:00Z");
+
+  it("names a window a preset matches exactly", () => {
+    expect(matchingRangeName({ from: "2026-09-01", to: "2026-09-30" }, today)).toBe(
+      "lastMonth"
+    );
+  });
+
+  it("names nothing when the window was typed by hand", () => {
+    expect(matchingRangeName({ from: "2026-09-03", to: "2026-09-30" }, today)).toBe("");
+    expect(matchingRangeName({}, today)).toBe("");
   });
 });
 
@@ -558,6 +611,88 @@ describe("shiftStatementReport", () => {
   });
 });
 
+describe("monthlyReport", () => {
+  const shiftOn = (date, litres, price) => ({
+    id: date,
+    date,
+    status: SHIFT_STATUS.APPROVED,
+    employeeName: "Ravi",
+    nozzles: [
+      {
+        label: "N1",
+        fuelType: "Petrol",
+        openingReading: 0,
+        closingReading: litres,
+        price,
+      },
+    ],
+  });
+
+  const shifts = [
+    shiftOn("2026-08-31", 10, 100),
+    shiftOn("2026-09-05", 100, 100),
+    shiftOn("2026-09-06", 100, 100),
+    shiftOn("2026-10-02", 50, 100),
+  ];
+
+  it("writes one row per month in the window, oldest first", () => {
+    const report = monthlyReport({
+      shifts,
+      range: { from: "2026-09-01", to: "2026-10-31" },
+      stationName: "City Ctr",
+    });
+    expect(report.rows.map((row) => row[0])).toEqual(["2026-09", "2026-10", "TOTAL"]);
+    expect(report.rows[0][2]).toBe("2"); // shifts
+    expect(report.rows[0][3]).toBe("2"); // days worked
+    expect(report.rows[0][4]).toBe("200.00"); // litres
+    expect(report.rows[0][5]).toBe("20000.00"); // gross
+    expect(report.rows[1][4]).toBe("50.00");
+  });
+
+  it("totals the whole window on the closing row", () => {
+    const report = monthlyReport({
+      shifts,
+      range: { from: "2026-09-01", to: "2026-10-31" },
+    });
+    const total = report.rows.at(-1);
+    expect(total[0]).toBe("TOTAL");
+    expect(total[2]).toBe("3"); // shifts
+    expect(total[3]).toBe("3"); // distinct days
+    expect(total[4]).toBe("250.00");
+    expect(total[5]).toBe("25000.00");
+  });
+
+  it("omits the total row for a single month", () => {
+    const report = monthlyReport({
+      shifts,
+      range: { from: "2026-09-01", to: "2026-09-30" },
+    });
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0][0]).toBe("2026-09");
+  });
+
+  it("still accepts a bare month for callers that hold no range", () => {
+    const report = monthlyReport({ shifts, month: "2026-10" });
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0][4]).toBe("50.00");
+  });
+
+  it("carries net cash as sales less expenses", () => {
+    const withExpense = [
+      {
+        ...shiftOn("2026-09-05", 100, 100),
+        expenses: [{ amount: 500, note: "Tea" }],
+      },
+    ];
+    const report = monthlyReport({
+      shifts: withExpense,
+      range: { from: "2026-09-01", to: "2026-09-30" },
+    });
+    expect(report.rows[0][7]).toBe("500.00"); // expenses
+    expect(report.rows[0][8]).toBe("9500.00"); // net cash
+  });
+});
+
 describe("creditReport", () => {
   const customers = [
     {
@@ -721,6 +856,22 @@ describe("pdfSafe", () => {
     expect(pdfSafe("షిఫ్ట్")).toMatch(/^\?+$/);
     expect(pdfSafe("शिफ्ट")).toMatch(/^\?+$/);
   });
+
+  it("keeps the Latin-1 letters and marks the encoding can actually draw", () => {
+    expect(pdfSafe("Café · Décor")).toBe("Café · Décor");
+  });
+});
+
+describe("pdfBytes", () => {
+  it("writes each character as the single WinAnsi byte the page expects", () => {
+    const bytes = pdfBytes("Café · x");
+    expect([...bytes]).toEqual([67, 97, 102, 233, 32, 183, 32, 120]);
+  });
+
+  it("is byte-for-byte the document, so its offsets stay right", () => {
+    const pdf = buildPdf({ title: "Shifts", columns: ["Date"], rows: [["2026-09-18"]] });
+    expect(pdfBytes(pdf)).toHaveLength(pdf.length);
+  });
 });
 
 describe("pdfTextRows", () => {
@@ -818,6 +969,149 @@ describe("buildPdf", () => {
     expect(pdf).toContain("Page 2 of 2");
     expect(pdf).toContain("/Count 2");
   });
+
+  it("repeats the column headings on every page", () => {
+    const rows = Array.from({ length: rowsPerPage() * 2 + 1 }, (_, i) => [
+      "2026-09-18",
+      `Operator ${i}`,
+    ]);
+    const pdf = buildPdf({ ...report, rows });
+    // Title on page one, a "(continued)" title on page two, headings on both.
+    const headings = pdf.match(/Employee/g) || [];
+    expect(headings.length).toBeGreaterThanOrEqual(3);
+    // PDF string literals escape their own brackets, hence the backslashes.
+    expect(pdf).toContain("Shifts \\(continued\\)");
+    expect(pdf).toContain("Page 3 of 3");
+  });
+
+  it("keeps every line on the paper, footer included", () => {
+    const rows = Array.from({ length: rowsPerPage() + 1 }, (_, i) => [
+      "2026-09-18",
+      `Operator ${i}`,
+    ]);
+    const pdf = buildPdf({ ...report, rows });
+    const baselines = [...pdf.matchAll(/1 0 0 1 [\d.]+ ([\d.]+) Tm/g)].map((match) =>
+      Number(match[1])
+    );
+    // The bottom margin is 32pt and no text may be drawn below it.
+    expect(Math.min(...baselines)).toBeGreaterThanOrEqual(32);
+  });
+
+  it("right-aligns the figures under their headings", () => {
+    const pdf = buildPdf({
+      ...report,
+      columns: ["Date", "Employee", "Variance"],
+      rows: [
+        ["2026-09-18", "Amy Attendant", "-250.00"],
+        ["2026-09-19", "Ben", "0.00"],
+      ],
+    });
+    expect(pdf).toContain("Variance");
+    // Both rows are the same width and each figure sits at the right-hand end
+    // of its own line, which is what makes the column read straight down.
+    const lines = [...pdf.matchAll(/\((2026-09-1[89][^)]*)\) Tj/g)].map(
+      (match) => match[1]
+    );
+    expect(lines).toHaveLength(2);
+    expect(lines[0].endsWith("-250.00")).toBe(true);
+    expect(lines[1].endsWith("0.00")).toBe(true);
+    expect(lines[0].length).toBe(lines[1].length);
+  });
+
+  it("writes a scope line when the caller supplies one", () => {
+    const pdf = buildPdf({
+      ...report,
+      meta: reportScopeLine({
+        fuelGroup: "HSD",
+        generatedAt: new Date("2026-10-15T06:34:00Z"),
+      }),
+    });
+    expect(pdf).toContain("Fuel: HSD");
+    expect(pdf).toContain("Generated 15 Oct 2026, 06:34");
+  });
+});
+
+describe("pdfColumnAligns", () => {
+  it("right-aligns a column whose every cell is a figure", () => {
+    const aligns = pdfColumnAligns(
+      ["Date", "Employee", "Litres", "Variance", "Share"],
+      [
+        ["2026-09-18", "Amy", "100.00", "-250.00", "12%"],
+        ["2026-09-19", "Ben", "0.00", "0.00", "0%"],
+      ]
+    );
+    expect(aligns).toEqual(["left", "left", "right", "right", "right"]);
+  });
+
+  it("leaves a date or a clock time on the left where it belongs", () => {
+    const aligns = pdfColumnAligns(["Date", "Opened"], [["2026-09-18", "06:00"]]);
+    expect(aligns).toEqual(["left", "left"]);
+  });
+
+  it("ignores empty cells rather than letting them decide the alignment", () => {
+    const aligns = pdfColumnAligns(["Amount"], [["100.00"], [""], [""]]);
+    expect(aligns).toEqual(["right"]);
+  });
+
+  it("treats a column of nothing as text", () => {
+    expect(pdfColumnAligns(["Note"], [[""]])).toEqual(["left"]);
+  });
+
+  it("right-aligns the figure under its heading so the column reads down", () => {
+    const laid = pdfTextRows(
+      { columns: ["Date", "Litres"], rows: [["2026-09-18", "100.00"]] },
+      { aligns: ["left", "right"] }
+    );
+    const header = laid.header;
+    const litresHeadingEnd = header.indexOf("Litres") + "Litres".length;
+    expect(laid.body[0].slice(0, litresHeadingEnd).endsWith("100.00")).toBe(true);
+  });
+});
+
+describe("pdfRowEmphasis", () => {
+  it("marks the rows that close a group", () => {
+    expect(pdfRowEmphasis(["", "Day total", ""])).toBe("total");
+    expect(pdfRowEmphasis(["GRAND TOTAL", ""])).toBe("total");
+    expect(pdfRowEmphasis(["TOTAL", "City Ctr"])).toBe("total");
+  });
+
+  it("leaves ordinary rows alone", () => {
+    expect(pdfRowEmphasis(["2026-09-18", "Amy Attendant"])).toBe("");
+    expect(pdfRowEmphasis(["2026-09-18", "Total sales"])).toBe("");
+    expect(pdfRowEmphasis([])).toBe("");
+  });
+});
+
+describe("reportScopeLine", () => {
+  it("names only the filters that narrowed the export", () => {
+    const line = reportScopeLine({
+      fuelGroup: "MS",
+      employeeName: "Ravi",
+      showEmployee: true,
+      status: "approved",
+      showStatus: true,
+      generatedAt: new Date("2026-10-15T06:34:00Z"),
+    });
+    expect(line).toContain("Fuel: MS");
+    expect(line).toContain("Employee: Ravi");
+    expect(line).toContain("Status: Approved");
+    expect(line).toContain("Generated 15 Oct 2026, 06:34");
+  });
+
+  it("reports a full-station export as unscoped rather than blank", () => {
+    const line = reportScopeLine({ generatedAt: new Date("2026-10-15T06:34:00Z") });
+    expect(line).toContain("All fuels");
+    expect(line).not.toContain("Employee");
+    expect(line).not.toContain("Status");
+  });
+});
+
+describe("canDownload", () => {
+  it("is false where there is no document to build a link in", () => {
+    // The node test environment has no document, which is the honest answer:
+    // nothing could be written here.
+    expect(canDownload()).toBe(false);
+  });
 });
 
 describe("reportSubtitle", () => {
@@ -825,5 +1119,16 @@ describe("reportSubtitle", () => {
     expect(
       reportSubtitle({ stationName: "City Ctr", from: "2026-09-01", to: "2026-09-19" })
     ).toBe("City Ctr | 2026-09-01 to 2026-09-19");
+  });
+
+  it("leads with the subject when the report is about one customer", () => {
+    expect(
+      reportSubtitle({
+        subject: "Ameena Stores",
+        stationName: "City Ctr",
+        from: "2026-09-01",
+        to: "2026-09-19",
+      })
+    ).toBe("Ameena Stores | City Ctr | 2026-09-01 to 2026-09-19");
   });
 });

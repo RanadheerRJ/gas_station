@@ -360,11 +360,6 @@
     font-size: 16px; /* stops iOS zooming the viewport on focus */
   }
 
-  .report-tools__dates,
-  .report-tools__actions {
-    width: 100%;
-  }
-
   .language-select--sidebar {
     margin-bottom: 0;
     min-width: 120px;
@@ -1236,49 +1231,6 @@
   padding-inline: 16px;
 }
 
-/* Report export is a readable mobile workflow; the PDF remains the artifact. */
-.report-summary {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--surface-sunken);
-}
-
-.report-summary > div {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.report-summary__label {
-  color: var(--muted);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.report-summary .business-name {
-  max-width: 320px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.report-summary__count {
-  flex: 0 0 auto;
-  padding: 4px 9px;
-  border-radius: var(--radius-pill);
-  color: var(--accent-strong);
-  background: var(--accent-soft);
-  font-size: 11px;
-  font-weight: 650;
-}
-
 @media (max-width: 860px) {
   .shell {
     display: flex;
@@ -1510,10 +1462,6 @@
     flex: 1;
   }
 
-  .report-tools__actions {
-    flex-direction: column;
-  }
-
   .report-bars {
     gap: 6px;
   }
@@ -1528,41 +1476,6 @@
   .shell--attendant .main {
     background: var(--bg);
   }
-}
-
-.report-filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.report-filter-bar fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0;
-}
-.report-filter-bar legend,
-.report-filter-bar .field > span {
-  display: block;
-  font-size: 0.78rem;
-  font-weight: 650;
-  margin-bottom: 5px;
-}
-.report-filter-bar .field {
-  min-width: 160px;
-}
-.segmented-control {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.segmented-control button {
-  min-height: 38px;
-}
-.segmented-control button.active {
-  background: var(--ink);
-  color: var(--paper);
 }
 
 /* Credit ledger: compact, touch-friendly rows and sheet actions. */

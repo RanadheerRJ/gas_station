@@ -104,7 +104,8 @@ export default function TodayHistory() {
         actions={
           <ReportSheet
             report="shifts"
-            title="Shifts"
+            title={t("history.title")}
+            fileTitle="Shift sales"
             stationName={station?.name || ""}
             buildReport={buildReport}
             note={t("report.scopedToYou")}

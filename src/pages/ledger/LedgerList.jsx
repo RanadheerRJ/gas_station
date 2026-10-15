@@ -176,7 +176,8 @@ export default function LedgerList() {
         actions={
           <ReportSheet
             report="shifts"
-            title="Daily Sales Statement"
+            title={t("shifts.statement")}
+            fileTitle="Daily Sales Statement"
             stationName={station?.name || ""}
             buildReport={buildReport}
           />
