@@ -15,9 +15,10 @@
     "test:watch": "vitest",
     "test:rbac": "node scripts/rbac/run.mjs",
     "test:creditdb": "node scripts/creditdb/run.mjs",
-    "check": "npm run lint && npm run format:check && npm test && npm run check:sw-version && npm run build",
+    "check": "npm run lint && npm run format:check && npm test && npm run check:sw-version && npm run check:pwa && npm run build",
     "check:schema": "node scripts/checkSupabaseSchema.mjs",
-    "check:sw-version": "node scripts/checkSwVersion.mjs"
+    "check:sw-version": "node scripts/checkSwVersion.mjs",
+    "check:pwa": "node scripts/checkPwa.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

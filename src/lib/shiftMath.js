@@ -8,16 +8,12 @@
  * A shift holds a SUBSET of the station's nozzles (whichever the operator
  * took), so several shifts can run at once on different pumps.
  *
- * Kept pure and dependency-free so it can be unit-tested without a browser.
+ * Kept pure so it can be unit-tested without a browser. The shared numeric
+ * coercion/rounding helpers live in format.js — the one copy every maths
+ * module uses, so the screens can never round differently.
  */
 
-/** Coerce anything to a finite number, defaulting to 0. */
-function num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-const round2 = (n) => Math.round(n * 100) / 100;
+import { num, round2 } from "./format.js";
 
 /** A meter that has rolled past its digit limit wraps back to zero. */
 export const METER_ROLLOVER = 1_000_000;
@@ -37,10 +33,6 @@ export const SHIFT_STATUS = {
   APPROVED: "approved",
   REJECTED: "rejected",
 };
-
-/** Fuel groups used for the daily testing deduction. */
-export const TESTING_GROUPS = { MS: "MS", HSD: "HSD" };
-export const FUEL_GROUPS = ["MS", "HSD", "CNG", "OTHER"];
 
 /** Petrol family is MS, diesel family is HSD. */
 export function classifyFuel(fuelType) {
@@ -234,32 +226,6 @@ export function validateClosing(nozzles = [], { allowRollover = false } = {}) {
 /* effective-dated prices                                              */
 /* ------------------------------------------------------------------ */
 
-/**
- * The price record in force for a fuel at a given moment.
- * Prices are intervals: effectiveFrom .. effectiveTo (null = still active),
- * so history is never overwritten and a past shift always reprices correctly.
- */
-export function priceAtTime(priceRecords = [], fuelType, atTime) {
-  const at = new Date(atTime).getTime();
-  const forFuel = priceRecords.filter((p) => p.fuelType === fuelType);
-
-  const covering = forFuel
-    .filter((p) => {
-      const from = new Date(p.effectiveFrom).getTime();
-      const to = p.effectiveTo ? new Date(p.effectiveTo).getTime() : null;
-      return from <= at && (to == null || to >= at);
-    })
-    .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom));
-
-  if (covering.length) return covering[0];
-
-  // Fall back to the most recent price that began before this moment.
-  const before = forFuel
-    .filter((p) => new Date(p.effectiveFrom).getTime() <= at)
-    .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom));
-  return before[0] || null;
-}
-
 /** Currently-active price per fuel type, as a plain map. */
 export function activePrices(priceRecords = []) {
   const map = {};
@@ -306,29 +272,6 @@ export function anonymousNozzleOccupancy(busyNozzleIds = []) {
   busyNozzleIds.forEach((entry) => {
     const id = typeof entry === "string" ? entry : entry?.nozzleId;
     if (id) out[id] = { shiftId: null, operator: ANONYMOUS_OPERATOR };
-  });
-  return out;
-}
-
-/**
- * Per-pump availability derived from nozzle occupancy.
- * A pump is busy when any of its nozzles is in an open shift.
- */
-export function pumpOccupancy(pumps = [], nozzles = [], openShifts = []) {
-  const byNozzle = nozzleOccupancy(openShifts);
-  const out = {};
-  pumps.forEach((p) => {
-    const mine = nozzles.filter((n) => n.pumpId === p.id);
-    const held = mine.filter((n) => byNozzle[n.nozzleId || n.id]);
-    const operators = [
-      ...new Set(held.map((n) => byNozzle[n.nozzleId || n.id].operator)),
-    ];
-    out[p.id] = {
-      busy: held.length > 0,
-      operators,
-      heldNozzleIds: held.map((n) => n.id),
-      nozzleCount: mine.length,
-    };
   });
   return out;
 }

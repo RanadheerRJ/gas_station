@@ -23,6 +23,44 @@ export function registerServiceWorker() {
   });
 }
 
+/**
+ * Is this an iPhone, iPod, or iPad? iPadOS 13+ reports a Mac user agent, so
+ * a multi-touch "MacIntel" platform is an iPad, not a Mac. Pure and
+ * parameterised so the rule is testable without faking a whole navigator.
+ */
+export function isIosDevice(userAgent = "", platform = "", maxTouchPoints = 0) {
+  if (/iphone|ipad|ipod/i.test(userAgent)) return true;
+  return platform === "MacIntel" && maxTouchPoints > 1;
+}
+
+/** Is the app already running installed (standalone), not in a browser tab? */
+export function isStandaloneDisplay(matchMediaFn, navigatorStandalone) {
+  if (navigatorStandalone === true) return true; // iOS Safari's own flag
+  if (typeof matchMediaFn !== "function") return false;
+  try {
+    return Boolean(matchMediaFn("(display-mode: standalone)").matches);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Should the "add to home screen" guidance show, and in which form?
+ *
+ * Android Chrome hands the app a `beforeinstallprompt` event, so it can
+ * offer a real Install button. iOS Safari never fires that event — the only
+ * route is Share → Add to Home Screen — so iOS gets instructions instead,
+ * and only while the app is not already installed.
+ *
+ * Returns "prompt" (Android-style button), "ios" (instructions), or null.
+ */
+export function installGuidance({ deferredPrompt, ios, standalone, dismissed }) {
+  if (dismissed || standalone) return null;
+  if (deferredPrompt) return "prompt";
+  if (ios) return "ios";
+  return null;
+}
+
 /** Subscribe to online/offline transitions. Returns an unsubscribe function. */
 export function watchConnection(onChange) {
   const emit = () => onChange(navigator.onLine);

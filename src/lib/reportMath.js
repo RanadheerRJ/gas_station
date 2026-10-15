@@ -11,13 +11,7 @@
  */
 
 import { shiftTotals } from "./shiftMath.js";
-
-const round2 = (n) => Math.round(n * 100) / 100;
-
-function num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
+import { num, round2 } from "./format.js";
 
 /** "YYYY-MM" of an ISO date string; "" for anything that isn't one. */
 export function monthOf(dateISO) {

@@ -12,22 +12,11 @@
  *     history in ascending order, never over the filtered subset.
  */
 
-const num = (value) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-};
+import { isoDay, num } from "./format.js";
 
-/** The ISO day part of a date, a timestamp, or a Date. */
-export function isoDay(value) {
-  if (!value) return "";
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
-  }
-  const text = String(value);
-  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
-  const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
-}
+// Re-exported so existing `import { isoDay } from "./statement.js"` keeps
+// working; the implementation itself lives only in format.js.
+export { isoDay };
 
 /** The day a transaction belongs to: the entered date, else when it landed. */
 export function entryDay(tx) {
@@ -45,8 +34,6 @@ export function entryTime(value) {
 /* ------------------------------------------------------------------ */
 /* Periods                                                              */
 /* ------------------------------------------------------------------ */
-
-export const PERIODS = ["thisMonth", "lastMonth", "last3Months", "custom"];
 
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;

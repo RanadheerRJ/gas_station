@@ -5,6 +5,7 @@ import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import ChangePinPanel from "./ChangePinPanel.jsx";
 import { LogOutIcon, MoonIcon, RefreshIcon, StationIcon, SunIcon } from "./icons.jsx";
 import { APP_VERSION_LABEL } from "../lib/version.js";
+import { initials } from "../lib/avatar.js";
 import { hardRefreshApp } from "../lib/pwa.js";
 
 const ROLE_LABEL = {
@@ -13,19 +14,6 @@ const ROLE_LABEL = {
   manager: "role.manager",
   attendant: "role.attendant",
 };
-
-function initials(name) {
-  const parts = String(name || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (parts.length === 0) return "·";
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
 
 /** Identity and device preferences, grouped into calm, independent sections. */
 export default function AccountPanel({ onDone, stationName = "" }) {
@@ -43,7 +31,7 @@ export default function AccountPanel({ onDone, stationName = "" }) {
     <div className="account-panel">
       <section className="account-profile">
         <div className="avatar" aria-hidden="true">
-          {initials(profile.name)}
+          {profile.name?.trim() ? initials(profile.name) : "·"}
         </div>
         <div className="account-profile__copy">
           <div className="account-panel__name">{profile.name}</div>

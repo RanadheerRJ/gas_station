@@ -407,32 +407,6 @@
   line-clamp: 2;
 }
 
-.station-identity {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  min-width: 0;
-  padding: 2px 2px var(--space-1);
-}
-
-.station-identity__copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.station-identity__greeting {
-  color: var(--ink-strong);
-  font-size: clamp(15px, 4vw, 17px);
-}
-
-.station-identity .business-name {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.35;
-}
-
 .today-dashboard {
   display: flex;
   flex-direction: column;
@@ -1300,10 +1274,6 @@
 }
 
 @media (max-width: 390px) {
-  .station-identity {
-    align-items: flex-start;
-  }
-
   .sales-hero {
     padding: var(--space-4);
   }

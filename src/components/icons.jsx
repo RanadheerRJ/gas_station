@@ -127,18 +127,6 @@ export function CreditIcon(props) {
   );
 }
 
-/** Small status dot used in shift rows. */
-export function StatusDot({ tone = "green", title }) {
-  const fill =
-    tone === "green" ? "var(--green)" : tone === "rust" ? "var(--rust)" : "var(--amber)";
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
-      <title>{title}</title>
-      <circle cx="5" cy="5" r="4" fill={fill} />
-    </svg>
-  );
-}
-
 /** An underground storage tank, drawn side-on with a fill line. */
 export function TankIcon(props) {
   return (
@@ -261,16 +249,6 @@ export function PencilIcon(props) {
     <svg {...base(props)}>
       <path d="M4 20h4l10-10a2.1 2.1 0 0 0-3-3L5 17v3z" />
       <path d="M14.5 6.5l3 3" />
-    </svg>
-  );
-}
-
-/** An envelope, for the developer's invite screen. */
-export function MailIcon(props) {
-  return (
-    <svg {...base(props)}>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" />
     </svg>
   );
 }

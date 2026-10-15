@@ -55,14 +55,6 @@ async function click(element) {
   });
 }
 
-function press(input, key) {
-  act(() => {
-    input.dispatchEvent(
-      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
-    );
-  });
-}
-
 describe("Login", () => {
   let container = null;
   let root = null;

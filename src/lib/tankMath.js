@@ -11,16 +11,12 @@
  * every oil company invoices on. Recording the temperature alongside the dip
  * is what makes two readings comparable.
  *
- * Kept pure and dependency-free so it can be unit-tested without a browser.
+ * Kept pure so it can be unit-tested without a browser. The shared numeric
+ * coercion/rounding helpers live in format.js — the one copy every maths
+ * module uses.
  */
 
-/** Coerce anything to a finite number, defaulting to 0. */
-function num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-const round2 = (n) => Math.round(n * 100) / 100;
+import { num, round2 } from "./format.js";
 
 /** The reference temperature Indian fuel volumes are quoted at. */
 export const REFERENCE_TEMP_C = 15;

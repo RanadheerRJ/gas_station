@@ -393,11 +393,6 @@ button:focus-visible {
 .skeleton-line.short {
   width: 28%;
 }
-.skeleton-num {
-  height: 22px;
-  width: 96px;
-}
-
 .skeleton-panel {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
