@@ -20,21 +20,18 @@
  * format is not.
  */
 
-import { formatDate, formatStamp } from "./format.js";
+import { formatDate, formatStamp, isoDay, num, round2 } from "./format.js";
 import { buildStatement } from "./statement.js";
 import { classifyFuel, SHIFT_STATUS, shiftTotals } from "./shiftMath.js";
 import { monthOf, shiftMonth } from "./reportMath.js";
 import { tankStatus } from "./tankMath.js";
 
+// Re-exported so existing `import { isoDay } from "./export.js"` keeps
+// working; the implementation itself lives only in format.js.
+export { isoDay };
+
 /** Everything this app exports is prefixed so downloads sort together. */
 export const FILE_PREFIX = "petrav";
-
-const num = (value) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-};
-
-const round2 = (n) => Math.round(n * 100) / 100;
 
 /** Two-decimal plain number: spreadsheet-safe, no thousands separators. */
 export function decimal(value) {
@@ -124,18 +121,6 @@ export function reportFilename({
 /* ------------------------------------------------------------------ */
 /* Date range                                                           */
 /* ------------------------------------------------------------------ */
-
-/** The ISO day part of a date, a timestamp, or a Date. */
-export function isoDay(value) {
-  if (!value) return "";
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
-  }
-  const text = String(value);
-  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
-  const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
-}
 
 /** Inclusive on both ends; an empty bound means "unbounded that way". */
 export function inRange(value, { from, to } = {}) {

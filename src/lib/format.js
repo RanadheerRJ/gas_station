@@ -22,9 +22,27 @@ export function litres(value) {
   });
 }
 
+/** Coerce anything to a finite number, defaulting to 0. */
 export function num(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Round to two decimals — the one rounding rule every money/litre figure uses. */
+export function round2(value) {
+  return Math.round(num(value) * 100) / 100;
+}
+
+/** The ISO day part of a date, a timestamp, or a Date. */
+export function isoDay(value) {
+  if (!value) return "";
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
+  }
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
 }
 
 export function formatDate(iso) {

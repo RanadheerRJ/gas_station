@@ -46,6 +46,7 @@ const en = {
   "chrome.installPrompt":
     "Install PÉTRAV on this device for full-screen use and faster starts.",
   "chrome.install": "Install",
+  "chrome.installIosPrompt": "Install PÉTRAV: tap Share, then “Add to Home Screen”.",
   "chrome.notNow": "Not now",
   "chrome.hardRefresh": "Hard refresh",
   "chrome.hardRefreshHint": "Clear cache & load latest version",

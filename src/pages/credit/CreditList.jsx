@@ -109,8 +109,6 @@ export function creditInsights(customers, now = new Date()) {
   };
 }
 
-export const SORTS = ["balance", "recent", "name"];
-
 /** Order the visible rows. Default is biggest exposure first. */
 export function sortCustomers(rows, sort) {
   const copy = [...rows];

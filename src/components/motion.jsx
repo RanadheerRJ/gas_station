@@ -279,10 +279,6 @@ export function SkeletonLine({ width = "wide" }) {
   return <div className={`skeleton skeleton-line ${width}`} />;
 }
 
-export function SkeletonNumber() {
-  return <div className="skeleton skeleton-num" />;
-}
-
 export function SkeletonPanel({ lines = 3 }) {
   return (
     <div className="skeleton-panel">

@@ -44,6 +44,8 @@ const hi = {
   "chrome.installPrompt":
     "पूर्ण-स्क्रीन उपयोग और तेज़ शुरुआत के लिए इस डिवाइस पर PÉTRAV इंस्टॉल करें।",
   "chrome.install": "इंस्टॉल",
+  "chrome.installIosPrompt":
+    "PÉTRAV इंस्टॉल करें: शेयर पर टैप करें, फिर “होम स्क्रीन पर जोड़ें” चुनें।",
   "chrome.notNow": "अभी नहीं",
   "chrome.hardRefresh": "ऐप रिफ्रेश करें",
   "chrome.hardRefreshHint": "नवीनतम संस्करण लोड करने के लिए कैश साफ़ करें",

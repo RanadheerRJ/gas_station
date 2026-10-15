@@ -39,6 +39,11 @@ jobs:
       # RLS/RPC boundary without requiring Docker or a hosted Supabase project.
       - run: npm run check:schema
 
+      # The installable-app contract (manifest, icons, iOS splash screens,
+      # install meta): a drift here ships silently and only shows up as an
+      # install prompt that never appears on a phone.
+      - run: npm run check:pwa
+
       # Behavioural proof of the role matrix: applies the real migrations to a
       # throwaway PostgreSQL instance and asserts what each role can read and
       # write. Static checks cannot show that an attendant is actually unable

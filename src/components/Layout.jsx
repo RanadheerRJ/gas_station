@@ -1,7 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
-import { watchConnection } from "../lib/pwa";
+import {
+  installGuidance,
+  isIosDevice,
+  isStandaloneDisplay,
+  watchConnection,
+} from "../lib/pwa";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import { useStation } from "../state/useStation.js";
@@ -340,10 +345,14 @@ export default function Layout() {
 
         {install.available && (
           <div className="install-bar">
-            <span>{t("chrome.installPrompt")}</span>
-            <button type="button" onClick={install.prompt}>
-              {t("chrome.install")}
-            </button>
+            <span>
+              {install.ios ? t("chrome.installIosPrompt") : t("chrome.installPrompt")}
+            </span>
+            {!install.ios && (
+              <button type="button" onClick={install.prompt}>
+                {t("chrome.install")}
+              </button>
+            )}
             <button type="button" className="ghost" onClick={install.dismiss}>
               {t("chrome.notNow")}
             </button>
@@ -677,11 +686,14 @@ function useConnection() {
 
 /**
  * Chrome fires beforeinstallprompt instead of showing its own banner, so the
- * app has to offer installation itself. Dismissal is remembered — nobody
- * wants to refuse the same bar twice a day.
+ * app has to offer installation itself. iOS Safari never fires it, so on iOS
+ * the same bar teaches the Share → Add to Home Screen route instead (see
+ * installGuidance in lib/pwa.js). Dismissal is remembered — nobody wants to
+ * refuse the same bar twice a day.
  */
 function useInstallPrompt() {
   const [deferred, setDeferred] = useState(null);
+  const [installed, setInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(
     // Reads the PÉTRAV key, falling back to the pre-rename one so an
     // upgrade does not re-prompt someone who already said no.
@@ -695,7 +707,10 @@ function useInstallPrompt() {
       e.preventDefault();
       setDeferred(e);
     };
-    const onInstalled = () => setDeferred(null);
+    const onInstalled = () => {
+      setDeferred(null);
+      setInstalled(true);
+    };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
@@ -704,8 +719,28 @@ function useInstallPrompt() {
     };
   }, []);
 
+  const ios =
+    typeof navigator !== "undefined" &&
+    isIosDevice(navigator.userAgent, navigator.platform, navigator.maxTouchPoints || 0);
+  const standalone =
+    installed ||
+    (typeof window !== "undefined" &&
+      isStandaloneDisplay(
+        typeof window.matchMedia === "function"
+          ? (query) => window.matchMedia(query)
+          : null,
+        typeof navigator !== "undefined" ? navigator.standalone : undefined
+      ));
+  const guidance = installGuidance({
+    deferredPrompt: deferred,
+    ios,
+    standalone,
+    dismissed,
+  });
+
   return {
-    available: !!deferred && !dismissed,
+    available: guidance !== null,
+    ios: guidance === "ios",
     prompt: async () => {
       if (!deferred) return;
       deferred.prompt();

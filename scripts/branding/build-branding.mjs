@@ -238,6 +238,53 @@ FILES["petrav-apple-touch.svg"] = svg(
   { width: 180, height: 180 }
 );
 
+/* =====================================================================
+ * iOS SPLASH SCREENS (apple-touch-startup-image)
+ *
+ * iOS shows a launch image while an installed PWA boots; without one it
+ * shows a blank white screen. One image per device class is required —
+ * Apple matches on the exact logical size and pixel ratio — so the list
+ * below is the supported iPhone/iPad portrait matrix. The artwork is the
+ * app tile on the brand blue with the wordmark in white underneath.
+ * Only the PNGs ship (in public/splash/); index.html carries the matching
+ * <link> tags, and `npm run check:pwa` fails if the two ever drift apart.
+ * ===================================================================== */
+
+export const SPLASHES = [
+  { width: 1290, height: 2796, cssWidth: 430, cssHeight: 932, ratio: 3 },
+  { width: 1179, height: 2556, cssWidth: 393, cssHeight: 852, ratio: 3 },
+  { width: 1284, height: 2778, cssWidth: 428, cssHeight: 926, ratio: 3 },
+  { width: 1170, height: 2532, cssWidth: 390, cssHeight: 844, ratio: 3 },
+  { width: 1242, height: 2688, cssWidth: 414, cssHeight: 896, ratio: 3 },
+  { width: 1125, height: 2436, cssWidth: 375, cssHeight: 812, ratio: 3 },
+  { width: 1242, height: 2208, cssWidth: 414, cssHeight: 736, ratio: 3 },
+  { width: 750, height: 1334, cssWidth: 375, cssHeight: 667, ratio: 2 },
+  { width: 2048, height: 2732, cssWidth: 1024, cssHeight: 1366, ratio: 2 },
+  { width: 1668, height: 2388, cssWidth: 834, cssHeight: 1194, ratio: 2 },
+  { width: 1640, height: 2360, cssWidth: 820, cssHeight: 1180, ratio: 2 },
+  { width: 1620, height: 2160, cssWidth: 810, cssHeight: 1080, ratio: 2 },
+];
+
+/** One splash screen as an SVG: brand-blue field, app tile, white wordmark. */
+function splashSvg({ width, height }) {
+  const tile = Math.round(Math.min(width, height) * 0.34);
+  const tileX = Math.round((width - tile) / 2);
+  const tileY = Math.round(height * 0.4 - tile / 2);
+  const markScale = (tile * 0.674) / 96;
+  const wordWidth = Math.round(width * 0.46);
+  const wordScale = wordWidth / WORD.width;
+  const wordX = Math.round((width - wordWidth) / 2);
+  const wordY = Math.round(tileY + tile + height * 0.045 + 16.5 * wordScale);
+  return svg(
+    `0 0 ${width} ${height}`,
+    `<rect width="${width}" height="${height}" fill="${C.blue}"/>\n` +
+      `<rect x="${tileX}" y="${tileY}" width="${tile}" height="${tile}" rx="${Math.round(tile * 0.22)}" fill="${C.white}"/>\n` +
+      `<g transform="translate(${tileX + tile * 0.16} ${tileY + tile * 0.153}) scale(${markScale})">${markColor()}</g>\n` +
+      `<g transform="translate(${wordX} ${wordY}) scale(${wordScale})">${wordmark(C.white)}</g>`,
+    { width, height }
+  );
+}
+
 /* ---- write the SVGs ---- */
 
 mkdirSync(BRANDING_DIR, { recursive: true });
@@ -276,6 +323,18 @@ if (sharp) {
   await png(FILES["logo.svg"], 512, "icon-512.png");
   await png(FILES["petrav-icon-maskable.svg"], 512, "icon-maskable-512.png");
   await png(FILES["petrav-apple-touch.svg"], 180, "apple-touch-icon.png");
+
+  /* iOS splash screens, one per device class in SPLASHES above. */
+  const splashDir = join(PUBLIC_DIR, "splash");
+  mkdirSync(splashDir, { recursive: true });
+  for (const splash of SPLASHES) {
+    const out = join(splashDir, `splash-${splash.width}x${splash.height}.png`);
+    await sharp(Buffer.from(splashSvg(splash)))
+      .resize(splash.width, splash.height, { fit: "fill" })
+      .png()
+      .toFile(out);
+    console.log(`wrote public/splash/splash-${splash.width}x${splash.height}.png`);
+  }
 
   /* favicon.ico: 16/32/48 BMP entries (the universally-supported classic
    * form), built by hand so no extra dependency is needed. */

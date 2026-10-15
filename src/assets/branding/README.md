@@ -36,7 +36,12 @@ The shipped PWA set in `public/` is derived from these:
 `favicon.svg` (simplified pump only — the clock and nozzle do not survive a
 browser tab), `favicon.ico`, `icon-192.png`, `icon-512.png`,
 `icon-maskable-512.png`, `apple-touch-icon.png`, and `logo.svg` (the
-rounded-square tile the manifest references).
+rounded-square tile the manifest references). The same run also emits the
+iOS launch images in `public/splash/` (`splash-<width>x<height>.png`, one
+exact size per iPhone/iPad class; the device matrix is the `SPLASHES`
+table in the generator) — `index.html` links each one as an
+`apple-touch-startup-image` and `npm run check:pwa` keeps the links and
+the files in step.
 
 ## Regenerating
 
