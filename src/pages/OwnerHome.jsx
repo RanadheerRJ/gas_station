@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScreenHeader } from "../components/Layout.jsx";
-import { Notice, Stat } from "../components/ui.jsx";
+import { Notice } from "../components/ui.jsx";
 import { Card } from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import EmptyState from "../components/EmptyState.jsx";
-import { ChevronIcon, PlusIcon, PumpIcon } from "../components/icons.jsx";
+import {
+  ChartIcon,
+  ChevronIcon,
+  CreditIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LedgerIcon,
+  PeopleIcon,
+  PlusIcon,
+  PumpIcon,
+  RateIcon,
+  RefreshIcon,
+  ShiftIcon,
+  TankIcon,
+} from "../components/icons.jsx";
 import { avatarHue, initials } from "../lib/avatar.js";
 import Sheet from "../components/Sheet.jsx";
 import ResetStationSheet from "../components/ResetStationSheet.jsx";
@@ -32,6 +46,11 @@ export default function OwnerHome() {
   const [form, setForm] = useState({ name: "", address: "" });
   const [archiving, setArchiving] = useState(null);
   const [resettingStation, setResettingStation] = useState(null);
+  // Banking-home behaviour: money figures start masked (a forecourt is a
+  // public place), the eye unmasks them, and the hero's refresh re-reads.
+  const [showAmounts, setShowAmounts] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [quickTab, setQuickTab] = useState("operations");
 
   // Per-station roll-up: today's sales, cash, open shifts, review queue.
   useEffect(() => {
@@ -77,7 +96,7 @@ export default function OwnerHome() {
     return () => {
       cancelled = true;
     };
-  }, [stations]);
+  }, [stations, refreshTick]);
 
   const [run, busy, error] = useRunner(reload);
 
@@ -108,6 +127,26 @@ export default function OwnerHome() {
     if (ok) setArchiving(null);
   };
 
+  const quickGroups = {
+    operations: [
+      { to: "/owner/shifts/start", label: "shifts.startShift", Icon: PlusIcon },
+      { to: "/owner/shifts", label: "nav.shifts", Icon: ShiftIcon },
+      { to: "/owner/stock", label: "nav.groundStock", Icon: TankIcon },
+      { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon },
+    ],
+    money: [
+      { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
+      { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
+      { to: "/owner/shifts", label: "owner.reviewShifts", Icon: ShiftIcon },
+      { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon },
+    ],
+    station: [
+      { to: "/owner/setup", label: "nav.pumpsRates", Icon: RateIcon },
+      { to: "/owner/staff", label: "nav.staffAccess", Icon: PeopleIcon },
+    ],
+  };
+  const mask = (amount) => (showAmounts ? `₹ ${money(amount)}` : t("home.hiddenAmount"));
+
   return (
     <>
       <ScreenHeader
@@ -127,7 +166,7 @@ export default function OwnerHome() {
           </button>
         }
       />
-      <div className="content stack">
+      <div className="content stack home-feed">
         {error && <Notice kind="error">{error}</Notice>}
 
         {loading ? (
@@ -143,34 +182,78 @@ export default function OwnerHome() {
           </Card>
         ) : (
           <>
-            {/* ---- the group's day ---- */}
-            <section className="card stat-strip stat-strip--hero">
-              <Stat
-                label={t("owner.fuelSales")}
-                amount={totals.sales}
-                format={money}
-                prefix="₹ "
-              />
-              <Stat
-                label={t("owner.litresSold")}
-                amount={totals.litres}
-                format={(n) => `${money(n)} L`}
-              />
-              <Stat
-                label={t("owner.cashVariance")}
-                amount={totals.variance}
-                format={money}
-                prefix="₹ "
-                tone={varianceTone(totals.variance)}
-              />
-              <Stat
-                label={t("owner.outstandingCredit")}
-                amount={totals.outstanding}
-                format={money}
-                prefix="₹ "
-                tone={totals.outstanding > 0 ? "neg" : "pos"}
-              />
-            </section>
+            {/* ---- the group's day: a banking-style hero carousel. The big
+                gradient card leads with today's combined sales (masked until
+                the eye is tapped); the next cards peek in from the edge. ---- */}
+            <div className="hero-carousel">
+              <section className="hero-card" aria-label={t("owner.combinedToday")}>
+                <div className="hero-card__top">
+                  <span className="hero-card__eyebrow">{t("owner.combinedToday")}</span>
+                  <button
+                    type="button"
+                    className="hero-card__icon-btn"
+                    onClick={() => setShowAmounts((v) => !v)}
+                    aria-pressed={showAmounts}
+                    aria-label={showAmounts ? t("home.hideAmount") : t("home.showAmount")}
+                  >
+                    {showAmounts ? <EyeOffIcon size={19} /> : <EyeIcon size={19} />}
+                  </button>
+                </div>
+                <span className="hero-card__label">{t("owner.fuelSales")}</span>
+                <div className="hero-card__amount-row">
+                  <span className="hero-card__amount">{mask(totals.sales)}</span>
+                  <button
+                    type="button"
+                    className="hero-card__icon-btn"
+                    onClick={() => setRefreshTick((n) => n + 1)}
+                    aria-label={t("common.refresh")}
+                  >
+                    <RefreshIcon size={17} />
+                  </button>
+                </div>
+                <span className="hero-card__meta">
+                  {t("owner.litresSold")} · {money(totals.litres)} L ·{" "}
+                  {t(
+                    stations.length === 1
+                      ? "owner.stationCountOne"
+                      : "owner.stationCount",
+                    { count: stations.length, date: todayISO() }
+                  )}
+                </span>
+                <div className="hero-card__links">
+                  <Link to="/owner/shifts">{t("nav.shifts")}</Link>
+                  <Link to="/owner/ledger">{t("nav.dailyLedger")}</Link>
+                </div>
+              </section>
+
+              <section className="hero-mini" aria-label={t("owner.outstandingCredit")}>
+                <span className="hero-mini__label">{t("owner.outstandingCredit")}</span>
+                <span className="hero-mini__amount">{mask(totals.outstanding)}</span>
+                <p>{t("home.creditCardBody")}</p>
+                <Link to="/owner/credit" className="primary-link">
+                  {t("nav.creditCustomers")}
+                </Link>
+              </section>
+
+              <section className="hero-mini" aria-label={t("owner.cashVariance")}>
+                <span className="hero-mini__label">{t("owner.cashVariance")}</span>
+                <span
+                  className={`hero-mini__amount${
+                    varianceTone(totals.variance) === "neg"
+                      ? " hero-mini__amount--neg"
+                      : varianceTone(totals.variance) === "pos"
+                        ? " hero-mini__amount--pos"
+                        : ""
+                  }`}
+                >
+                  {mask(totals.variance)}
+                </span>
+                <p>{t("home.varianceCardBody")}</p>
+                <Link to="/owner/reports" className="primary-link">
+                  {t("nav.reports")}
+                </Link>
+              </section>
+            </div>
 
             {totals.pending > 0 && (
               <Notice>
@@ -181,111 +264,167 @@ export default function OwnerHome() {
               </Notice>
             )}
 
+            {/* ---- quick actions: tabbed icon grid, banking-home style ---- */}
+            <section aria-labelledby="quick-actions-title">
+              <div className="section-label">
+                <h2 id="quick-actions-title">{t("today.quickActions")}</h2>
+              </div>
+              <div
+                className="home-tabs"
+                role="tablist"
+                aria-label={t("today.quickActions")}
+              >
+                {[
+                  ["operations", t("home.operations")],
+                  ["money", t("home.money")],
+                  ["station", t("common.station")],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={quickTab === key}
+                    className={`home-tab${quickTab === key ? " active" : ""}`}
+                    onClick={() => setQuickTab(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="quick-grid">
+                {quickGroups[quickTab].map(({ to, label, Icon }) => (
+                  <Link key={`${to}-${label}`} to={to} className="quick-tile">
+                    <span className="quick-tile__icon" aria-hidden="true">
+                      <Icon size={23} />
+                    </span>
+                    <span>{t(label)}</span>
+                  </Link>
+                ))}
+                {quickTab === "station" && (
+                  <button
+                    type="button"
+                    className="quick-tile"
+                    onClick={() => setShowAdd(true)}
+                  >
+                    <span className="quick-tile__icon" aria-hidden="true">
+                      <PlusIcon size={23} />
+                    </span>
+                    <span>{t("owner.addStation")}</span>
+                  </button>
+                )}
+              </div>
+            </section>
+
             {/* ---- one card per station ---- */}
-            <div className="station-grid">
-              {stations.map((stationRef) => {
-                const summary = summaries[stationRef.id];
-                return (
-                  <div key={stationRef.id} className="station-card">
-                    <Link
-                      to={`/owner/shifts?station=${stationRef.id}`}
-                      className="station-card__main"
-                    >
-                      <div className="station-card__head">
-                        <span
-                          className="station-card__avatar"
-                          style={{ "--avatar-hue": avatarHue(stationRef.name) }}
-                          aria-hidden="true"
-                        >
-                          {initials(stationRef.name)}
-                        </span>
-                        <div>
-                          <div className="station-card__name">
-                            {stationRef.name}
-                            {stationRef.state === "archived" && (
-                              <span className="tag">{t("owner.archived")}</span>
-                            )}
+            <section aria-labelledby="stations-title">
+              <div className="section-label">
+                <h2 id="stations-title">{t("owner.stations")}</h2>
+              </div>
+              <div className="station-grid">
+                {stations.map((stationRef) => {
+                  const summary = summaries[stationRef.id];
+                  return (
+                    <div key={stationRef.id} className="station-card">
+                      <Link
+                        to={`/owner/shifts?station=${stationRef.id}`}
+                        className="station-card__main"
+                      >
+                        <div className="station-card__head">
+                          <span
+                            className="station-card__avatar"
+                            style={{ "--avatar-hue": avatarHue(stationRef.name) }}
+                            aria-hidden="true"
+                          >
+                            {initials(stationRef.name)}
+                          </span>
+                          <div>
+                            <div className="station-card__name">
+                              {stationRef.name}
+                              {stationRef.state === "archived" && (
+                                <span className="tag">{t("owner.archived")}</span>
+                              )}
+                            </div>
+                            <div className="small muted">{stationRef.address}</div>
                           </div>
-                          <div className="small muted">{stationRef.address}</div>
+                          <ChevronIcon size={17} />
                         </div>
-                        <ChevronIcon size={17} />
-                      </div>
 
-                      <div className="station-card__figure">
-                        <span className="k">{t("owner.salesToday")}</span>
-                        <span className="v mono">
-                          {summary ? `₹ ${money(summary.sales)}` : "—"}
-                        </span>
-                      </div>
+                        <div className="station-card__figure">
+                          <span className="k">{t("owner.salesToday")}</span>
+                          <span className="v mono">
+                            {summary ? mask(summary.sales) : "—"}
+                          </span>
+                        </div>
 
-                      <div className="station-card__meta">
-                        {summary?.openShifts > 0 ? (
-                          <span className="tag tag--live">
-                            <span className="live-dot" aria-hidden="true" />
-                            {t("owner.openCount", { count: summary.openShifts })}
-                          </span>
-                        ) : summary?.closedToday > 0 ? (
-                          <span className="tag green">
-                            {t("owner.closedCount", { count: summary.closedToday })}
-                          </span>
-                        ) : (
-                          <span className="tag rust">{t("owner.noneToday")}</span>
-                        )}
-                        {summary?.pending > 0 && (
-                          <span className="tag">
-                            {t("owner.toReview", { count: summary.pending })}
-                          </span>
-                        )}
-                        {summary && varianceTone(summary.variance) === "neg" && (
-                          <span className="tag rust">
-                            {t("shifts.variance")} ₹ {money(summary.variance)}
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-
-                    <div className="station-card__links">
-                      <Link
-                        to={`/owner/ledger?station=${stationRef.id}`}
-                        className="small primary-link"
-                      >
-                        {t("nav.dailyLedger")}
+                        <div className="station-card__meta">
+                          {summary?.openShifts > 0 ? (
+                            <span className="tag tag--live">
+                              <span className="live-dot" aria-hidden="true" />
+                              {t("owner.openCount", { count: summary.openShifts })}
+                            </span>
+                          ) : summary?.closedToday > 0 ? (
+                            <span className="tag green">
+                              {t("owner.closedCount", { count: summary.closedToday })}
+                            </span>
+                          ) : (
+                            <span className="tag rust">{t("owner.noneToday")}</span>
+                          )}
+                          {summary?.pending > 0 && (
+                            <span className="tag">
+                              {t("owner.toReview", { count: summary.pending })}
+                            </span>
+                          )}
+                          {summary && varianceTone(summary.variance) === "neg" && (
+                            <span className="tag rust">
+                              {t("shifts.variance")} ₹ {money(summary.variance)}
+                            </span>
+                          )}
+                        </div>
                       </Link>
-                      <Link
-                        to={`/owner/stock?station=${stationRef.id}`}
-                        className="small primary-link"
-                      >
-                        {t("nav.groundStock")}
-                      </Link>
-                      {/* Archiving and resetting are rare and consequential, so they
+
+                      <div className="station-card__links">
+                        <Link
+                          to={`/owner/ledger?station=${stationRef.id}`}
+                          className="small primary-link"
+                        >
+                          {t("nav.dailyLedger")}
+                        </Link>
+                        <Link
+                          to={`/owner/stock?station=${stationRef.id}`}
+                          className="small primary-link"
+                        >
+                          {t("nav.groundStock")}
+                        </Link>
+                        {/* Archiving and resetting are rare and consequential, so they
                           sit behind a menu instead of next to the daily links. */}
-                      <OverflowMenu
-                        items={[
-                          stationRef.state === "archived"
-                            ? {
-                                key: "reopen",
-                                label: t("owner.reopen"),
-                                disabled: busy,
-                                onClick: () => changeStationState(stationRef, "active"),
-                              }
-                            : {
-                                key: "archive",
-                                label: t("owner.archive"),
-                                onClick: () => setArchiving(stationRef),
-                              },
-                          {
-                            key: "reset",
-                            label: t("station.resetShort"),
-                            danger: true,
-                            onClick: () => setResettingStation(stationRef),
-                          },
-                        ]}
-                      />
+                        <OverflowMenu
+                          items={[
+                            stationRef.state === "archived"
+                              ? {
+                                  key: "reopen",
+                                  label: t("owner.reopen"),
+                                  disabled: busy,
+                                  onClick: () => changeStationState(stationRef, "active"),
+                                }
+                              : {
+                                  key: "archive",
+                                  label: t("owner.archive"),
+                                  onClick: () => setArchiving(stationRef),
+                                },
+                            {
+                              key: "reset",
+                              label: t("station.resetShort"),
+                              danger: true,
+                              onClick: () => setResettingStation(stationRef),
+                            },
+                          ]}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </section>
           </>
         )}
       </div>

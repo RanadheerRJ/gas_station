@@ -8,6 +8,7 @@ import { useStation } from "../state/useStation.js";
 import { routeDirection, useRouteTransition } from "./motion.jsx";
 import { PetravLockup } from "./branding.jsx";
 import Sheet from "./Sheet.jsx";
+import { avatarHue, initials } from "../lib/avatar.js";
 import AccountPanel from "./AccountPanel.jsx";
 import ListRow from "./ListRow.jsx";
 import { Chip } from "./Chip.jsx";
@@ -25,6 +26,7 @@ import {
   MoonIcon,
   MoreIcon,
   PeopleIcon,
+  PlusIcon,
   RateIcon,
   ShiftIcon,
   StationIcon,
@@ -138,6 +140,34 @@ export default function Layout() {
   const canSwitchStation =
     (profile?.role === "owner" || profile?.role === "manager") && stations.length > 1;
   const accountInMore = more.some((item) => item.label === "nav.account");
+  // Where the tab bar's centre button goes for this role (admin has none).
+  const startPath =
+    profile?.role === "owner"
+      ? "/owner/shifts/start"
+      : profile?.role === "manager"
+        ? "/station/start"
+        : profile?.role === "attendant"
+          ? "/today/start"
+          : null;
+  const renderTab = (tab, translate) => {
+    const Icon = tab.Icon;
+    const fullLabel = translate(tab.label);
+    const mobileLabel = translate(MOBILE_NAV_LABEL[tab.label] || tab.label);
+    return (
+      <NavLink
+        key={tab.to}
+        to={tab.to}
+        end={tab.end}
+        aria-label={fullLabel}
+        className={({ isActive }) => `tab${isActive ? " active" : ""}`}
+      >
+        <span className="tab__glyph" aria-hidden="true">
+          <Icon size={22} />
+        </span>
+        <span>{mobileLabel}</span>
+      </NavLink>
+    );
+  };
 
   useScrollMemory(pathname, tabPaths, mainRef);
 
@@ -156,35 +186,56 @@ export default function Layout() {
     <div
       className={`shell shell--${profile.role}${tabs.length > 0 ? " shell--tabs" : ""}`}
     >
-      {/* Mobile top bar: the station you are in (or the brand), then the
-          device-level controls — theme, language, account — one tap away. */}
+      {/* Mobile top bar, banking-home style: your initials avatar and a
+          greeting on the left (the avatar opens Account; the station line
+          under the greeting is the switcher where switching is allowed),
+          then theme, language and sign-out — every icon a working control. */}
       <header className="appbar">
         <div className="appbar__lead">
-          {canSwitchStation ? (
-            <button
-              type="button"
-              className="appbar__station"
-              onClick={() => setStationOpen(true)}
-              aria-haspopup="dialog"
-              title={station?.name}
-            >
-              <StationIcon size={15} />
-              <span className="appbar__station-name">{station?.name}</span>
-              <span className="appbar__chevron" aria-hidden="true">
-                <ChevronIcon size={13} />
-              </span>
-            </button>
-          ) : profile.role === "attendant" && station ? (
-            <span
-              className="appbar__station appbar__station--static"
-              title={station.name}
-            >
-              <StationIcon size={15} />
-              <span className="appbar__station-name">{station.name}</span>
+          <button
+            type="button"
+            className="appbar__avatar"
+            style={{ "--avatar-hue": avatarHue(profile.name) }}
+            onClick={() => setAccountOpen(true)}
+            aria-label={t("nav.account")}
+            aria-haspopup="dialog"
+          >
+            {initials(profile.name)}
+          </button>
+          <div className="appbar__greeting">
+            <span className="appbar__hello">
+              {t("home.hello", { name: String(profile.name || "").split(" ")[0] })}
             </span>
-          ) : (
-            <PetravLockup markSize={26} wordHeight={15} />
-          )}
+            {canSwitchStation ? (
+              <button
+                type="button"
+                className="appbar__station"
+                onClick={() => setStationOpen(true)}
+                aria-haspopup="dialog"
+                title={station?.name}
+              >
+                <span className="appbar__station-name">{station?.name}</span>
+                <span className="appbar__chevron" aria-hidden="true">
+                  <ChevronIcon size={13} />
+                </span>
+              </button>
+            ) : profile.role === "attendant" && station ? (
+              <span
+                className="appbar__station appbar__station--static"
+                title={station.name}
+              >
+                <span className="appbar__station-name">{station.name}</span>
+              </span>
+            ) : station ? (
+              <span className="appbar__sub" title={station.name}>
+                {station.name}
+              </span>
+            ) : (
+              <span className="appbar__sub">
+                {ROLE_LABEL[profile.role] ? t(ROLE_LABEL[profile.role]) : profile.role}
+              </span>
+            )}
+          </div>
         </div>
         <div className="appbar__tools">
           <button
@@ -206,11 +257,11 @@ export default function Layout() {
           </button>
           <button
             type="button"
-            className="appbar__tool appbar__account"
-            onClick={() => setAccountOpen(true)}
-            aria-label={t("nav.account")}
+            className="appbar__tool"
+            onClick={logout}
+            aria-label={t("chrome.signOut")}
           >
-            <UserIcon size={18} />
+            <LogOutIcon size={18} />
           </button>
         </div>
       </header>
@@ -315,25 +366,24 @@ export default function Layout() {
           stroke, so selection is shape and weight, not colour alone. */}
       {tabs.length > 0 && (
         <nav className="tabbar" aria-label={t("chrome.navigation")}>
-          {tabs.map((tab) => {
-            const Icon = tab.Icon;
-            const fullLabel = t(tab.label);
-            const mobileLabel = t(MOBILE_NAV_LABEL[tab.label] || tab.label);
-            return (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={tab.end}
-                aria-label={fullLabel}
-                className={({ isActive }) => `tab${isActive ? " active" : ""}`}
-              >
-                <span className="tab__glyph" aria-hidden="true">
-                  <Icon size={22} />
-                </span>
-                <span>{mobileLabel}</span>
-              </NavLink>
-            );
-          })}
+          {tabs.slice(0, 2).map((tab) => renderTab(tab, t))}
+          {/* The raised centre button: starting a shift is the one action
+              every role reaches for, so it sits in the middle of the bar,
+              lifted out of it — the banking-app scan-button position, doing
+              PÉTRAV's primary job instead. */}
+          {startPath && (
+            <NavLink
+              to={startPath}
+              className={({ isActive }) => `tabbar__fab${isActive ? " active" : ""}`}
+              aria-label={t("shifts.startShift")}
+            >
+              <span className="tabbar__fab-circle" aria-hidden="true">
+                <PlusIcon size={26} />
+              </span>
+              <span className="tabbar__fab-label">{t("shifts.startShift")}</span>
+            </NavLink>
+          )}
+          {tabs.slice(2).map((tab) => renderTab(tab, t))}
           {more.length > 0 && (
             <button
               type="button"
