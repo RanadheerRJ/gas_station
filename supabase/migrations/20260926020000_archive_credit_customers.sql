@@ -16,7 +16,11 @@ alter table public.customer_audit enable row level security;
 create policy customer_audit_read on public.customer_audit for select to authenticated
   using (public.can_manage_station(station_id));
 revoke all on public.customer_audit from public;
+-- Explicit Data API grants: since 30 October 2026 Supabase no longer grants
+-- table privileges to the API roles for newly created tables, so this
+-- migration has to state who may reach the audit trail through PostgREST.
 grant select on public.customer_audit to authenticated;
+grant select, insert, update, delete on public.customer_audit to service_role;
 
 create or replace function public.archive_customer(p_customer_id uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$

@@ -6,7 +6,7 @@
 -- that the role matrix is enforced in the database rather than in the UI.
 
 begin;
-select plan(48);
+select plan(53);
 
 /* Structure and transactional surface -------------------------------- */
 select has_table('public', 'shifts', 'shift records are stored relationally');
@@ -28,7 +28,13 @@ select has_function('public', 'reopen_shift_for_correction', array['uuid', 'uuid
 select has_function('public', 'record_customer_transaction', array['uuid', 'uuid', 'text', 'numeric', 'text', 'date'], 'balance RPC exists');
 select has_function('public', 'reset_station_data', array['uuid'], 'reset_station_data RPC exists');
 select has_index('public', 'shift_nozzles', 'shift_nozzles_one_open_shift', 'one active shift per nozzle is enforced');
-select row_security_active('public', 'credit_customers', 'credit balances are protected by RLS');
+-- pgTAP has no RLS assertion of its own, so this reads the catalog flag:
+-- a table without it answers every role with every row.
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.credit_customers'::regclass),
+  true,
+  'credit balances are protected by RLS'
+);
 
 /* Role matrix helpers ------------------------------------------------- */
 select has_function('public', 'can_access_station', array['uuid'], 'station membership helper exists');
@@ -51,8 +57,11 @@ select results_eq(
 -- Attendants attribute credit sales at shift close through a balance-free
 -- directory: id, name, phone — never a balance or transaction history.
 select has_function('public', 'list_customer_directory', array['uuid'], 'balance-free customer directory RPC exists');
+-- The explicit COLLATE matters: information_schema identifiers carry the "C"
+-- collation, and comparing them with a plain literal array leaves PostgreSQL
+-- unable to pick one ("could not determine which collation to use").
 select results_eq(
-  $$ select array_agg(parameter_name::text order by ordinal_position)
+  $$ select array_agg(parameter_name::text collate "default" order by ordinal_position)
      from information_schema.parameters
      where specific_schema = 'public'
        and specific_name like 'list_customer_directory%'
@@ -62,12 +71,76 @@ select results_eq(
 );
 
 /* Row-level security on every browser-readable table ------------------ */
-select row_security_active('public', 'shifts', 'shift records are protected by RLS');
-select row_security_active('public', 'shift_nozzles', 'shift nozzles are protected by RLS');
-select row_security_active('public', 'shift_expenses', 'shift expenses are protected by RLS');
-select row_security_active('public', 'fuel_prices', 'fuel price history is protected by RLS');
-select row_security_active('public', 'tanks', 'tank stock is protected by RLS');
-select row_security_active('public', 'tank_readings', 'tank readings are protected by RLS');
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.shifts'::regclass),
+  true,
+  'shift records are protected by RLS'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.shift_nozzles'::regclass),
+  true,
+  'shift nozzles are protected by RLS'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.shift_expenses'::regclass),
+  true,
+  'shift expenses are protected by RLS'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.fuel_prices'::regclass),
+  true,
+  'fuel price history is protected by RLS'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.tanks'::regclass),
+  true,
+  'tank stock is protected by RLS'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.tank_readings'::regclass),
+  true,
+  'tank readings are protected by RLS'
+);
+
+/* Data API table grants ------------------------------------------------
+   Since 30 October 2026 Supabase no longer grants table privileges to the
+   API roles for new tables in "public", so the exposure is part of the
+   schema contract: a replayed database (new project, preview branch,
+   `supabase db reset`) must stay reachable through PostgREST. */
+select table_privs_are('public', 'shifts', 'authenticated', array['SELECT'],
+  'a browser role can read through the Data API and nothing else');
+select table_privs_are('public', 'profiles', 'service_role', array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  'the accounts Edge Function keeps direct table access');
+select results_eq(
+  $$ select count(*)::int
+     from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and c.relkind in ('r', 'p')
+       and has_table_privilege('anon', c.oid, 'select') $$,
+  array[0],
+  'anon holds no table grant: every RLS policy is for authenticated'
+);
+select results_eq(
+  $$ select count(*)::int
+     from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and c.relkind in ('r', 'p')
+       and not has_table_privilege('authenticated', c.oid, 'select') $$,
+  array[0],
+  'no table is unreachable from the Data API for a signed-in user'
+);
+select isnt_empty(
+  $$ select pg_get_userbyid(d.defaclrole)::text as owner
+     from pg_default_acl d
+     join pg_namespace n on n.oid = d.defaclnamespace
+     where n.nspname = 'public'
+       and d.defaclobjtype = 'r'
+       and d.defaclacl::text like '%authenticated=r/%'
+       and d.defaclacl::text like '%service_role=arwd%' $$,
+  'default privileges expose a table created later to authenticated and service_role'
+);
 
 /* Attendant write backstop -------------------------------------------- */
 select has_function('public', 'guard_attendant_writes', 'attendant write guard exists');
@@ -92,7 +165,11 @@ select results_eq(
 
 /* Shift-aware credit ledger ------------------------------------------- */
 select has_table('public', 'customer_transaction_audit', 'credit corrections and voids are audited');
-select row_security_active('public', 'customer_transaction_audit', 'the credit audit trail is protected by RLS');
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.customer_transaction_audit'::regclass),
+  true,
+  'the credit audit trail is protected by RLS'
+);
 select has_column('public', 'customer_transactions', 'status', 'a transaction carries an active/voided lifecycle');
 select has_column('public', 'customer_transactions', 'shift_id', 'a transaction can be tied to the shift that created it');
 select col_is_null('public', 'customer_transactions', 'shift_id', 'historical transactions without a shift remain valid');

@@ -41,7 +41,10 @@ create policy tank_readings_read on public.tank_readings for select to authentic
 alter table public.stock_movements enable row level security;
 create policy stock_movements_read on public.stock_movements for select to authenticated
   using (public.can_access_station(station_id));
+-- Explicit Data API grant: Supabase stopped granting these automatically for
+-- new tables on 30 October 2026, so a replayed schema needs this line.
 grant select on public.stock_movements to authenticated;
+grant select, insert, update, delete on public.stock_movements to service_role;
 
 -- Existing tank stock is the opening book balance for the immutable ledger.
 insert into public.stock_movements(station_id,tank_id,fuel_type,movement_type,quantity_litres,

@@ -15,6 +15,15 @@
       checks this, and CI runs it on every pull request.
 - [ ] Database changes ship as a new migration, never as an edit to an applied
       one, and `npm run check:schema` / `npm run test:rbac` pass.
+- [ ] **A new table is granted in the migration that creates it.** Since
+      30 October 2026 Supabase no longer grants Data API access to new tables
+      in `public`, so `create table public.x` needs `grant select on public.x to
+      authenticated` and `grant select, insert, update, delete on public.x to
+      service_role` in the same file — and nothing to `anon`, whose every policy
+      here is `to authenticated`. Without them the table answers supabase-js,
+      PostgREST, and GraphQL with `permission denied for table x` on a new
+      project, a preview branch, or `supabase db reset`.
+      `npm run check:schema` fails the build if they are missing.
 - [ ] Touch UI checked at 375px and 390px wide — nothing important is clipped,
       and every tap target is still at least 40px tall.
 

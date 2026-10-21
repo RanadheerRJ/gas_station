@@ -101,7 +101,12 @@ create policy customer_transaction_audit_read on public.customer_transaction_aud
   using (public.can_manage_station(station_id));
 
 revoke all on public.customer_transaction_audit from public;
+-- Explicit Data API grants: since 30 October 2026 Supabase no longer grants
+-- table privileges to the API roles for newly created tables, so a replay of
+-- this migration has to carry them or the audit trail is unreachable through
+-- PostgREST with a "permission denied" error.
 grant select on public.customer_transaction_audit to authenticated;
+grant select, insert, update, delete on public.customer_transaction_audit to service_role;
 
 -- Attendants may never write the audit table by hand; the RPC layer writes it
 -- as the function owner, exactly like the credit tables.
