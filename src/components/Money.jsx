@@ -54,9 +54,6 @@ function Money({ kind, value, label, size = "md" }) {
     return { marker: m, formatted: fmt, accessibleAmount: acc, classes: cls, verdict: v };
   }, [kind, value, size]);
 
-  const numeric = Number(value);
-  const amount = Number.isFinite(numeric) ? numeric : 0;
-
   return (
     <span
       className={classes}

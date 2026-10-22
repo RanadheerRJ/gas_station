@@ -1,0 +1,642 @@
+/* =====================================================================
+   PÉTRAV — device scaling and alignment
+   ---------------------------------------------------------------------
+   One device-independent layer for Android, iOS, tablets/iPads and desktops.
+   Breakpoints follow available space, not user-agent names:
+
+     ≤359       small phones / narrow split-screen
+     360–599    phones
+     600–767    large phones / small tablets
+     768–860    tablets and iPad portrait (bottom navigation)
+     861–1100   iPad landscape / compact laptops (persistent sidebar)
+     ≥1024      roomy desktop grids
+     ≥1440      wide desktop, capped for readable line lengths
+
+   Loaded last so it can reconcile older component breakpoints in one place.
+   Interactive behaviour and routes are unchanged.
+   ===================================================================== */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --keyboard-inset: 0px;
+  --app-height: 100vh;
+  --content-gutter: clamp(16px, 3vw, 32px);
+  --layout-gap: clamp(12px, 1.8vw, 24px);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
+}
+
+html {
+  overflow-x: clip;
+}
+
+#root {
+  min-width: 0;
+  min-height: 100%;
+}
+
+.shell {
+  height: var(--app-height);
+  min-height: 0;
+}
+
+.login,
+.boot {
+  min-height: var(--app-height);
+}
+
+.sidebar {
+  height: var(--app-height);
+  min-height: 0;
+}
+
+/* Every grid/flex child is allowed to shrink before anything is allowed to
+   create accidental horizontal page scroll. Explicit minmax(0, 1fr) remains
+   preferable; this is the safety net for older screens. */
+.content,
+.content > *,
+.stack,
+.stack > *,
+.row > *,
+.between > *,
+.card,
+.panel,
+.list-card,
+.list-row,
+.shift-card,
+.customer-row,
+.form-grid > *,
+.sheet-form > *,
+.detail-grid > *,
+.station-grid > *,
+.tank-farm > *,
+.pick-board > *,
+.quick-grid > *,
+.more-grid > * {
+  min-width: 0;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+input[type="date"],
+input[type="number"],
+input[type="datetime-local"] {
+  min-width: 0;
+}
+
+button svg,
+a svg {
+  flex-shrink: 0;
+}
+
+.screen-head h1 {
+  overflow-wrap: anywhere;
+}
+
+/* Safe-area padding is separate from --content-gutter because sticky filter
+   bars use the gutter in negative-margin calculations. max() keeps ordinary
+   devices unchanged and moves landscape content clear of a notch/home bar. */
+.content,
+.screen-head,
+.customer-screen__body,
+.statement-full__body,
+.statement-full__head {
+  padding-left: max(var(--content-gutter), var(--safe-left));
+  padding-right: max(var(--content-gutter), var(--safe-right));
+}
+
+.appbar,
+.action-bar,
+.sticky-cta,
+.login__body {
+  padding-left: max(var(--content-gutter), var(--safe-left));
+  padding-right: max(var(--content-gutter), var(--safe-right));
+}
+
+.tabbar {
+  padding-left: max(8px, var(--safe-left));
+  padding-right: max(8px, var(--safe-right));
+}
+
+.sheet__head,
+.sheet__body {
+  padding-left: max(var(--content-gutter), var(--safe-left));
+  padding-right: max(var(--content-gutter), var(--safe-right));
+}
+
+.shift-tabs {
+  margin-left: calc(0px - max(var(--content-gutter), var(--safe-left)));
+  margin-right: calc(0px - max(var(--content-gutter), var(--safe-right)));
+  padding-left: max(var(--content-gutter), var(--safe-left));
+  padding-right: max(var(--content-gutter), var(--safe-right));
+}
+
+.conn-banner,
+.install-bar {
+  max-width: min(680px, calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
+}
+
+.stock-fab {
+  right: max(18px, var(--safe-right));
+  bottom: calc(var(--tabbar-h) + 18px + var(--safe-bottom));
+}
+
+/* Four PIN boxes always share the available width. No fixed 4×64px overflow
+   on a 320px phone, and no stretched full-width boxes on a tablet. */
+.pin-boxes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 2.4vw, 12px);
+  width: 100%;
+  max-width: 320px;
+}
+
+.pin-box {
+  width: 100%;
+  max-width: none;
+}
+
+/* iOS zooms focused controls whose font is below 16px. Textarea was missing
+   from the old phone rule; coarse-pointer coverage also includes iPads using
+   the desktop sidebar in landscape. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  input,
+  select {
+    min-height: 44px;
+  }
+
+  button,
+  .dev-chips button,
+  .credit-chips button,
+  .statement__chips button,
+  .shift-tab,
+  .tool-btn--compact {
+    min-height: 44px;
+  }
+
+  .icon-btn,
+  .month-dial__arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  .credit-search__clear {
+    width: 44px;
+    height: 44px;
+  }
+
+  .credit-search input {
+    padding-right: 50px;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Small phones and narrow split-screen
+   --------------------------------------------------------------------- */
+
+@media (max-width: 359px) {
+  :root {
+    --content-gutter: 12px;
+  }
+
+  .appbar {
+    gap: 8px;
+  }
+
+  .appbar__lead,
+  .appbar__tools {
+    gap: 4px;
+  }
+
+  .appbar__hello {
+    font-size: 14px;
+  }
+
+  .screen-head h1 {
+    font-size: 22px;
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .report-tools__dates {
+    grid-template-columns: 1fr;
+  }
+
+  .list-row {
+    min-height: 60px;
+    padding: 10px 12px;
+  }
+
+  .list-card,
+  .status-card,
+  .sales-hero {
+    padding: 14px;
+  }
+
+  .tabbar {
+    padding-left: max(4px, var(--safe-left));
+    padding-right: max(4px, var(--safe-right));
+  }
+
+  .tabbar__fab {
+    flex-basis: 56px;
+  }
+
+  .sticky-cta__inner {
+    gap: 10px;
+  }
+
+  .sticky-cta__hint {
+    display: none;
+  }
+}
+
+/* Money in the review action bar becomes a readable 2×2 grid instead of
+   squeezing four figures into 7–9px text on a narrow phone. */
+@media (max-width: 480px) {
+  .review-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-figures__item:nth-child(2) {
+    border-right: 0;
+  }
+
+  .review-figures__item:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .review-figures .money {
+    font-size: clamp(11px, 3.4vw, 14px);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Large phones and small tablets: use available width, but retain the
+   phone shell and thumb navigation. Sheet pickers stay one column.
+   --------------------------------------------------------------------- */
+
+@media (min-width: 600px) and (max-width: 860px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sheet-form {
+    grid-template-columns: 1.6fr minmax(0, 1fr);
+  }
+
+  .run-readings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .station-grid,
+  .tank-farm,
+  .pick-board:not(.pick-board--sheet) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--layout-gap);
+  }
+
+  .nozzle-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--layout-gap);
+  }
+
+  .more-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .quick-stat-row {
+    grid-auto-columns: minmax(170px, 42%);
+  }
+
+  .hero-card {
+    flex-basis: min(72%, 430px);
+  }
+}
+
+@media (min-width: 700px) {
+  .customer-list {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Tablets / iPad portrait: larger gutters and useful multi-column content.
+   Bottom navigation stays through 860px, matching the existing app shell.
+   --------------------------------------------------------------------- */
+
+@media (min-width: 768px) {
+  :root {
+    --content-gutter: clamp(24px, 3vw, 32px);
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    justify-content: stretch;
+    gap: 12px;
+  }
+
+  .detail-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--layout-gap);
+  }
+
+  .history-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--layout-gap);
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .nozzle-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .credit-toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .credit-search {
+    flex: 1 1 280px;
+  }
+
+  .credit-sort {
+    flex: 0 1 auto;
+    margin-top: 0;
+  }
+
+  /* A tablet/desktop sheet is a centred dialog, not a phone-width strip
+     stretched across the display. Keyboard offset is still respected. */
+  .sheet-root {
+    align-items: center;
+    padding-top: max(24px, var(--safe-top));
+    padding-right: max(24px, var(--safe-right));
+    padding-bottom: max(24px, calc(var(--sheet-viewport-offset) + var(--safe-bottom)));
+    padding-left: max(24px, var(--safe-left));
+  }
+
+  .sheet {
+    border-radius: var(--radius-xl);
+    padding-bottom: 0;
+    max-height: min(calc(var(--sheet-viewport-h) - 48px), 760px);
+  }
+
+  .sheet__grab {
+    display: none;
+  }
+
+  /* The root already supplies the safe-area clearance on larger screens. */
+  .sheet__head,
+  .sheet__body {
+    padding-left: var(--content-gutter);
+    padding-right: var(--content-gutter);
+  }
+
+  .more-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .screen-head h1 {
+    font-size: clamp(26px, 3vw, 32px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 860px) {
+  :root {
+    --tabbar-h: 70px;
+    --attendant-max: 860px;
+  }
+
+  .appbar {
+    min-height: 64px;
+    padding-top: calc(10px + var(--safe-top));
+    padding-bottom: 10px;
+  }
+
+  .tabbar {
+    justify-content: center;
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: calc(8px + var(--safe-bottom));
+  }
+
+  .tabbar .tab {
+    flex: 0 1 120px;
+    max-width: 120px;
+  }
+
+  .tabbar__fab {
+    flex: 0 0 64px;
+  }
+
+  .content {
+    padding-top: 16px;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   iPad landscape and compact laptops: preserve content room beside the
+   persistent navigation. Desktop keeps real (thin) scrollbars.
+   --------------------------------------------------------------------- */
+
+@media (min-width: 861px) {
+  .main {
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+  }
+
+  .stock-fab {
+    right: max(24px, var(--safe-right));
+    bottom: max(24px, var(--safe-bottom));
+  }
+
+  .sheet-root {
+    padding-bottom: max(24px, var(--sheet-viewport-offset));
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1100px) {
+  :root {
+    --sidebar-w: 208px;
+    --content-gutter: clamp(20px, 2.5vw, 28px);
+  }
+
+  .sidebar .brand {
+    padding-inline: 14px;
+  }
+
+  .sidebar nav {
+    padding-inline: 8px;
+  }
+
+  .sidebar nav a {
+    gap: 9px;
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+
+  .sidebar .foot {
+    padding-inline: 14px;
+  }
+
+  /* The newly-visible sidebar takes width away at 861px. Keep the same
+     usable two-column content instead of snapping back to one wide row. */
+  .station-grid,
+  .tank-farm,
+  .pick-board:not(.pick-board--sheet) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--layout-gap);
+  }
+
+  .nozzle-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Wide enough for all three home cards and all three daily statistics: stop
+   carouselling purely because the components originated on a phone. */
+@media (min-width: 1024px) {
+  .hero-carousel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(220px, 1fr));
+    gap: var(--layout-gap);
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .hero-card,
+  .hero-mini {
+    width: auto;
+    min-width: 0;
+    min-height: 190px;
+  }
+
+  .hero-card__amount {
+    font-size: clamp(26px, 2.4vw, 36px);
+  }
+
+  .quick-stat-row {
+    grid-auto-flow: initial;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--layout-gap);
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+}
+
+/* Large monitors get more breathing room, not endlessly long text lines. */
+@media (min-width: 1440px) {
+  :root {
+    --content-max: 1280px;
+    --attendant-max: 900px;
+  }
+
+  .screen-head h1 {
+    font-size: 30px;
+  }
+
+  .station-grid {
+    gap: var(--layout-gap);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Short landscape screens (phones turned sideways, split-screen, small
+   laptop windows): keep forms and dialogs reachable instead of letting a
+   tall hero or fixed review bar consume the whole viewport.
+   --------------------------------------------------------------------- */
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .appbar {
+    padding-top: calc(4px + var(--safe-top));
+    padding-bottom: 4px;
+  }
+
+  .screen-head {
+    padding-top: 8px;
+  }
+
+  .screen-head h1 {
+    font-size: 22px;
+  }
+
+  .login {
+    flex-direction: row;
+  }
+
+  .login__hero {
+    flex: 0 0 38%;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    padding-left: max(16px, var(--safe-left));
+    border-radius: 0;
+  }
+
+  .login__body {
+    overflow-y: auto;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .login__tools {
+    top: max(8px, var(--safe-top));
+    right: max(8px, var(--safe-right));
+  }
+
+  .sheet-root {
+    align-items: center;
+    padding-top: max(8px, var(--safe-top));
+    padding-right: max(8px, var(--safe-right));
+    padding-bottom: max(8px, calc(var(--sheet-viewport-offset) + var(--safe-bottom)));
+    padding-left: max(8px, var(--safe-left));
+  }
+
+  .sheet {
+    max-height: calc(var(--sheet-viewport-h) - 16px);
+    border-radius: var(--radius-lg);
+    padding-bottom: 0;
+  }
+
+  .sheet__grab {
+    display: none;
+  }
+
+  .action-bar,
+  .sticky-cta {
+    max-height: calc(var(--app-height) - 8px);
+    overflow-y: auto;
+  }
+
+  .tabbar__fab-circle {
+    width: 44px;
+    height: 44px;
+    margin-top: -16px;
+  }
+}

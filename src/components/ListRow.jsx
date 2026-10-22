@@ -49,7 +49,8 @@ const ListRow = memo(
     const isDisabled = disabled || busy;
 
     const cls = useMemo(
-      () => `list-row${interactive ? " list-row--press" : ""}${className ? ` ${className}` : ""}${busy ? " list-row--busy" : ""}`,
+      () =>
+        `list-row${interactive ? " list-row--press" : ""}${className ? ` ${className}` : ""}${busy ? " list-row--busy" : ""}`,
       [interactive, className, busy]
     );
 

@@ -93,6 +93,7 @@ export function useIsMounted() {
  * (charts, images, large tables) until actually needed.
  */
 export function useInView(ref, options = {}) {
+  const { threshold = 0.01, once = false, rootMargin } = options;
   const [inView, setInView] = useState(!("IntersectionObserver" in globalThis));
   useEffect(() => {
     const el = ref.current;
@@ -101,16 +102,16 @@ export function useInView(ref, options = {}) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setInView(true);
-          if (options.once) obs.disconnect();
-        } else if (!options.once) {
+          if (once) obs.disconnect();
+        } else if (!once) {
           setInView(false);
         }
       },
-      { threshold: 0.01, ...options }
+      { threshold, rootMargin }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [ref, options.threshold, options.once, options.rootMargin]);
+  }, [ref, threshold, once, rootMargin]);
   return inView;
 }
 

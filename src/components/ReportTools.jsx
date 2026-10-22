@@ -73,9 +73,18 @@ function ReportTools({
     setResult(null);
   }, [range.from, range.to, filters.fuelGroup, filters.employeeId, filters.status]);
 
-  const handleFrom = useCallback((event) => onRangeChange({ ...range, from: event.target.value }), [onRangeChange, range]);
-  const handleTo = useCallback((event) => onRangeChange({ ...range, to: event.target.value }), [onRangeChange, range]);
-  const handlePreset = useCallback((value) => () => onRangeChange({ ...presets[value] }), [onRangeChange, presets]);
+  const handleFrom = useCallback(
+    (event) => onRangeChange({ ...range, from: event.target.value }),
+    [onRangeChange, range]
+  );
+  const handleTo = useCallback(
+    (event) => onRangeChange({ ...range, to: event.target.value }),
+    [onRangeChange, range]
+  );
+  const handlePreset = useCallback(
+    (value) => () => onRangeChange({ ...presets[value] }),
+    [onRangeChange, presets]
+  );
 
   const run = useCallback(
     (kind) => {
@@ -84,7 +93,10 @@ function ReportTools({
       try {
         built = buildReport();
       } catch {
-        setResult({ ok: false, text: t("report.blocked", { format: kind === "csv" ? "CSV" : "PDF" }) });
+        setResult({
+          ok: false,
+          text: t("report.blocked", { format: kind === "csv" ? "CSV" : "PDF" }),
+        });
         return;
       }
       if (!built || built.rows.length === 0) return;
@@ -126,13 +138,30 @@ function ReportTools({
               : t("report.saved", { format }),
         });
       } catch {
-        setResult({ ok: false, text: t("report.blocked", { format: kind === "csv" ? "CSV" : "PDF" }) });
+        setResult({
+          ok: false,
+          text: t("report.blocked", { format: kind === "csv" ? "CSV" : "PDF" }),
+        });
       } finally {
         // Release busy after a short delay so rapid double-tap is absorbed
         setTimeout(() => setBusy(null), 700);
       }
     },
-    [buildReport, report, stationName, range.from, range.to, filters.fuelGroup, filters.employeeName, fileTitle, title, subject, meta, busy, t]
+    [
+      buildReport,
+      report,
+      stationName,
+      range.from,
+      range.to,
+      filters.fuelGroup,
+      filters.employeeName,
+      fileTitle,
+      title,
+      subject,
+      meta,
+      busy,
+      t,
+    ]
   );
 
   const onCsv = useCallback(() => run("csv"), [run]);

@@ -61,7 +61,12 @@ function tone(name, fallback, mono) {
  * the mark is decorative and hidden from assistive technology — pass a
  * label only where it is the only thing naming the brand on screen.
  */
-export const PetravMark = memo(function PetravMark({ size = 28, mono = false, label, className = "" }) {
+export const PetravMark = memo(function PetravMark({
+  size = 28,
+  mono = false,
+  label,
+  className = "",
+}) {
   const c = (name, fallback) => tone(name, fallback, mono);
   return (
     <svg
@@ -163,7 +168,11 @@ export const PetravMark = memo(function PetravMark({ size = 28, mono = false, la
  * of wherever it sits (near-black in light theme, near-white in dark);
  * `mono` also flattens the red A bar for single-colour contexts.
  */
-export const PetravWordmark = memo(function PetravWordmark({ height = 16, mono = false, className = "" }) {
+export const PetravWordmark = memo(function PetravWordmark({
+  height = 16,
+  mono = false,
+  className = "",
+}) {
   const red = tone("red", "#E31B23", mono);
   return (
     <svg
@@ -204,7 +213,11 @@ export const PetravWordmark = memo(function PetravWordmark({ height = 16, mono =
  * The horizontal lockup — [mark] PÉTRAV — for the app bar and the desktop
  * sidebar. One accessible name for the whole group; the parts are decorative.
  */
-export const PetravLockup = memo(function PetravLockup({ markSize = 26, wordHeight = 15, label = "PÉTRAV" }) {
+export const PetravLockup = memo(function PetravLockup({
+  markSize = 26,
+  wordHeight = 15,
+  label = "PÉTRAV",
+}) {
   return (
     <div className="brand-lockup" role="img" aria-label={label}>
       <PetravMark size={markSize} />

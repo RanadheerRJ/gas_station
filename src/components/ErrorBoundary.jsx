@@ -59,7 +59,8 @@ export default class ErrorBoundary extends Component {
 
     if (this.props.fallback) {
       const Fallback = this.props.fallback;
-      if (typeof Fallback === "function") return <Fallback error={this.state.error} reset={this.reset} />;
+      if (typeof Fallback === "function")
+        return <Fallback error={this.state.error} reset={this.reset} />;
       return Fallback;
     }
 
@@ -67,9 +68,22 @@ export default class ErrorBoundary extends Component {
       <main className="login-wrap" role="alert" aria-live="assertive">
         <div className="login-card">
           <h1>{this.props.title || "Something went wrong"}</h1>
-          <p className="muted">{this.props.message || "Please reload the app and try again."}</p>
+          <p className="muted">
+            {this.props.message || "Please reload the app and try again."}
+          </p>
           {this.props.showDetails && this.state.error && (
-            <pre className="small muted" style={{ textAlign: "left", overflow: "auto", maxHeight: 120, margin: "12px 0", padding: 8, background: "var(--surface-sunken)", borderRadius: 8 }}>
+            <pre
+              className="small muted"
+              style={{
+                textAlign: "left",
+                overflow: "auto",
+                maxHeight: 120,
+                margin: "12px 0",
+                padding: 8,
+                background: "var(--surface-sunken)",
+                borderRadius: 8,
+              }}
+            >
               {String(this.state.error?.message || this.state.error)}
             </pre>
           )}

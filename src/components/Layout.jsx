@@ -1,4 +1,12 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import {
@@ -167,8 +175,14 @@ const ConnBanner = memo(function ConnBanner({ online, restored, t }) {
 const InstallBar = memo(function InstallBar({ install, t }) {
   if (!install.available) return null;
   return (
-    <div className="install-bar" role="complementary" aria-label={t("chrome.installPrompt")}>
-      <span>{install.ios ? t("chrome.installIosPrompt") : t("chrome.installPrompt")}</span>
+    <div
+      className="install-bar"
+      role="complementary"
+      aria-label={t("chrome.installPrompt")}
+    >
+      <span>
+        {install.ios ? t("chrome.installIosPrompt") : t("chrome.installPrompt")}
+      </span>
       {!install.ios && (
         <button type="button" onClick={install.prompt}>
           {t("chrome.install")}
@@ -214,7 +228,10 @@ export default function Layout() {
   // a plain label; the developer and single-station accounts see the brand.
   const canSwitchStation =
     (profile?.role === "owner" || profile?.role === "manager") && stations.length > 1;
-  const accountInMore = useMemo(() => more.some((item) => item.label === "nav.account"), [more]);
+  const accountInMore = useMemo(
+    () => more.some((item) => item.label === "nav.account"),
+    [more]
+  );
   // Where the tab bar's centre button goes for this role (admin has none).
   const startPath =
     profile?.role === "owner"
@@ -562,11 +579,7 @@ export default function Layout() {
 
       {/* The station switcher's sheet: the current station is checked, and
           picking one re-filters every station-scoped screen via ?station=. */}
-      <Sheet
-        open={stationOpen}
-        onClose={closeStation}
-        title={t("chrome.switchStation")}
-      >
+      <Sheet open={stationOpen} onClose={closeStation} title={t("chrome.switchStation")}>
         <div className="station-sheet">
           {stations.map((s) => (
             <ListRow
@@ -590,11 +603,7 @@ export default function Layout() {
 
       {/* The account sheet is the tab-bar overflow for roles whose tabs are
           all used up by real destinations. */}
-      <Sheet
-        open={accountOpen}
-        onClose={closeAccount}
-        title={t("nav.account")}
-      >
+      <Sheet open={accountOpen} onClose={closeAccount} title={t("nav.account")}>
         <AccountPanel onDone={closeAccount} />
       </Sheet>
     </div>
@@ -641,7 +650,8 @@ function useScrollMemory(pathname, tabPaths, mainRef) {
       typeof requestAnimationFrame === "function"
         ? requestAnimationFrame(() => {
             // Double-check main still exists (could have unmounted during RAF)
-            if (mainRef.current) mainRef.current.scrollTop = memory.current.get(pathname) ?? target;
+            if (mainRef.current)
+              mainRef.current.scrollTop = memory.current.get(pathname) ?? target;
           })
         : null;
     return () => {
@@ -663,7 +673,13 @@ function useScrollMemory(pathname, tabPaths, mainRef) {
  * to the screen it is already on (which is what an undefined `to` does,
  * silently) is a button that does nothing.
  */
-export const ScreenHeader = memo(function ScreenHeader({ title, sub, actions, filter, back }) {
+export const ScreenHeader = memo(function ScreenHeader({
+  title,
+  sub,
+  actions,
+  filter,
+  back,
+}) {
   const { t } = useLanguage();
   return (
     <header className="screen-head">

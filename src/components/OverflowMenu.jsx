@@ -36,13 +36,7 @@ function DotsIcon({ size = 20 }) {
  * Performance: memoized — the menu is often rendered per-row in lists; memo
  * keeps closed menus from re-rendering when list state changes.
  */
-function OverflowMenu({
-  items,
-  label,
-  placement = "up",
-  align = "end",
-  className = "",
-}) {
+function OverflowMenu({ items, label, placement = "up", align = "end", className = "" }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);

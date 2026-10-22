@@ -24,7 +24,10 @@ function EmptyState({
   children,
   "data-testid": testId,
 }) {
-  const cls = useMemo(() => `empty-state${className ? ` ${className}` : ""}`, [className]);
+  const cls = useMemo(
+    () => `empty-state${className ? ` ${className}` : ""}`,
+    [className]
+  );
 
   return (
     <div className={cls} data-testid={testId} role="status" aria-live="polite">

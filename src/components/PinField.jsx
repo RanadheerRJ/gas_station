@@ -14,15 +14,7 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * Performance: memoized sub-renders, stable callbacks avoid re-rendering
  * siblings when PIN changes.
  */
-function PinField({
-  pin,
-  confirm,
-  onPin,
-  onConfirm,
-  label,
-  hint,
-  disabled = false,
-}) {
+function PinField({ pin, confirm, onPin, onConfirm, label, hint, disabled = false }) {
   const { t } = useLanguage();
   const resolvedLabel = label ?? t("staff.pinForLogin");
   const resolvedHint = hint ?? t("cred.pinHint");
@@ -63,15 +55,23 @@ function PinField({
     return undefined;
   }, [matched]);
 
-  const handlePinChange = useCallback((e) => onPin(e.target.value.replace(/\D/g, "").slice(0, 4)), [onPin]);
-  const handleConfirmChange = useCallback((e) => onConfirm(e.target.value.replace(/\D/g, "").slice(0, 4)), [onConfirm]);
+  const handlePinChange = useCallback(
+    (e) => onPin(e.target.value.replace(/\D/g, "").slice(0, 4)),
+    [onPin]
+  );
+  const handleConfirmChange = useCallback(
+    (e) => onConfirm(e.target.value.replace(/\D/g, "").slice(0, 4)),
+    [onConfirm]
+  );
   const handleBlur = useCallback(() => setTouched(true), []);
   const toggleVisible = useCallback(() => setVisible((v) => !v), []);
 
   // Paste handler — allow pasting 4-digit code
   const handlePaste = useCallback(
     (setter) => (e) => {
-      const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 4);
+      const pasted = (e.clipboardData?.getData("text") || "")
+        .replace(/\D/g, "")
+        .slice(0, 4);
       if (pasted.length === 4) {
         e.preventDefault();
         setter(pasted);
@@ -148,12 +148,22 @@ function PinField({
           style={{ letterSpacing: "0.35em", textAlign: "center" }}
         />
         {show && problem && (
-          <span id="pin-error" className="small" style={{ color: "var(--rust)" }} role="alert">
+          <span
+            id="pin-error"
+            className="small"
+            style={{ color: "var(--rust)" }}
+            role="alert"
+          >
             {problem}
           </span>
         )}
         {!problem && mismatch && (
-          <span id="confirm-error" className="small" style={{ color: "var(--rust)" }} role="alert">
+          <span
+            id="confirm-error"
+            className="small"
+            style={{ color: "var(--rust)" }}
+            role="alert"
+          >
             {t("cred.pinMismatch")}
           </span>
         )}

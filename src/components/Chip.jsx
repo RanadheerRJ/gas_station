@@ -40,7 +40,8 @@ export const Chip = memo(function Chip({
   ...rest
 }) {
   const cls = useMemo(
-    () => `chip${tone ? ` chip--${tone}` : ""}${className ? ` ${className}` : ""}${busy ? " chip--busy" : ""}`,
+    () =>
+      `chip${tone ? ` chip--${tone}` : ""}${className ? ` ${className}` : ""}${busy ? " chip--busy" : ""}`,
     [tone, className, busy]
   );
 
@@ -128,7 +129,13 @@ export const Chip = memo(function Chip({
 
 Chip.displayName = "Chip";
 
-export const ChipRow = memo(function ChipRow({ children, label, className = "", id, ...rest }) {
+export const ChipRow = memo(function ChipRow({
+  children,
+  label,
+  className = "",
+  id,
+  ...rest
+}) {
   const cls = useMemo(() => `chip-row${className ? ` ${className}` : ""}`, [className]);
   return (
     <div

@@ -2,7 +2,14 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { NumberRoll } from "./motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
-export const Panel = memo(function Panel({ title, actions, children, flush = false, note, className = "" }) {
+export const Panel = memo(function Panel({
+  title,
+  actions,
+  children,
+  flush = false,
+  note,
+  className = "",
+}) {
   const cls = useMemo(
     () => `panel${flush ? " flush" : ""}${className ? ` ${className}` : ""}`,
     [flush, className]
@@ -28,7 +35,14 @@ export const Panel = memo(function Panel({ title, actions, children, flush = fal
 });
 Panel.displayName = "Panel";
 
-export const Field = memo(function Field({ label, hint, required = false, children, id, className = "" }) {
+export const Field = memo(function Field({
+  label,
+  hint,
+  required = false,
+  children,
+  id,
+  className = "",
+}) {
   const { t } = useLanguage();
   return (
     <label className={`field${className ? ` ${className}` : ""}`} htmlFor={id}>
@@ -64,7 +78,14 @@ Field.displayName = "Field";
  * Memoized: Stat appears in strips of 4+; memo avoids re-rendering all stats
  * when only one changes. NumberRoll itself is already optimized for RAF.
  */
-export const Stat = memo(function Stat({ label, value, tone, amount, format, prefix = "" }) {
+export const Stat = memo(function Stat({
+  label,
+  value,
+  tone,
+  amount,
+  format,
+  prefix = "",
+}) {
   const animated = typeof amount === "number" && Number.isFinite(amount);
   const toneCls = useMemo(() => `v${tone ? ` ${tone}` : ""}`, [tone]);
   return (
@@ -85,8 +106,13 @@ export const Stat = memo(function Stat({ label, value, tone, amount, format, pre
 });
 Stat.displayName = "Stat";
 
-export const Notice = memo(function Notice({ kind = "info", children, dismissible, onDismiss, role }) {
-  if (!children) return null;
+export const Notice = memo(function Notice({
+  kind = "info",
+  children,
+  dismissible,
+  onDismiss,
+  role,
+}) {
   const cls = useMemo(
     () =>
       kind === "error"
@@ -98,7 +124,9 @@ export const Notice = memo(function Notice({ kind = "info", children, dismissibl
             : "notice",
     [kind]
   );
-  const ariaRole = role || (kind === "error" ? "alert" : kind === "attention" ? "status" : undefined);
+  const ariaRole =
+    role || (kind === "error" ? "alert" : kind === "attention" ? "status" : undefined);
+  if (!children) return null;
   return (
     <div className={cls} role={ariaRole}>
       <span style={{ flex: 1 }}>{children}</span>
@@ -120,7 +148,10 @@ Notice.displayName = "Notice";
 
 export const Empty = memo(function Empty({ children, className = "" }) {
   return (
-    <div className={`muted small${className ? ` ${className}` : ""}`} style={{ padding: "16px 2px" }}>
+    <div
+      className={`muted small${className ? ` ${className}` : ""}`}
+      style={{ padding: "16px 2px" }}
+    >
       {children}
     </div>
   );

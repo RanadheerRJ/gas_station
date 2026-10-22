@@ -9,6 +9,11 @@ import { loadDictionary } from "./state/translations.js";
 import "./styles.css";
 import { registerServiceWorker } from "./lib/pwa";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { installViewportMetrics } from "./lib/viewport.js";
+
+// Measured viewport units complement the CSS dvh fallback on iOS, Android,
+// installed PWAs, and rotating tablets. Installed once for the app lifetime.
+installViewportMetrics();
 
 const lang = preferredLanguage();
 const initialDictionary = await loadDictionary(lang);

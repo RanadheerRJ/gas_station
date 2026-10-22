@@ -21,21 +21,24 @@ function ResetPinPanel({ target, onDone }) {
 
   const canSubmit = pinReady(pin, confirm) && !busy;
 
-  const submit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-    setError("");
-    setBusy(true);
-    try {
-      await resetPin({ uid: target.uid, pin });
-      setDone(true);
-      onDone?.();
-    } catch (err) {
-      setError(readableError(err));
-    } finally {
-      setBusy(false);
-    }
-  }, [canSubmit, target.uid, pin, onDone]);
+  const submit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!canSubmit) return;
+      setError("");
+      setBusy(true);
+      try {
+        await resetPin({ uid: target.uid, pin });
+        setDone(true);
+        onDone?.();
+      } catch (err) {
+        setError(readableError(err));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [canSubmit, target.uid, pin, onDone]
+  );
 
   const handleCancel = useCallback(() => onDone?.(), [onDone]);
 
@@ -68,7 +71,11 @@ function ResetPinPanel({ target, onDone }) {
           hint={t("cred.fourDigits")}
         />
       </div>
-      {error && <Notice kind="error" role="alert">{error}</Notice>}
+      {error && (
+        <Notice kind="error" role="alert">
+          {error}
+        </Notice>
+      )}
       <div className="row">
         <button
           className="primary"

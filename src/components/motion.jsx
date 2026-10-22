@@ -17,7 +17,7 @@
  * battery on mobile; RAF is cancelled on unmount; reduced-motion is cached.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /** Cached reduced-motion preference — updated via MediaQuery listener. */
 let reducedMotionCache = null;
@@ -31,7 +31,8 @@ function initReducedMotionCache() {
   const handler = (e) => {
     reducedMotionCache = e.matches;
   };
-  if (reducedMotionMql.addEventListener) reducedMotionMql.addEventListener("change", handler);
+  if (reducedMotionMql.addEventListener)
+    reducedMotionMql.addEventListener("change", handler);
   else reducedMotionMql.addListener(handler);
 }
 
@@ -90,7 +91,6 @@ export function useCountUp(value, { duration } = {}) {
   const frameRef = useRef(0);
   const firstRef = useRef(true);
   const startTimeRef = useRef(0);
-  const pausedRef = useRef(false);
 
   useEffect(() => {
     // The first render shows the real figure. Counting up from zero on load

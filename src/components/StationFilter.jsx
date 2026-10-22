@@ -25,11 +25,12 @@ function StationFilter({ stations, value, onChange }) {
   );
 
   const options = useMemo(
-    () => (stations || []).map((s) => (
-      <option key={s.id} value={s.id}>
-        {s.name}
-      </option>
-    )),
+    () =>
+      (stations || []).map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}
+        </option>
+      )),
     [stations]
   );
 

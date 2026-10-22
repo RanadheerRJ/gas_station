@@ -130,7 +130,10 @@ function ReportSheet({
   const handleOpen = useCallback(() => setOpen(true), []);
   const handleClose = useCallback(() => setOpen(false), []);
 
-  const handleFuelGroup = useCallback((fuelGroup) => setFilters((f) => ({ ...f, fuelGroup })), []);
+  const handleFuelGroup = useCallback(
+    (fuelGroup) => setFilters((f) => ({ ...f, fuelGroup })),
+    []
+  );
   const handleEmployee = useCallback(
     (employeeId) =>
       setFilters((f) => ({
@@ -142,19 +145,19 @@ function ReportSheet({
   );
   const handleStatus = useCallback((status) => setFilters((f) => ({ ...f, status })), []);
 
-  const buildForRange = useCallback(() => buildReport(range, filters), [buildReport, range, filters]);
-
-  const built = useMemo(
-    () => {
-      if (!open) return null;
-      try {
-        return buildReport(range, filters);
-      } catch {
-        return { rows: [] };
-      }
-    },
-    [open, buildReport, range, filters]
+  const buildForRange = useCallback(
+    () => buildReport(range, filters),
+    [buildReport, range, filters]
   );
+
+  const built = useMemo(() => {
+    if (!open) return null;
+    try {
+      return buildReport(range, filters);
+    } catch {
+      return { rows: [] };
+    }
+  }, [open, buildReport, range, filters]);
   const rowCount = built ? built.rows.length : 0;
 
   const meta = useMemo(

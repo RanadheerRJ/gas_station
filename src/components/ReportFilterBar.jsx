@@ -67,11 +67,11 @@ function ReportFilterBar({
   const { t } = useLanguage();
   const scope = reportFilters(report);
   const showEmployee = scope.employee && canScopeEmployee;
-  if (!scope.fuel && !showEmployee && !scope.status) return null;
-
   const handleFuel = useCallback((v) => () => onFuelGroup?.(v), [onFuelGroup]);
   const handleEmployee = useCallback((e) => onEmployee?.(e.target.value), [onEmployee]);
   const handleStatus = useCallback((e) => onStatus?.(e.target.value), [onStatus]);
+
+  if (!scope.fuel && !showEmployee && !scope.status) return null;
 
   return (
     <div className="report-filters">
@@ -110,11 +110,7 @@ function ReportFilterBar({
 
       {scope.status && (
         <Field label={t("report.status")}>
-          <select
-            id={`${idPrefix}-status`}
-            value={status}
-            onChange={handleStatus}
-          >
+          <select id={`${idPrefix}-status`} value={status} onChange={handleStatus}>
             {STATUSES.map(([value, key]) => (
               <option key={value} value={value}>
                 {t(key)}

@@ -39,10 +39,7 @@ function StickyCta({
 }) {
   const blocked = disabled || busy;
 
-  const cls = useMemo(
-    () => `sticky-cta${className ? ` ${className}` : ""}`,
-    [className]
-  );
+  const cls = useMemo(() => `sticky-cta${className ? ` ${className}` : ""}`, [className]);
 
   const handleClick = useCallback(
     (e) => {

@@ -36,27 +36,33 @@ function ChangePinPanel() {
 
   const openPanel = useCallback(() => setOpen(true), []);
 
-  const handleCurrent = useCallback((e) => {
-    setCurrent(e.target.value.replace(/\D/g, "").slice(0, 4));
-    if (error) setError("");
-  }, [error]);
+  const handleCurrent = useCallback(
+    (e) => {
+      setCurrent(e.target.value.replace(/\D/g, "").slice(0, 4));
+      if (error) setError("");
+    },
+    [error]
+  );
 
   const canSubmit = current.length === 4 && pinReady(pin, confirm) && !busy;
 
-  const submit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-    setError("");
-    setBusy(true);
-    try {
-      await resetOwnPin({ currentPin: current, newPin: pin });
-      setDone(true);
-    } catch (err) {
-      setError(readableError(err));
-    } finally {
-      setBusy(false);
-    }
-  }, [canSubmit, current, pin]);
+  const submit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!canSubmit) return;
+      setError("");
+      setBusy(true);
+      try {
+        await resetOwnPin({ currentPin: current, newPin: pin });
+        setDone(true);
+      } catch (err) {
+        setError(readableError(err));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [canSubmit, current, pin]
+  );
 
   if (!open) {
     return (
@@ -116,7 +122,11 @@ function ChangePinPanel() {
         label={t("cred.newPin")}
         hint={t("cred.ownPinHint")}
       />
-      {error && <Notice kind="error" role="alert">{error}</Notice>}
+      {error && (
+        <Notice kind="error" role="alert">
+          {error}
+        </Notice>
+      )}
       <div className="row" style={{ gap: 8 }}>
         <button
           className="primary"

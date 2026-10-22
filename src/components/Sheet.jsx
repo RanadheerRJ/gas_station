@@ -171,19 +171,32 @@ function Sheet({ open, onClose, title, children, wide = false }) {
     const viewport = window.visualViewport;
     const root = rootRef.current;
     if (!viewport || !root) return undefined;
+    let frame = null;
     const apply = () => {
+      frame = null;
       root.style.setProperty("--sheet-viewport-h", `${Math.round(viewport.height)}px`);
       root.style.setProperty(
         "--sheet-viewport-offset",
-        `${Math.round(window.innerHeight - viewport.height - viewport.offsetTop)}px`
+        `${Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))}px`
       );
     };
+    const schedule = () => {
+      if (frame !== null) return;
+      frame =
+        typeof requestAnimationFrame === "function"
+          ? requestAnimationFrame(apply)
+          : setTimeout(apply, 16);
+    };
     apply();
-    viewport.addEventListener("resize", apply);
-    viewport.addEventListener("scroll", apply);
+    viewport.addEventListener("resize", schedule, { passive: true });
+    viewport.addEventListener("scroll", schedule, { passive: true });
     return () => {
-      viewport.removeEventListener("resize", apply);
-      viewport.removeEventListener("scroll", apply);
+      viewport.removeEventListener("resize", schedule);
+      viewport.removeEventListener("scroll", schedule);
+      if (frame !== null) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(frame);
+        else clearTimeout(frame);
+      }
       try {
         root.style.removeProperty("--sheet-viewport-h");
         root.style.removeProperty("--sheet-viewport-offset");

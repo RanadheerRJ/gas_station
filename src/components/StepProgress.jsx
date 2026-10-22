@@ -22,7 +22,7 @@ import { useLanguage } from "../state/LanguageContext.jsx";
 function StepProgress({ steps }) {
   const { t } = useLanguage();
 
-  const { firstOpen, complete, activeIndex, label } = useMemo(() => {
+  const { complete, activeIndex, label } = useMemo(() => {
     const open = steps.findIndex((step) => !step.done);
     const done = open === -1;
     const active = done ? steps.length - 1 : open;
@@ -33,7 +33,7 @@ function StepProgress({ steps }) {
           count: steps.length,
           label: steps[active].label,
         });
-    return { firstOpen: open, complete: done, activeIndex: active, label: text };
+    return { complete: done, activeIndex: active, label: text };
   }, [steps, t]);
 
   return (
