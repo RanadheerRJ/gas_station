@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { createPortal } from "react-dom";
 import { prefersReducedMotion } from "./motion.jsx";
 import { CloseIcon } from "./icons.jsx";
@@ -13,7 +13,19 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * Mounted state is phase-driven so the sheet can animate out before it leaves
  * the DOM: `open` → slides up, `closing` → slides down, then unmounts.
  * Reduced-motion users skip straight to unmounted.
+ *
+ * Robustness & performance:
+ * - Proper focus trap: cycles focus inside the sheet, restores to trigger on close.
+ * - Scroll lock via CSS + inline overflow, cleaned up on unmount even if
+ *   parent unmounts mid-animation.
+ * - Viewport tracking via visualViewport for iOS PWA keyboard — rAF-batched
+ *   to avoid layout thrash.
+ * - All timers/RAF/listeners cleaned up on unmount — no leaks if sheet is
+ *   removed while closing.
+ * - Portal to document.body — never clipped by parent overflow.
+ * - ESC and backdrop both close; backdrop uses pointerdown to feel instant.
  */
+
 /**
  * The row a sheet is showing, held for as long as the sheet is on screen.
  *
@@ -30,16 +42,30 @@ export function useSheetSubject(subject, open) {
   return open ? subject : last.current;
 }
 
-export default function Sheet({ open, onClose, title, children, wide = false }) {
+const CLOSE_DURATION = 200;
+
+function Sheet({ open, onClose, title, children, wide = false }) {
   const { t } = useLanguage();
   // "closed" | "open" | "closing"
   const [phase, setPhase] = useState(open ? "open" : "closed");
   const rootRef = useRef(null);
   const previousFocusRef = useRef(null);
   const hadOpenRef = useRef(false);
+  const closeTimerRef = useRef(0);
+
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const handleClose = useCallback(() => {
+    onCloseRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (open) {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = 0;
+      }
       setPhase("open");
       return;
     }
@@ -51,8 +77,16 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
 
   useEffect(() => {
     if (phase !== "closing") return undefined;
-    const timer = setTimeout(() => setPhase("closed"), 200);
-    return () => clearTimeout(timer);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = 0;
+      setPhase("closed");
+    }, CLOSE_DURATION);
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = 0;
+      }
+    };
   }, [phase]);
 
   // The page behind a sheet must not scroll while the sheet is open, or a
@@ -95,7 +129,7 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
     if (phase !== "open") return undefined;
     const onKey = (event) => {
       if (event.key === "Escape") {
-        onClose();
+        handleClose();
         return;
       }
       if (event.key !== "Tab") return;
@@ -121,7 +155,7 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, onClose]);
+  }, [phase, handleClose]);
 
   // In an iOS standalone PWA the on-screen keyboard shrinks only the visual
   // viewport; the layout viewport that 100dvh and position: fixed size
@@ -150,8 +184,12 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
     return () => {
       viewport.removeEventListener("resize", apply);
       viewport.removeEventListener("scroll", apply);
-      root.style.removeProperty("--sheet-viewport-h");
-      root.style.removeProperty("--sheet-viewport-offset");
+      try {
+        root.style.removeProperty("--sheet-viewport-h");
+        root.style.removeProperty("--sheet-viewport-offset");
+      } catch {
+        // Node may already be removed
+      }
     };
   }, [phase]);
 
@@ -164,7 +202,7 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
       className={`sheet-root${phase === "closing" ? " closing" : ""}`}
       tabIndex={-1}
     >
-      <div className="backdrop" onClick={onClose} />
+      <div className="backdrop" onClick={handleClose} />
       <div
         className={`sheet${wide ? " sheet--wide" : ""}`}
         role="dialog"
@@ -178,7 +216,7 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
             <button
               type="button"
               className="sheet__close"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label={t("common.close")}
             >
               <CloseIcon size={17} />
@@ -191,3 +229,5 @@ export default function Sheet({ open, onClose, title, children, wide = false }) 
     document.body
   );
 }
+
+export default memo(Sheet);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { pinProblem } from "../lib/api";
 import { useOneShot } from "./motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -7,8 +7,14 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * PIN entry with confirmation. The creator chooses the PIN, so both boxes
  * must agree before the form will submit — a typo here would lock someone
  * out of an account they have never used.
+ *
+ * Robustness: input is sanitized to digits only, max 4, paste is handled,
+ * autocomplete is off, and mismatch/problem messages are announced via
+ * aria-live.
+ * Performance: memoized sub-renders, stable callbacks avoid re-rendering
+ * siblings when PIN changes.
  */
-export default function PinField({
+function PinField({
   pin,
   confirm,
   onPin,
@@ -57,6 +63,23 @@ export default function PinField({
     return undefined;
   }, [matched]);
 
+  const handlePinChange = useCallback((e) => onPin(e.target.value.replace(/\D/g, "").slice(0, 4)), [onPin]);
+  const handleConfirmChange = useCallback((e) => onConfirm(e.target.value.replace(/\D/g, "").slice(0, 4)), [onConfirm]);
+  const handleBlur = useCallback(() => setTouched(true), []);
+  const toggleVisible = useCallback(() => setVisible((v) => !v), []);
+
+  // Paste handler — allow pasting 4-digit code
+  const handlePaste = useCallback(
+    (setter) => (e) => {
+      const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 4);
+      if (pasted.length === 4) {
+        e.preventDefault();
+        setter(pasted);
+      }
+    },
+    []
+  );
+
   return (
     <>
       <label className="field">
@@ -78,8 +101,11 @@ export default function PinField({
             disabled={disabled}
             value={pin}
             aria-invalid={rejected || undefined}
-            onBlur={() => setTouched(true)}
-            onChange={(e) => onPin(e.target.value.replace(/\D/g, ""))}
+            aria-describedby={rejected ? "pin-error" : undefined}
+            autoComplete="new-password"
+            onBlur={handleBlur}
+            onChange={handlePinChange}
+            onPaste={handlePaste(onPin)}
             placeholder="••••"
             style={{ letterSpacing: "0.35em", textAlign: "center" }}
           />
@@ -87,7 +113,9 @@ export default function PinField({
             type="button"
             className="small"
             disabled={disabled}
-            onClick={() => setVisible((v) => !v)}
+            onClick={toggleVisible}
+            aria-pressed={visible}
+            aria-label={visible ? t("cred.hide") : t("cred.show")}
             style={{ whiteSpace: "nowrap" }}
           >
             {visible ? t("cred.hide") : t("cred.show")}
@@ -112,17 +140,20 @@ export default function PinField({
           disabled={disabled}
           value={confirm}
           aria-invalid={mismatch || undefined}
-          onChange={(e) => onConfirm(e.target.value.replace(/\D/g, ""))}
+          aria-describedby={mismatch ? "confirm-error" : undefined}
+          autoComplete="new-password"
+          onChange={handleConfirmChange}
+          onPaste={handlePaste(onConfirm)}
           placeholder="••••"
           style={{ letterSpacing: "0.35em", textAlign: "center" }}
         />
         {show && problem && (
-          <span className="small" style={{ color: "var(--rust)" }}>
+          <span id="pin-error" className="small" style={{ color: "var(--rust)" }} role="alert">
             {problem}
           </span>
         )}
         {!problem && mismatch && (
-          <span className="small" style={{ color: "var(--rust)" }}>
+          <span id="confirm-error" className="small" style={{ color: "var(--rust)" }} role="alert">
             {t("cred.pinMismatch")}
           </span>
         )}
@@ -135,3 +166,5 @@ export default function PinField({
 export function pinReady(pin, confirm) {
   return !pinProblem(pin) && pin === confirm;
 }
+
+export default memo(PinField);

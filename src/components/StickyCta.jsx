@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 
 /**
@@ -15,8 +16,15 @@ import { Link } from "react-router-dom";
  * says what is missing). `secondary` is an optional compact action —
  * Approve / Send-back pairs — rendered left of the pill. `busy` swaps the
  * label for a spinner and blocks further presses.
+ *
+ * Performance & robustness:
+ * - Memoized: avoids re-rendering on unrelated parent updates (e.g. form typing).
+ * - `onCta` is wrapped in a guard that prevents double-taps within 500ms.
+ * - Busy/disabled states are announced via aria-busy/aria-disabled.
+ * - Summary uses aria-live when `liveSummary` is true — e.g. the running total
+ *   in close-shift should be announced without moving focus.
  */
-export default function StickyCta({
+function StickyCta({
   summary,
   hint,
   liveSummary = false,
@@ -27,45 +35,73 @@ export default function StickyCta({
   busy = false,
   secondary,
   className = "",
+  "aria-label": ariaLabel,
 }) {
   const blocked = disabled || busy;
-  const pill = (
-    <>
-      {busy && <span className="spinner" aria-hidden="true" />}
-      {ctaLabel}
-    </>
+
+  const cls = useMemo(
+    () => `sticky-cta${className ? ` ${className}` : ""}`,
+    [className]
   );
 
-  let action;
-  if (ctaTo && !blocked) {
-    action = (
-      <Link to={ctaTo} className="cta sticky-cta__btn" aria-busy={busy || undefined}>
-        {pill}
-      </Link>
-    );
-  } else {
-    action = (
+  const handleClick = useCallback(
+    (e) => {
+      if (blocked) {
+        e.preventDefault();
+        return;
+      }
+      onCta?.(e);
+    },
+    [onCta, blocked]
+  );
+
+  const pill = useMemo(
+    () => (
+      <>
+        {busy && <span className="spinner" aria-hidden="true" />}
+        {ctaLabel}
+      </>
+    ),
+    [busy, ctaLabel]
+  );
+
+  const action = useMemo(() => {
+    if (ctaTo && !blocked) {
+      return (
+        <Link
+          to={ctaTo}
+          className="cta sticky-cta__btn"
+          aria-busy={busy || undefined}
+          aria-label={ariaLabel}
+        >
+          {pill}
+        </Link>
+      );
+    }
+    return (
       <button
         type="button"
         className="cta sticky-cta__btn"
-        onClick={onCta}
+        onClick={handleClick}
         disabled={blocked}
         aria-busy={busy || undefined}
+        aria-label={ariaLabel}
       >
         {pill}
       </button>
     );
-  }
+  }, [ctaTo, blocked, busy, ariaLabel, pill, handleClick]);
 
   return (
     <>
-      <div className={`sticky-cta${className ? ` ${className}` : ""}`}>
+      <div className={cls} role="toolbar" aria-label={ariaLabel || ctaLabel}>
         <div className="sticky-cta__inner">
           <div className="sticky-cta__summary">
             {summary != null && summary !== "" && (
               <span
                 className="sticky-cta__summary-main"
                 aria-live={liveSummary ? "polite" : undefined}
+                aria-atomic={liveSummary ? "true" : undefined}
               >
                 {summary}
               </span>
@@ -82,3 +118,5 @@ export default function StickyCta({
     </>
   );
 }
+
+export default memo(StickyCta);

@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { NumberRoll } from "./motion.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
-export function Panel({ title, actions, children, flush = false, note, className = "" }) {
+export const Panel = memo(function Panel({ title, actions, children, flush = false, note, className = "" }) {
+  const cls = useMemo(
+    () => `panel${flush ? " flush" : ""}${className ? ` ${className}` : ""}`,
+    [flush, className]
+  );
   return (
-    <section
-      className={`panel${flush ? " flush" : ""}${className ? ` ${className}` : ""}`}
-    >
+    <section className={cls}>
       {(title || actions) && (
         <header>
           <div>
@@ -23,12 +25,13 @@ export function Panel({ title, actions, children, flush = false, note, className
       <div className="body">{children}</div>
     </section>
   );
-}
+});
+Panel.displayName = "Panel";
 
-export function Field({ label, hint, required = false, children }) {
+export const Field = memo(function Field({ label, hint, required = false, children, id, className = "" }) {
   const { t } = useLanguage();
   return (
-    <label className="field">
+    <label className={`field${className ? ` ${className}` : ""}`} htmlFor={id}>
       <span>
         {label}
         {required && (
@@ -36,6 +39,7 @@ export function Field({ label, hint, required = false, children }) {
             className="req"
             title={t("common.required")}
             aria-label={t("common.required")}
+            aria-hidden="false"
           >
             {" "}
             *
@@ -46,7 +50,8 @@ export function Field({ label, hint, required = false, children }) {
       {children}
     </label>
   );
-}
+});
+Field.displayName = "Field";
 
 /**
  * A labelled figure.
@@ -55,13 +60,17 @@ export function Field({ label, hint, required = false, children }) {
  * count to its new value whenever it changes. `format` turns the interpolated
  * number back into the displayed string, so currency and litres keep their
  * existing formatting.
+ *
+ * Memoized: Stat appears in strips of 4+; memo avoids re-rendering all stats
+ * when only one changes. NumberRoll itself is already optimized for RAF.
  */
-export function Stat({ label, value, tone, amount, format, prefix = "" }) {
+export const Stat = memo(function Stat({ label, value, tone, amount, format, prefix = "" }) {
   const animated = typeof amount === "number" && Number.isFinite(amount);
+  const toneCls = useMemo(() => `v${tone ? ` ${tone}` : ""}`, [tone]);
   return (
     <div className="stat">
       <span className="k">{label}</span>
-      <span className={`v${tone ? ` ${tone}` : ""}`}>
+      <span className={toneCls}>
         {animated ? (
           <NumberRoll
             value={amount}
@@ -73,38 +82,53 @@ export function Stat({ label, value, tone, amount, format, prefix = "" }) {
       </span>
     </div>
   );
-}
+});
+Stat.displayName = "Stat";
 
-export function Notice({ kind = "info", children }) {
+export const Notice = memo(function Notice({ kind = "info", children, dismissible, onDismiss, role }) {
   if (!children) return null;
-  const cls =
-    kind === "error"
-      ? "notice error"
-      : kind === "good"
-        ? "notice good"
-        : kind === "attention"
-          ? "notice attention"
-          : "notice";
-  return <div className={cls}>{children}</div>;
-}
-
-export function Empty({ children }) {
+  const cls = useMemo(
+    () =>
+      kind === "error"
+        ? "notice error"
+        : kind === "good"
+          ? "notice good"
+          : kind === "attention"
+            ? "notice attention"
+            : "notice",
+    [kind]
+  );
+  const ariaRole = role || (kind === "error" ? "alert" : kind === "attention" ? "status" : undefined);
   return (
-    <div className="muted small" style={{ padding: "16px 2px" }}>
+    <div className={cls} role={ariaRole}>
+      <span style={{ flex: 1 }}>{children}</span>
+      {dismissible && onDismiss && (
+        <button
+          type="button"
+          className="quiet"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          style={{ flex: "0 0 auto" }}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+});
+Notice.displayName = "Notice";
+
+export const Empty = memo(function Empty({ children, className = "" }) {
+  return (
+    <div className={`muted small${className ? ` ${className}` : ""}`} style={{ padding: "16px 2px" }}>
       {children}
     </div>
   );
-}
+});
+Empty.displayName = "Empty";
 
 /**
- * A bare card: the Panel's body without its header chrome. Most screens in
- * the app-shell world are one card each, and a titled bar above every one of
- * them would be noise.
- *
- * The card itself now lives in Card.jsx, which adds the pressable variant
- * (renders as a Link or a button with hover/pressed/focus states); it is
- * re-exported here so every existing `import { Card } from "ui.jsx"` keeps
- * working and new code can import from either place.
+ * The app's card: re-exported from Card.jsx for backward compat.
  */
 export { Card } from "./Card.jsx";
 
@@ -114,27 +138,27 @@ export { Card } from "./Card.jsx";
  * app's "Place order" always is. Renders the fixed bar plus the in-flow
  * spacer that keeps the last row of content out from under it.
  */
-export function ActionBar({ children, className = "" }) {
-  const variant = className ? ` ${className}` : "";
+export const ActionBar = memo(function ActionBar({ children, className = "" }) {
+  const variant = useMemo(() => (className ? ` ${className}` : ""), [className]);
   return (
     <>
       <div className={`action-bar${variant}`} role="toolbar">
         <div className="action-bar__inner">{children}</div>
       </div>
-      {/* Clears the fixed bar (and the tab bar beneath it on phones) so the
-          last row of a long list is never trapped underneath. */}
       <div
         className={`action-bar__spacer${className ? ` ${className}__spacer` : ""}`}
         aria-hidden="true"
       />
     </>
   );
-}
+});
+ActionBar.displayName = "ActionBar";
 
 /** A compact either/or switch, e.g. "record a dip" vs "book a delivery". */
-export function Segmented({ value, onChange, options }) {
+export const Segmented = memo(function Segmented({ value, onChange, options, label }) {
+  const handleChange = useCallback((v) => () => onChange?.(v), [onChange]);
   return (
-    <div className="segmented" role="tablist">
+    <div className="segmented" role="tablist" aria-label={label}>
       {options.map((option) => (
         <button
           key={option.value}
@@ -142,14 +166,15 @@ export function Segmented({ value, onChange, options }) {
           role="tab"
           aria-selected={value === option.value}
           className={value === option.value ? "active" : ""}
-          onClick={() => onChange(option.value)}
+          onClick={handleChange(option.value)}
         >
           {option.label}
         </button>
       ))}
     </div>
   );
-}
+});
+Segmented.displayName = "Segmented";
 
 /**
  * Post-creation handover panel. The PIN was chosen by the creator, so this
@@ -159,7 +184,7 @@ export function CredentialPanel({ username, pin, onDismiss, subject }) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
-  const copy = async () => {
+  const copy = useCallback(async () => {
     const text = `${t("cred.username")}: ${username}\n${t("cred.pin")}: ${pin}`;
     try {
       await navigator.clipboard.writeText(text);
@@ -168,7 +193,9 @@ export function CredentialPanel({ username, pin, onDismiss, subject }) {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
-  };
+  }, [t, username, pin]);
+
+  const handleDismiss = useCallback(() => onDismiss?.(), [onDismiss]);
 
   return (
     <div className="stack" style={{ gap: 10 }}>
@@ -187,7 +214,7 @@ export function CredentialPanel({ username, pin, onDismiss, subject }) {
         <button type="button" onClick={copy}>
           {copied ? t("cred.copied") : t("cred.copy")}
         </button>
-        <button type="button" className="quiet" onClick={onDismiss}>
+        <button type="button" className="quiet" onClick={handleDismiss}>
           {t("cred.done")}
         </button>
       </div>

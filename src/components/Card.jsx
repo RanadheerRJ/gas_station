@@ -1,3 +1,4 @@
+import { forwardRef, memo, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 
 /**
@@ -13,48 +14,157 @@ import { Link } from "react-router-dom";
  *
  * An inner button that must not trigger the card (a footer action, an
  * overflow menu) stops propagation itself.
+ *
+ * Robustness & performance:
+ * - Memoized: pure prop equality, avoids re-rendering large lists when
+ *   unrelated state changes.
+ * - forwardRef: lets parents measure or focus the card without extra wrappers.
+ * - Stable className computation via useMemo — no new string on every render.
+ * - Keyboard accessible: button variant handles Enter/Space, Link handles
+ *   native navigation. Disabled state prevents navigation and announces via aria.
+ * - `busy` shows a spinner and blocks interaction while preserving focus.
  */
-export function Card({
-  children,
-  className = "",
-  flush = false,
-  to,
-  onClick,
-  disabled = false,
-  ...rest
-}) {
-  const pressable = Boolean(to || onClick);
-  const cls =
-    `card${flush ? " card--flush" : ""}${pressable ? " card--pressable" : ""}` +
-    `${className ? ` ${className}` : ""}`;
+const Card = memo(
+  forwardRef(function Card(
+    {
+      children,
+      className = "",
+      flush = false,
+      to,
+      onClick,
+      disabled = false,
+      busy = false,
+      as,
+      role,
+      tabIndex,
+      "aria-label": ariaLabel,
+      "aria-busy": ariaBusy,
+      "data-testid": testId,
+      ...rest
+    },
+    ref
+  ) {
+    const pressable = Boolean(to || onClick);
+    const isBusy = busy;
 
-  if (to && !disabled) {
-    return (
-      <Link to={to} className={cls} {...rest}>
-        {children}
-      </Link>
+    const cls = useMemo(
+      () =>
+        `card${flush ? " card--flush" : ""}${pressable ? " card--pressable" : ""}${
+          className ? ` ${className}` : ""
+        }${isBusy ? " card--busy" : ""}`,
+      [flush, pressable, className, isBusy]
     );
-  }
 
-  if (onClick || to) {
+    const handleClick = useCallback(
+      (e) => {
+        if (disabled || isBusy) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onClick?.(e);
+      },
+      [onClick, disabled, isBusy]
+    );
+
+    const handleKeyDown = useCallback(
+      (e) => {
+        if ((e.key === "Enter" || e.key === " ") && onClick && !disabled && !isBusy) {
+          e.preventDefault();
+          onClick(e);
+        }
+      },
+      [onClick, disabled, isBusy]
+    );
+
+    // Custom element type override — e.g. <Card as="article">
+    if (as) {
+      const As = as;
+      return (
+        <As
+          ref={ref}
+          className={cls}
+          aria-busy={isBusy || ariaBusy || undefined}
+          data-testid={testId}
+          {...rest}
+        >
+          {children}
+          {isBusy && <span className="card__busy" aria-hidden="true" />}
+        </As>
+      );
+    }
+
+    if (to && !disabled && !isBusy) {
+      return (
+        <Link
+          ref={ref}
+          to={to}
+          className={cls}
+          aria-label={ariaLabel}
+          aria-busy={ariaBusy || undefined}
+          data-testid={testId}
+          {...rest}
+        >
+          {children}
+        </Link>
+      );
+    }
+
+    if (onClick || to) {
+      return (
+        <button
+          ref={ref}
+          type="button"
+          className={cls}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          disabled={disabled || isBusy}
+          aria-label={ariaLabel}
+          aria-busy={isBusy || ariaBusy || undefined}
+          aria-disabled={disabled || isBusy || undefined}
+          role={role}
+          tabIndex={tabIndex}
+          data-testid={testId}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
     return (
-      <button
-        type="button"
+      <section
+        ref={ref}
         className={cls}
-        onClick={onClick}
-        disabled={disabled}
+        role={role}
+        tabIndex={tabIndex}
+        aria-label={ariaLabel}
+        aria-busy={ariaBusy || undefined}
+        data-testid={testId}
         {...rest}
       >
         {children}
-      </button>
+      </section>
     );
-  }
+  })
+);
 
+Card.displayName = "Card";
+
+export function CardSkeleton({ count = 1 } = {}) {
+  const n = Math.max(1, Math.min(count, 6));
   return (
-    <section className={cls} {...rest}>
-      {children}
-    </section>
+    <div className="skeleton-stack" role="status" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="skeleton-card" aria-hidden="true">
+          <div className="skeleton skeleton-line short" />
+          <div className="skeleton skeleton-figure" />
+          <div className="skeleton skeleton-line wide" />
+        </div>
+      ))}
+    </div>
   );
 }
 
+export { Card };
 export default Card;

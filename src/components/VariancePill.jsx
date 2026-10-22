@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { money, num } from "../lib/format.js";
 import { varianceLabel } from "../lib/shiftMath.js";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -14,10 +15,12 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * the row keeps its shape instead of flashing between states while counting.
  * The marker glyph repeats the verdict for anyone who does not read the
  * colour.
+ *
+ * Memoized via useMemo for verdict — avoids recomputing on every parent render.
  */
-export default function VariancePill({ variance }) {
+function VariancePill({ variance }) {
   const { t } = useLanguage();
-  const verdict = varianceLabel(variance);
+  const verdict = useMemo(() => varianceLabel(variance), [variance]);
 
   if (variance == null || verdict === "not declared") {
     return (
@@ -53,3 +56,5 @@ export default function VariancePill({ variance }) {
     </span>
   );
 }
+
+export default memo(VariancePill);

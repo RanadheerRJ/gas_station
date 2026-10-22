@@ -1,3 +1,4 @@
+import { memo, useMemo, useCallback, forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { avatarHue, initials } from "../lib/avatar.js";
 import { ChevronIcon } from "./icons.jsx";
@@ -12,79 +13,161 @@ import { ChevronIcon } from "./icons.jsx";
  * reading (a Money, a status tag), and a chevron when the row goes
  * somewhere. `to` renders a router Link, `onClick` a button, and with
  * neither it is a static row — informational, not a dead tap target.
+ *
+ * Performance:
+ * - Memoized: lists render hundreds of rows; memo avoids re-rendering
+ *   unchanged rows when e.g. a filter changes elsewhere.
+ * - Avatar hue/initials memoized — avoids recomputing hash on every render.
+ * - forwardRef so virtualized lists can measure rows.
+ *
+ * Robustness:
+ * - Handles missing title/subtitle gracefully (doesn't render empty spans).
+ * - Disabled / busy states block navigation and announce via aria.
+ * - Keyboard handlers for button variant ensure Enter/Space trigger correctly.
  */
-export default function ListRow({
-  icon: Icon,
-  avatar,
-  title,
-  subtitle,
-  trailing,
-  chevron = true,
-  to,
-  onClick,
-  className = "",
-  ...rest
-}) {
-  const interactive = Boolean(to || onClick);
-  const cls =
-    `list-row${interactive ? " list-row--press" : ""}` +
-    `${className ? ` ${className}` : ""}`;
+const ListRow = memo(
+  forwardRef(function ListRow(
+    {
+      icon: Icon,
+      avatar,
+      title,
+      subtitle,
+      trailing,
+      chevron = true,
+      to,
+      onClick,
+      className = "",
+      disabled = false,
+      busy = false,
+      "aria-label": ariaLabel,
+      "data-testid": testId,
+      ...rest
+    },
+    ref
+  ) {
+    const interactive = Boolean(to || onClick);
+    const isDisabled = disabled || busy;
 
-  const lead = avatar ? (
-    <span
-      className="list-row__avatar"
-      style={{ "--avatar-hue": avatarHue(avatar) }}
-      aria-hidden="true"
-    >
-      {initials(avatar)}
-    </span>
-  ) : Icon ? (
-    <span className="list-row__icon" aria-hidden="true">
-      <Icon size={20} />
-    </span>
-  ) : null;
+    const cls = useMemo(
+      () => `list-row${interactive ? " list-row--press" : ""}${className ? ` ${className}` : ""}${busy ? " list-row--busy" : ""}`,
+      [interactive, className, busy]
+    );
 
-  const body = (
-    <>
-      {lead}
-      <span className="list-row__main">
-        {title != null && title !== "" && (
-          <span className="list-row__title">{title}</span>
-        )}
-        {subtitle != null && subtitle !== "" && (
-          <span className="list-row__subtitle">{subtitle}</span>
-        )}
-      </span>
-      {trailing != null && trailing !== "" && (
-        <span className="list-row__trailing">{trailing}</span>
-      )}
-      {interactive && chevron && (
-        <span className="list-row__chevron" aria-hidden="true">
-          <ChevronIcon size={18} />
+    const avatarProps = useMemo(() => {
+      if (!avatar) return null;
+      return {
+        hue: avatarHue(avatar),
+        letter: initials(avatar),
+      };
+    }, [avatar]);
+
+    const lead = useMemo(() => {
+      if (avatarProps) {
+        return (
+          <span
+            className="list-row__avatar"
+            style={{ "--avatar-hue": avatarProps.hue }}
+            aria-hidden="true"
+          >
+            {avatarProps.letter}
+          </span>
+        );
+      }
+      if (Icon) {
+        return (
+          <span className="list-row__icon" aria-hidden="true">
+            <Icon size={20} />
+          </span>
+        );
+      }
+      return null;
+    }, [avatarProps, Icon]);
+
+    const handleClick = useCallback(
+      (e) => {
+        if (isDisabled) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onClick?.(e);
+      },
+      [onClick, isDisabled]
+    );
+
+    const body = (
+      <>
+        {lead}
+        <span className="list-row__main">
+          {title != null && title !== "" && (
+            <span className="list-row__title">{title}</span>
+          )}
+          {subtitle != null && subtitle !== "" && (
+            <span className="list-row__subtitle">{subtitle}</span>
+          )}
         </span>
-      )}
-    </>
-  );
-
-  if (to) {
-    return (
-      <Link to={to} className={cls} {...rest}>
-        {body}
-      </Link>
+        {trailing != null && trailing !== "" && (
+          <span className="list-row__trailing">{trailing}</span>
+        )}
+        {interactive && chevron && (
+          <span className="list-row__chevron" aria-hidden="true">
+            <ChevronIcon size={18} />
+          </span>
+        )}
+        {busy && <span className="list-row__busy spinner" aria-hidden="true" />}
+      </>
     );
-  }
 
-  if (onClick) {
+    if (to && !isDisabled) {
+      return (
+        <Link
+          ref={ref}
+          to={to}
+          className={cls}
+          aria-label={ariaLabel}
+          aria-busy={busy || undefined}
+          data-testid={testId}
+          {...rest}
+        >
+          {body}
+        </Link>
+      );
+    }
+
+    if (onClick) {
+      return (
+        <button
+          ref={ref}
+          type="button"
+          className={cls}
+          onClick={handleClick}
+          disabled={isDisabled}
+          aria-label={ariaLabel}
+          aria-busy={busy || undefined}
+          aria-disabled={isDisabled || undefined}
+          data-testid={testId}
+          {...rest}
+        >
+          {body}
+        </button>
+      );
+    }
+
     return (
-      <button type="button" className={cls} onClick={onClick} {...rest}>
+      <div
+        ref={ref}
+        className={cls}
+        aria-label={ariaLabel}
+        aria-busy={busy || undefined}
+        data-testid={testId}
+        {...rest}
+      >
         {body}
-      </button>
+      </div>
     );
-  }
+  })
+);
 
-  return (
-    <div className={cls} {...rest}>
-      {body}
-    </div>
-  );
-}
+ListRow.displayName = "ListRow";
+
+export default ListRow;

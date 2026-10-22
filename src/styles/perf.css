@@ -1,0 +1,176 @@
+/* =====================================================================
+   PÉTRAV — performance & robustness layer
+   ---------------------------------------------------------------------
+   Fast-responding UI is not just JS memoization — the browser's
+   compositor, painter and layout engines need hints too. This sheet
+   adds containment, content-visibility and will-change where it matters,
+   plus touch-optimizations so every tap feels instant on a forecourt
+   handset with a warm CPU.
+
+   All rules here are additive and safe to override: they never change
+   layout, only how the browser schedules it.
+   ===================================================================== */
+
+/* ---- 1. Containment — isolate lists and cards so one reflow doesn't reflow all ---- */
+.card,
+.list-row,
+.skeleton-card,
+.skeleton-row,
+.sheet,
+.status-card,
+.history-card,
+.list-card {
+  contain: layout style paint;
+}
+
+/* The scrolling containers: their contents are off-screen until needed */
+.main,
+.sheet__body,
+.chip-row,
+.quick-stat-row {
+  contain: layout paint;
+}
+
+/* ---- 2. Content-visibility — skip painting off-screen rows entirely ---- */
+/* Use `auto` so the browser estimates intrinsic size; no layout shift when scrolling in */
+.list-stack .card,
+.list-stack .list-row,
+.history-list .history-card,
+.responsive-table > tbody > tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px; /* average row height — prevents scrollbar jump */
+}
+
+/* But never hide the currently focused or animating element */
+.list-row:focus-within,
+.card:focus-within,
+.row-enter,
+.row-exit {
+  content-visibility: visible;
+}
+
+/* ---- 3. Compositor promotion — animated elements get their own layer ---- */
+.sheet,
+.sheet-root .backdrop,
+.tabbar,
+.appbar,
+.sticky-cta,
+.action-bar,
+.conn-banner,
+.install-bar,
+.card--pressable,
+.list-row--press,
+.skeleton {
+  will-change: transform;
+  transform: translateZ(0); /* force GPU layer without visual change */
+}
+
+/* But release the layer when not animating to save VRAM */
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .sheet-root .backdrop,
+  .tabbar,
+  .appbar,
+  .sticky-cta,
+  .action-bar {
+    will-change: auto;
+    transform: none;
+  }
+}
+
+/* ---- 4. Touch & scroll — instant feedback on mobile ---- */
+button,
+a,
+.card--pressable,
+.list-row--press,
+.chip,
+.tab,
+.more-tile,
+.tool-btn,
+.overflow-menu__trigger {
+  touch-action: manipulation; /* disables double-tap zoom delay */
+  -webkit-tap-highlight-color: transparent; /* no grey flash on tap */
+  user-select: none;
+}
+
+/* Text inside inputs/selects remains selectable */
+input,
+textarea,
+select,
+[contenteditable] {
+  user-select: text;
+}
+
+/* Momentum scrolling for sheets and chip rows */
+.sheet__body,
+.chip-row,
+.quick-stat-row,
+.main {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+/* Hide scrollbars but keep scroll — chips still swipe */
+.chip-row::-webkit-scrollbar,
+.quick-stat-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- 5. Rendering priority — critical content first ---- */
+.screen-head,
+.appbar {
+  content-visibility: visible; /* always paint header immediately */
+}
+
+/* Skeleton shimmer uses transform only (cheap), never layout */
+.skeleton {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ---- 6. Reduce layout thrash — fix sizes for placeholders ---- */
+.skeleton-avatar,
+.skeleton-figure,
+.skeleton-line,
+.skeleton-trailing {
+  contain: size layout paint;
+}
+
+/* ---- 7. Focus visibility — no focus ring on mouse, ring on keyboard ---- */
+/* Already handled by :focus-visible in components.css, but ensure no outline flash */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---- 8. Image & SVG — never cause layout shift ---- */
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Brand SVGs have fixed aspect — reserve space before they load */
+.brand-lockup svg {
+  aspect-ratio: auto;
+  contain: size layout;
+}
+
+/* ---- 9. Idle rendering — non-critical below-the-fold can wait ---- */
+@media (min-width: 861px) {
+  /* Desktop: sidebar is always visible, but its footer can defer */
+  .sidebar .foot {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+  }
+}
+
+/* ---- 10. Prefers-reduced-data — skip shimmer/animation on slow connections ---- */
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar::after,
+  .skeleton,
+  .live-dot,
+  .spinner {
+    animation: none !important;
+  }
+}

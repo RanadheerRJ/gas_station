@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { Chip, ChipRow } from "./Chip.jsx";
 import { Field } from "./ui.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -37,8 +37,14 @@ function rangeText(range = {}) {
  * ("CSV · Excel, Sheets") rather than naming a file format, and the result
  * of the last download is reported underneath: silence is what makes an
  * export feel broken.
+ *
+ * Robustness & speed:
+ * - `buildReport` is called inside a try/catch — a malformed range never crashes the sheet.
+ * - Download is debounced via busy flag to prevent double-taps spawning two files.
+ * - Range result is cleared when range/filters change so stale "saved" message can't mislead.
+ * - Memoized preset calculation to avoid recomputing quickRanges on every parent render.
  */
-export default function ReportTools({
+function ReportTools({
   report,
   title,
   fileTitle,
@@ -56,6 +62,7 @@ export default function ReportTools({
 }) {
   const { t } = useLanguage();
   const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(null);
   const empty = !rowCount;
   const presets = useMemo(() => quickRanges(), []);
   const activePreset = fixedRange ? "" : matchingRangeName(range);
@@ -66,45 +73,70 @@ export default function ReportTools({
     setResult(null);
   }, [range.from, range.to, filters.fuelGroup, filters.employeeId, filters.status]);
 
-  const run = (kind) => {
-    const built = buildReport();
-    if (!built || built.rows.length === 0) return;
-    const filename = reportFilename({
-      report,
-      stationName,
-      from: range.from,
-      to: range.to,
-      extension: kind,
-      fuelGroup: filters.fuelGroup === "ALL" ? "" : filters.fuelGroup,
-      employeeName: filters.employeeName || "",
-    });
-    const outcome =
-      kind === "csv"
-        ? downloadCsv(built, filename)
-        : downloadPdf(
-            {
-              ...built,
-              title: fileTitle || title || report,
-              subtitle: reportSubtitle({
-                subject,
-                stationName,
-                from: range.from,
-                to: range.to,
-              }),
-              meta,
-            },
-            filename
-          );
-    const format = kind === "csv" ? "CSV" : "PDF";
-    setResult({
-      ok: Boolean(outcome?.ok),
-      text: !outcome?.ok
-        ? t("report.blocked", { format })
-        : outcome.mode === DOWNLOAD_MODE.OPENED
-          ? t("report.opened", { format })
-          : t("report.saved", { format }),
-    });
-  };
+  const handleFrom = useCallback((event) => onRangeChange({ ...range, from: event.target.value }), [onRangeChange, range]);
+  const handleTo = useCallback((event) => onRangeChange({ ...range, to: event.target.value }), [onRangeChange, range]);
+  const handlePreset = useCallback((value) => () => onRangeChange({ ...presets[value] }), [onRangeChange, presets]);
+
+  const run = useCallback(
+    (kind) => {
+      if (busy) return;
+      let built;
+      try {
+        built = buildReport();
+      } catch {
+        setResult({ ok: false, text: t("report.blocked", { format: kind === "csv" ? "CSV" : "PDF" }) });
+        return;
+      }
+      if (!built || built.rows.length === 0) return;
+      setBusy(kind);
+      try {
+        const filename = reportFilename({
+          report,
+          stationName,
+          from: range.from,
+          to: range.to,
+          extension: kind,
+          fuelGroup: filters.fuelGroup === "ALL" ? "" : filters.fuelGroup,
+          employeeName: filters.employeeName || "",
+        });
+        const outcome =
+          kind === "csv"
+            ? downloadCsv(built, filename)
+            : downloadPdf(
+                {
+                  ...built,
+                  title: fileTitle || title || report,
+                  subtitle: reportSubtitle({
+                    subject,
+                    stationName,
+                    from: range.from,
+                    to: range.to,
+                  }),
+                  meta,
+                },
+                filename
+              );
+        const format = kind === "csv" ? "CSV" : "PDF";
+        setResult({
+          ok: Boolean(outcome?.ok),
+          text: !outcome?.ok
+            ? t("report.blocked", { format })
+            : outcome.mode === DOWNLOAD_MODE.OPENED
+              ? t("report.opened", { format })
+              : t("report.saved", { format }),
+        });
+      } catch {
+        setResult({ ok: false, text: t("report.blocked", { format: kind === "csv" ? "CSV" : "PDF" }) });
+      } finally {
+        // Release busy after a short delay so rapid double-tap is absorbed
+        setTimeout(() => setBusy(null), 700);
+      }
+    },
+    [buildReport, report, stationName, range.from, range.to, filters.fuelGroup, filters.employeeName, fileTitle, title, subject, meta, busy, t]
+  );
+
+  const onCsv = useCallback(() => run("csv"), [run]);
+  const onPdf = useCallback(() => run("pdf"), [run]);
 
   return (
     <div className="report-tools">
@@ -123,7 +155,7 @@ export default function ReportTools({
                   key={value}
                   label={t(key)}
                   selected={activePreset === value}
-                  onClick={() => onRangeChange({ ...presets[value] })}
+                  onClick={handlePreset(value)}
                 />
               ))}
             </ChipRow>
@@ -136,9 +168,7 @@ export default function ReportTools({
                 className="mono"
                 value={range.from}
                 max={range.to || undefined}
-                onChange={(event) =>
-                  onRangeChange({ ...range, from: event.target.value })
-                }
+                onChange={handleFrom}
               />
             </Field>
             <Field label={t("report.to")}>
@@ -147,7 +177,7 @@ export default function ReportTools({
                 className="mono"
                 value={range.to}
                 min={range.from || undefined}
-                onChange={(event) => onRangeChange({ ...range, to: event.target.value })}
+                onChange={handleTo}
               />
             </Field>
           </div>
@@ -159,12 +189,19 @@ export default function ReportTools({
           <button
             type="button"
             className="cta"
-            disabled={disabled || empty}
-            onClick={() => run("csv")}
+            disabled={disabled || empty || !!busy}
+            onClick={onCsv}
+            aria-busy={busy === "csv" || undefined}
           >
+            {busy === "csv" ? <span className="spinner" aria-hidden="true" /> : null}
             {t("report.exportCsv")}
           </button>
-          <button type="button" disabled={disabled || empty} onClick={() => run("pdf")}>
+          <button
+            type="button"
+            disabled={disabled || empty || !!busy}
+            onClick={onPdf}
+            aria-busy={busy === "pdf" || undefined}
+          >
             {t("report.exportPdf")}
           </button>
         </div>
@@ -176,6 +213,7 @@ export default function ReportTools({
           <p
             className={`report-tools__result small${result.ok ? "" : " is-error"}`}
             role="status"
+            aria-live="polite"
           >
             {result.text}
           </p>
@@ -184,3 +222,5 @@ export default function ReportTools({
     </div>
   );
 }
+
+export default memo(ReportTools);
