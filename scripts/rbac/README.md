@@ -36,6 +36,7 @@ the `anon` / `authenticated` / `service_role` roles.
 | Manager | Operational and financial data for their station; can review shifts, move balances, record stock; sees the manager and attendant roster posted to their own station — and no staff, owner, or profile from anywhere else |
 | Attendant | Own shift records only; sees stations/pumps/nozzles and anonymous nozzle occupancy; no co-worker identities (including their own profile only), no credit ledger, prices, tanks, or tank readings; cannot write to another operator's shift or to restricted tables. May record credit sales at their **own** shift close — against an existing customer (via the balance-free `list_customer_directory`) or a new walk-in — with rows attributed to them; the credit ledger itself still returns nothing |
 | Anonymous | Granted nothing, including the registry RPC |
+| Data API | Every table in `public` is granted to `authenticated` (SELECT) and `service_role` (CRUD), to no other role, and `anon` holds no table grant at all; a table created *after* the grants migration is exposed by its default privileges without its own `GRANT` |
 | Exports | Every report read is scoped by the server: an attendant's export request returns only their own shifts and cannot name a co-worker even when the shift id is supplied directly; owner and manager exports keep their existing reach |
 
 The harness applies `20260919000000_initial_schema.sql`,
@@ -47,6 +48,12 @@ migration (`20260920000000`) is deliberately left out: it postdates the
 role-matrix contract this suite pins and intentionally changes attendant dip
 semantics.
 
+`20261021000000_data_api_table_grants.sql` is applied in **both** modes. Since
+30 October 2026 Supabase no longer auto-grants table privileges to the API
+roles, so that migration is what makes a replayed schema reachable through
+PostgREST at all — but it is not part of the role matrix this suite pins, and
+the negative control must not gain or lose checks because of it.
+
 ## Negative control
 
 The assertions are only meaningful if they fail without the follow-up
@@ -56,7 +63,7 @@ migrations. To confirm that:
 npm run test:rbac -- --without-rbac
 ```
 
-Against the initial schema alone this reports **38 failures** — the exact
+Against the initial schema alone this reports **59 failures** — the exact
 exposure that `20260919010000_tighten_role_visibility.sql` (role-matrix
 tightening), `20260920120000_admin_registry_and_manager_staff.sql` (the
 manager roster and the admin-only station registry), and

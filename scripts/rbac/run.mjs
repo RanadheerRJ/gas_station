@@ -145,6 +145,11 @@ async function asOwner(sql, params = []) {
   return res.rows[0];
 }
 
+/** Run DDL as the superuser; a multi-statement DDL batch returns no rows. */
+async function exec(sql) {
+  await client.query(sql);
+}
+
 async function seed() {
   for (const [id, email] of [
     [IDS.admin, "dev@example.com"],
@@ -276,6 +281,15 @@ async function main() {
   } else {
     console.log("\n!! negative control: follow-up RBAC migration NOT applied\n");
   }
+
+  // Applied in both modes: Data API exposure is not part of the role matrix
+  // this suite pins, and the negative control must not gain or lose checks
+  // because of it. Supabase stopped auto-granting table privileges to the API
+  // roles on 30 October 2026, so this migration is what makes a replayed
+  // schema reachable through PostgREST at all.
+  await sqlFile(
+    resolve(REPO, "supabase/migrations/20261021000000_data_api_table_grants.sql")
+  );
 
   const { n1, n2, customerId } = await seed();
   const tank = await asOwner("select id from public.tanks limit 1");
@@ -1004,6 +1018,96 @@ async function main() {
     !!anon.error,
     anon.error?.message || "no error raised"
   );
+
+  console.log("\n== Data API exposure (post-30 October 2026 grants) ==");
+  // Supabase no longer grants table privileges to the API roles for tables
+  // created in "public", so a replayed schema has to state them itself. These
+  // checks read the catalog rather than a hand-kept table list: an ungranted
+  // table anywhere in public is a browser read that answers "permission
+  // denied" no matter what its RLS policies say.
+  const dataApiGrants = await asOwner(
+    `select coalesce(json_agg(row_to_json(g) order by g.relname), '[]'::json) as grants
+     from (
+       select c.relname,
+              has_table_privilege('anon', c.oid, 'select') as anon_select,
+              has_table_privilege('authenticated', c.oid, 'select') as authenticated_select,
+              has_table_privilege('authenticated', c.oid, 'insert') as authenticated_insert,
+              has_table_privilege('service_role', c.oid, 'select') as service_select,
+              has_table_privilege('service_role', c.oid, 'insert') as service_insert,
+              has_table_privilege('service_role', c.oid, 'update') as service_update,
+              has_table_privilege('service_role', c.oid, 'delete') as service_delete
+       from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and c.relkind in ('r', 'p')
+     ) g`
+  );
+  const rows = dataApiGrants?.grants ?? [];
+  check(
+    "the schema under test has tables to expose",
+    rows.length >= 12,
+    rows.map((row) => row.relname).join(", ")
+  );
+  const names = (predicate) =>
+    rows
+      .filter(predicate)
+      .map((row) => row.relname)
+      .join(", ");
+  check(
+    "anon holds no table grant: every policy is `to authenticated`, so it could only read zero rows",
+    rows.every((row) => !row.anon_select),
+    names((row) => row.anon_select)
+  );
+  check(
+    "authenticated can SELECT every table, so supabase-js reads reach RLS instead of failing on grants",
+    rows.every((row) => row.authenticated_select),
+    names((row) => !row.authenticated_select)
+  );
+  check(
+    "authenticated holds no table write grant: mutations stay on the SECURITY DEFINER RPC surface",
+    rows.every((row) => !row.authenticated_insert),
+    names((row) => row.authenticated_insert)
+  );
+  check(
+    "service_role keeps CRUD for the accounts Edge Function",
+    rows.every(
+      (row) =>
+        row.service_select &&
+        row.service_insert &&
+        row.service_update &&
+        row.service_delete
+    ),
+    names(
+      (row) =>
+        !(
+          row.service_select &&
+          row.service_insert &&
+          row.service_update &&
+          row.service_delete
+        )
+    )
+  );
+
+  // A grant written into one migration does not cover the next one: the default
+  // privileges are what keep a table added later reachable without anyone
+  // remembering the GRANT. Create one exactly the way a future migration would.
+  await exec(
+    `create table public.data_api_probe (id uuid primary key default gen_random_uuid());
+     alter table public.data_api_probe enable row level security;`
+  );
+  const probe = await asOwner(
+    `select has_table_privilege('authenticated', 'public.data_api_probe', 'select') as authenticated_select,
+            has_table_privilege('service_role', 'public.data_api_probe', 'select') as service_select,
+            has_table_privilege('service_role', 'public.data_api_probe', 'insert') as service_insert,
+            has_table_privilege('anon', 'public.data_api_probe', 'select') as anon_select`
+  );
+  check(
+    "a table created after the grants migration is exposed by default privileges, without its own GRANT",
+    Boolean(
+      probe?.authenticated_select && probe?.service_select && probe?.service_insert
+    ) && !probe?.anon_select,
+    JSON.stringify(probe)
+  );
+  await exec("drop table public.data_api_probe");
 
   console.log("\n== reset station data permissions ==");
   const attReset = await asUser(IDS.att1, "select public.reset_station_data($1)", [

@@ -54,7 +54,11 @@ drop policy if exists customer_audit_read on public.customer_audit;
 create policy customer_audit_read on public.customer_audit for select to authenticated
   using (public.can_manage_station(station_id));
 revoke all on public.customer_audit from public;
+-- Explicit Data API grants: since 30 October 2026 Supabase no longer grants
+-- table privileges to the API roles for newly created tables, so this hotfix
+-- carries them itself instead of relying on the dashboard's auto-grant.
 grant select on public.customer_audit to authenticated;
+grant select, insert, update, delete on public.customer_audit to service_role;
 
 /* ------------------------------------------------------------------ */
 /* 3. Archive / restore RPCs                                            */

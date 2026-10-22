@@ -9,6 +9,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { checkDataApiGrants } from "./dataApiGrants.mjs";
+
 const RBAC = "supabase/migrations/20260919010000_tighten_role_visibility.sql";
 
 const rbac = await readFile(resolve(RBAC), "utf8");
@@ -16,11 +18,13 @@ const migrationFiles = (await readdir(resolve("supabase/migrations")))
   .filter((name) => name.endsWith(".sql"))
   .sort();
 // RPCs can be introduced by any forward-only migration.
-const migration = (
-  await Promise.all(
-    migrationFiles.map((name) => readFile(resolve("supabase/migrations", name), "utf8"))
-  )
-).join("\n");
+const migrationSources = await Promise.all(
+  migrationFiles.map(async (name) => ({
+    name,
+    sql: await readFile(resolve("supabase/migrations", name), "utf8"),
+  }))
+);
+const migration = migrationSources.map((source) => source.sql).join("\n");
 const api = await readFile(resolve("src/lib/api.js"), "utf8");
 // The `accounts` Edge Function calls RPCs too, and it is deployed from a
 // different pipeline than the browser bundle. Its calls were outside this
@@ -93,12 +97,40 @@ const missingEdgeRpc = edgeRpcNames.filter(
   (name) => !migration.includes(`function public.${name}(`)
 );
 
+/* Data API exposure: every table this repo creates must name the API roles it
+   is exposed to, in the same file that creates it. See ./dataApiGrants.mjs. */
+
+/** SQL that runs outside the migration ledger but still creates tables. */
+const hotfixFiles = [
+  "scripts/hotfix_stock_ledger.sql",
+  "scripts/hotfix_credit_customer_archive.sql",
+];
+const hotfixSources = await Promise.all(
+  hotfixFiles.map(async (name) => ({ name, sql: await readFile(resolve(name), "utf8") }))
+);
+
+const dataApi = checkDataApiGrants([...migrationSources, ...hotfixSources]);
+
+const dataApiMigration = migrationSources.find(({ name }) =>
+  /data_api_table_grants/.test(name)
+);
+const missingDefaultPrivileges =
+  !dataApiMigration ||
+  !/alter default privileges/i.test(dataApiMigration.sql) ||
+  !/grant select on tables to authenticated/i.test(dataApiMigration.sql) ||
+  !/grant select, insert, update, delete on tables to service_role/i.test(
+    dataApiMigration.sql
+  );
+
 if (
   missing.length ||
   missingRbac.length ||
   weakPolicies.length ||
   missingRpc.length ||
-  missingEdgeRpc.length
+  missingEdgeRpc.length ||
+  dataApi.ungranted.length ||
+  dataApi.anonGrants.length ||
+  missingDefaultPrivileges
 ) {
   const problems = [
     ...(missing.length ? [`schema: ${missing.join(", ")}`] : []),
@@ -110,6 +142,19 @@ if (
     ...(missingEdgeRpc.length
       ? [`accounts Edge Function RPCs: ${missingEdgeRpc.join(", ")}`]
       : []),
+    ...(dataApi.ungranted.length
+      ? [`Data API grants missing: ${dataApi.ungranted.join(", ")}`]
+      : []),
+    ...(dataApi.anonGrants.length
+      ? [
+          `table grants to anon (must stay authenticated-only): ${dataApi.anonGrants.join(", ")}`,
+        ]
+      : []),
+    ...(missingDefaultPrivileges
+      ? [
+          "default privileges for future tables: expected a migration matching *data_api_table_grants.sql that installs ALTER DEFAULT PRIVILEGES for authenticated and service_role",
+        ]
+      : []),
   ];
   console.error(`Supabase schema contract is missing ${problems.join("; ")}`);
   process.exit(1);
@@ -118,5 +163,6 @@ if (
 console.log(
   `Supabase schema contract: OK (${rpcNames.length} browser RPCs, ` +
     `${edgeRpcNames.length} Edge Function RPCs, ` +
-    `${rbacRequired.length} RBAC guards, ${managerOnlyPolicies.length} owner/manager reads)`
+    `${rbacRequired.length} RBAC guards, ${managerOnlyPolicies.length} owner/manager reads, ` +
+    `${dataApi.tables} tables with explicit Data API grants)`
 );

@@ -256,6 +256,32 @@ above. Browsers have no table write policies. Writes go through
 `SECURITY DEFINER` PostgreSQL RPCs, which check the current `auth.uid()` and
 role before changing state.
 
+Tables reach the Data API through explicit grants, and only three roles matter:
+
+| Role | Table privileges | Why |
+| --- | --- | --- |
+| `authenticated` | `SELECT` | RLS narrows every read to the role matrix. There is no table write grant, so a mutation that is not an RPC cannot happen. |
+| `service_role` | `SELECT, INSERT, UPDATE, DELETE` | The `accounts` Edge Function credential. It bypasses RLS, so it is the widest grant here and never reaches the browser. |
+| `anon` | none | Every policy is `to authenticated`, so an anonymous read could only ever return zero rows. The anonymous start-shift screen gets nozzle availability from an RPC, not a table. |
+
+**Since 30 October 2026 Supabase no longer grants these automatically.** A table
+created in `public` without an explicit `GRANT` answers supabase-js, PostgREST,
+and GraphQL with `permission denied for table …` no matter what its policies
+say — and that includes every replay of this schema: a new project, a preview
+branch, and `supabase db reset`. So:
+
+- `20261021000000_data_api_table_grants.sql` backfills the tables that already
+  exist and installs `ALTER DEFAULT PRIVILEGES`, which exposes a table created
+  later without anyone having to remember the `GRANT`.
+- A migration that creates a table still states its grants inline, so the file
+  that creates the table is the file that exposes it. `npm run check:schema`
+  fails the build if a `create table public.…` has no grant to `authenticated`
+  and `service_role` in the same file — or if anything grants a table to `anon`.
+- `npm run test:rbac` asserts the same boundary against a real database: no
+  table left ungranted, no write grant to `authenticated`, nothing at all to
+  `anon`, and a probe table created after the migration is exposed by the
+  default privileges alone.
+
 The financial and operational critical paths are one transaction each:
 
 | RPC | Atomic work |
@@ -421,7 +447,7 @@ To confirm those assertions are not vacuous, run them against the initial
 schema alone:
 
 ```bash
-npm run test:rbac -- --without-rbac    # 34 failures: the exposure the follow-up migrations close
+npm run test:rbac -- --without-rbac    # 59 failures: the exposure the follow-up migrations close
 ```
 
 See `scripts/rbac/README.md` for the full coverage list.
@@ -434,7 +460,8 @@ supabase test db
 ```
 
 `supabase/tests/database_test.sql` verifies the RLS boundary, the role-matrix
-helpers, and the attendant write guards. GitHub Actions runs the fast
+helpers, the attendant write guards, and the Data API grants every table needs
+since Supabase stopped issuing them automatically. GitHub Actions runs the fast
 Docker-free migration contract check and the RBAC suite on every pull request
 and before every Pages deployment.
 
@@ -448,6 +475,14 @@ and before every Pages deployment.
    policy a manager cannot open their team page. The follow-up migrations are
    idempotent and safe to re-run; never edit the already-applied initial
    migration to change production RBAC.
+
+   `20261021000000_data_api_table_grants.sql` is the one deliberate exception to
+   that rule: it is a new migration, *and* the older table-creating migrations
+   now carry their own `GRANT`s. The inline grants are additive, they change no
+   role's reach, and the new migration backfills any project that already
+   applied the older files — so live and freshly replayed databases converge on
+   the same exposure instead of drifting. See
+   [Database access](#database-access).
 
    Needed by hand only for the **first** setup. After that `deploy-supabase.yml`
    runs this on every merge to `main` that touches `supabase/migrations/**`,

@@ -1087,6 +1087,17 @@ grant select on public.profiles, public.stations, public.pumps, public.nozzles, 
   public.shifts, public.shift_nozzles, public.shift_expenses, public.credit_customers,
   public.customer_transactions, public.tanks, public.tank_readings to authenticated;
 
+-- Data API exposure is explicit, not inherited: since 30 October 2026 Supabase
+-- no longer auto-grants table privileges to the API roles, so a replay of this
+-- schema (new project, preview branch, `supabase db reset`) has to carry the
+-- grants itself or every read below answers "permission denied".
+-- service_role is the accounts Edge Function credential and bypasses RLS;
+-- anon is granted nothing because every policy here is `to authenticated`.
+grant select, insert, update, delete on public.profiles, public.stations, public.pumps,
+  public.nozzles, public.fuel_prices, public.shifts, public.shift_nozzles,
+  public.shift_expenses, public.credit_customers, public.customer_transactions,
+  public.tanks, public.tank_readings to service_role;
+
 -- Lock down every function first, then expose only the browser-safe RPC
 -- surface. Service-role-only provisioners are intentionally not callable
 -- from the anon/authenticated browser clients.
