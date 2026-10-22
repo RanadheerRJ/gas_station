@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../state/AuthContext";
 import {
@@ -112,6 +120,81 @@ export function destinationsFor(role) {
   }
 }
 
+/* ---- memoized sub-components for speed ---- */
+
+const SidebarLink = memo(function SidebarLink({ item, translate }) {
+  const Icon = item.Icon;
+  return (
+    <NavLink to={item.to} end={item.end}>
+      <Icon size={17} />
+      <span>{translate(item.label)}</span>
+    </NavLink>
+  );
+});
+
+const TabButton = memo(function TabButton({ tab, translate }) {
+  const Icon = tab.Icon;
+  const fullLabel = translate(tab.label);
+  const mobileLabel = translate(MOBILE_NAV_LABEL[tab.label] || tab.label);
+  return (
+    <NavLink
+      key={tab.to}
+      to={tab.to}
+      end={tab.end}
+      aria-label={fullLabel}
+      className={({ isActive }) => `tab${isActive ? " active" : ""}`}
+    >
+      <span className="tab__glyph" aria-hidden="true">
+        <Icon size={22} />
+      </span>
+      <span>{mobileLabel}</span>
+    </NavLink>
+  );
+});
+
+const ConnBanner = memo(function ConnBanner({ online, restored, t }) {
+  if (!online) {
+    return (
+      <div className="conn-banner" role="status" aria-live="assertive">
+        <span className="live-dot">●</span>
+        {t("chrome.offline")}
+      </div>
+    );
+  }
+  if (restored) {
+    return (
+      <div className="conn-banner restored" role="status" aria-live="polite">
+        <span>●</span>
+        {t("chrome.backOnline")}
+      </div>
+    );
+  }
+  return null;
+});
+
+const InstallBar = memo(function InstallBar({ install, t }) {
+  if (!install.available) return null;
+  return (
+    <div
+      className="install-bar"
+      role="complementary"
+      aria-label={t("chrome.installPrompt")}
+    >
+      <span>
+        {install.ios ? t("chrome.installIosPrompt") : t("chrome.installPrompt")}
+      </span>
+      {!install.ios && (
+        <button type="button" onClick={install.prompt}>
+          {t("chrome.install")}
+        </button>
+      )}
+      <button type="button" className="ghost" onClick={install.dismiss}>
+        {t("chrome.notNow")}
+      </button>
+    </div>
+  );
+});
+
 export default function Layout() {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -134,8 +217,9 @@ export default function Layout() {
   // a new stack being pushed, which a tab bar never is.
   const tabPaths = useMemo(() => tabs.map((tab) => tab.to), [tabs]);
   const transitionClass = useRouteTransition(pathname, tabPaths);
-  const moreActive = more.some(
-    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`)
+  const moreActive = useMemo(
+    () => more.some((item) => pathname === item.to || pathname.startsWith(`${item.to}/`)),
+    [more, pathname]
   );
   const mainRef = useRef(null);
 
@@ -144,7 +228,10 @@ export default function Layout() {
   // a plain label; the developer and single-station accounts see the brand.
   const canSwitchStation =
     (profile?.role === "owner" || profile?.role === "manager") && stations.length > 1;
-  const accountInMore = more.some((item) => item.label === "nav.account");
+  const accountInMore = useMemo(
+    () => more.some((item) => item.label === "nav.account"),
+    [more]
+  );
   // Where the tab bar's centre button goes for this role (admin has none).
   const startPath =
     profile?.role === "owner"
@@ -154,38 +241,44 @@ export default function Layout() {
         : profile?.role === "attendant"
           ? "/today/start"
           : null;
-  const renderTab = (tab, translate) => {
-    const Icon = tab.Icon;
-    const fullLabel = translate(tab.label);
-    const mobileLabel = translate(MOBILE_NAV_LABEL[tab.label] || tab.label);
-    return (
-      <NavLink
-        key={tab.to}
-        to={tab.to}
-        end={tab.end}
-        aria-label={fullLabel}
-        className={({ isActive }) => `tab${isActive ? " active" : ""}`}
-      >
-        <span className="tab__glyph" aria-hidden="true">
-          <Icon size={22} />
-        </span>
-        <span>{mobileLabel}</span>
-      </NavLink>
-    );
-  };
+
+  const openMoreTiles = useCallback(() => {
+    setMorePanel("tiles");
+    setMoreOpen(true);
+  }, []);
+  const openMoreLanguage = useCallback(() => {
+    setMorePanel("language");
+    setMoreOpen(true);
+  }, []);
+  const closeMore = useCallback(() => setMoreOpen(false), []);
+  const closeStation = useCallback(() => setStationOpen(false), []);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
+  const openAccount = useCallback(() => setAccountOpen(true), []);
+  const openStation = useCallback(() => setStationOpen(true), []);
+  const handleStationSelect = useCallback(
+    (id) => {
+      setStation(id);
+      setStationOpen(false);
+    },
+    [setStation]
+  );
+  const handleLanguageSelect = useCallback(
+    (code) => {
+      setLanguage(code);
+      setMoreOpen(false);
+    },
+    [setLanguage]
+  );
+  const handleThemeToggleAndClose = useCallback(() => {
+    toggleTheme();
+    setMoreOpen(false);
+  }, [toggleTheme]);
+
+  const toggleThemeCb = useCallback(() => toggleTheme(), [toggleTheme]);
 
   useScrollMemory(pathname, tabPaths, mainRef);
 
   if (!profile) return null;
-
-  const openMoreTiles = () => {
-    setMorePanel("tiles");
-    setMoreOpen(true);
-  };
-  const openMoreLanguage = () => {
-    setMorePanel("language");
-    setMoreOpen(true);
-  };
 
   return (
     <div
@@ -201,7 +294,7 @@ export default function Layout() {
             type="button"
             className="appbar__avatar"
             style={{ "--avatar-hue": avatarHue(profile.name) }}
-            onClick={() => setAccountOpen(true)}
+            onClick={openAccount}
             aria-label={t("nav.account")}
             aria-haspopup="dialog"
           >
@@ -215,7 +308,7 @@ export default function Layout() {
               <button
                 type="button"
                 className="appbar__station"
-                onClick={() => setStationOpen(true)}
+                onClick={openStation}
                 aria-haspopup="dialog"
                 title={station?.name}
               >
@@ -246,7 +339,7 @@ export default function Layout() {
           <button
             type="button"
             className="appbar__tool"
-            onClick={toggleTheme}
+            onClick={toggleThemeCb}
             aria-label={theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
           >
             {theme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
@@ -285,7 +378,7 @@ export default function Layout() {
             <button
               type="button"
               className="sidebar__station"
-              onClick={() => setStationOpen(true)}
+              onClick={openStation}
               aria-haspopup="dialog"
               title={station?.name}
             >
@@ -316,7 +409,7 @@ export default function Layout() {
           <button
             type="button"
             className="theme-toggle theme-toggle--sidebar"
-            onClick={toggleTheme}
+            onClick={toggleThemeCb}
           >
             {theme === "dark" ? <SunIcon size={15} /> : <MoonIcon size={15} />}
             {theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
@@ -329,35 +422,8 @@ export default function Layout() {
       </aside>
 
       <div className="main" ref={mainRef}>
-        {!online && (
-          <div className="conn-banner" role="status">
-            <span className="live-dot">●</span>
-            {t("chrome.offline")}
-          </div>
-        )}
-
-        {online && restored && (
-          <div className="conn-banner restored" role="status">
-            <span>●</span>
-            {t("chrome.backOnline")}
-          </div>
-        )}
-
-        {install.available && (
-          <div className="install-bar">
-            <span>
-              {install.ios ? t("chrome.installIosPrompt") : t("chrome.installPrompt")}
-            </span>
-            {!install.ios && (
-              <button type="button" onClick={install.prompt}>
-                {t("chrome.install")}
-              </button>
-            )}
-            <button type="button" className="ghost" onClick={install.dismiss}>
-              {t("chrome.notNow")}
-            </button>
-          </div>
-        )}
+        <ConnBanner online={online} restored={restored} t={t} />
+        <InstallBar install={install} t={t} />
 
         {/* Keyed on the path so the transition replays on every navigation.
             The class says which way the screen is travelling; reduced-motion
@@ -375,7 +441,9 @@ export default function Layout() {
           stroke, so selection is shape and weight, not colour alone. */}
       {tabs.length > 0 && (
         <nav className="tabbar" aria-label={t("chrome.navigation")}>
-          {tabs.slice(0, 2).map((tab) => renderTab(tab, t))}
+          {tabs.slice(0, 2).map((tab) => (
+            <TabButton key={tab.to} tab={tab} translate={t} />
+          ))}
           {/* The raised centre button: starting a shift is the one action
               every role reaches for, so it sits in the middle of the bar,
               lifted out of it — the banking-app scan-button position, doing
@@ -392,7 +460,9 @@ export default function Layout() {
               <span className="tabbar__fab-label">{t("shifts.startShift")}</span>
             </NavLink>
           )}
-          {tabs.slice(2).map((tab) => renderTab(tab, t))}
+          {tabs.slice(2).map((tab) => (
+            <TabButton key={tab.to} tab={tab} translate={t} />
+          ))}
           {more.length > 0 && (
             <button
               type="button"
@@ -417,7 +487,7 @@ export default function Layout() {
           taps from anywhere on a phone. */}
       <Sheet
         open={moreOpen}
-        onClose={() => setMoreOpen(false)}
+        onClose={closeMore}
         title={morePanel === "language" ? t("chrome.language") : t("nav.more")}
       >
         {morePanel === "language" ? (
@@ -428,10 +498,7 @@ export default function Layout() {
                 className="chip--block"
                 label={languageNames[code]}
                 selected={language === code}
-                onClick={() => {
-                  setLanguage(code);
-                  setMoreOpen(false);
-                }}
+                onClick={() => handleLanguageSelect(code)}
               />
             ))}
           </div>
@@ -447,7 +514,7 @@ export default function Layout() {
                       to={item.to}
                       end
                       className="more-tile"
-                      onClick={() => setMoreOpen(false)}
+                      onClick={closeMore}
                     >
                       <span className="more-tile__icon" aria-hidden="true">
                         <item.Icon size={20} />
@@ -467,7 +534,7 @@ export default function Layout() {
                   type="button"
                   className="more-tile"
                   onClick={() => {
-                    setMoreOpen(false);
+                    closeMore();
                     setAccountOpen(true);
                   }}
                 >
@@ -486,10 +553,7 @@ export default function Layout() {
               <button
                 type="button"
                 className="more-tile"
-                onClick={() => {
-                  toggleTheme();
-                  setMoreOpen(false);
-                }}
+                onClick={handleThemeToggleAndClose}
               >
                 <span className="more-tile__icon" aria-hidden="true">
                   {theme === "dark" ? <SunIcon size={20} /> : <MoonIcon size={20} />}
@@ -515,11 +579,7 @@ export default function Layout() {
 
       {/* The station switcher's sheet: the current station is checked, and
           picking one re-filters every station-scoped screen via ?station=. */}
-      <Sheet
-        open={stationOpen}
-        onClose={() => setStationOpen(false)}
-        title={t("chrome.switchStation")}
-      >
+      <Sheet open={stationOpen} onClose={closeStation} title={t("chrome.switchStation")}>
         <div className="station-sheet">
           {stations.map((s) => (
             <ListRow
@@ -535,10 +595,7 @@ export default function Layout() {
                   </span>
                 ) : null
               }
-              onClick={() => {
-                setStation(s.id);
-                setStationOpen(false);
-              }}
+              onClick={() => handleStationSelect(s.id)}
             />
           ))}
         </div>
@@ -546,12 +603,8 @@ export default function Layout() {
 
       {/* The account sheet is the tab-bar overflow for roles whose tabs are
           all used up by real destinations. */}
-      <Sheet
-        open={accountOpen}
-        onClose={() => setAccountOpen(false)}
-        title={t("nav.account")}
-      >
-        <AccountPanel onDone={() => setAccountOpen(false)} />
+      <Sheet open={accountOpen} onClose={closeAccount} title={t("nav.account")}>
+        <AccountPanel onDone={closeAccount} />
       </Sheet>
     </div>
   );
@@ -596,7 +649,9 @@ function useScrollMemory(pathname, tabPaths, mainRef) {
     const raf =
       typeof requestAnimationFrame === "function"
         ? requestAnimationFrame(() => {
-            main.scrollTop = memory.current.get(pathname) ?? target;
+            // Double-check main still exists (could have unmounted during RAF)
+            if (mainRef.current)
+              mainRef.current.scrollTop = memory.current.get(pathname) ?? target;
           })
         : null;
     return () => {
@@ -605,16 +660,6 @@ function useScrollMemory(pathname, tabPaths, mainRef) {
       }
     };
   }, [pathname, mainRef]);
-}
-
-function SidebarLink({ item, translate }) {
-  const Icon = item.Icon;
-  return (
-    <NavLink to={item.to} end={item.end}>
-      <Icon size={17} />
-      <span>{translate(item.label)}</span>
-    </NavLink>
-  );
 }
 
 /**
@@ -628,7 +673,13 @@ function SidebarLink({ item, translate }) {
  * to the screen it is already on (which is what an undefined `to` does,
  * silently) is a button that does nothing.
  */
-export function ScreenHeader({ title, sub, actions, filter, back }) {
+export const ScreenHeader = memo(function ScreenHeader({
+  title,
+  sub,
+  actions,
+  filter,
+  back,
+}) {
   const { t } = useLanguage();
   return (
     <header className="screen-head">
@@ -651,7 +702,7 @@ export function ScreenHeader({ title, sub, actions, filter, back }) {
       </div>
     </header>
   );
-}
+});
 
 /** True while the browser reports a usable connection. */
 /**
@@ -738,18 +789,21 @@ function useInstallPrompt() {
     dismissed,
   });
 
-  return {
-    available: guidance !== null,
-    ios: guidance === "ios",
-    prompt: async () => {
-      if (!deferred) return;
-      deferred.prompt();
-      await deferred.userChoice;
-      setDeferred(null);
-    },
-    dismiss: () => {
-      localStorage.setItem("petrav.install.dismissed", "1");
-      setDismissed(true);
-    },
-  };
+  return useMemo(
+    () => ({
+      available: guidance !== null,
+      ios: guidance === "ios",
+      prompt: async () => {
+        if (!deferred) return;
+        deferred.prompt();
+        await deferred.userChoice;
+        setDeferred(null);
+      },
+      dismiss: () => {
+        localStorage.setItem("petrav.install.dismissed", "1");
+        setDismissed(true);
+      },
+    }),
+    [guidance, deferred]
+  );
 }

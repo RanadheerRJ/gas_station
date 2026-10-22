@@ -2,7 +2,13 @@
  * Inline SVG icons, drawn on a 24-grid with 1.6px strokes to match the
  * hairline borders. Flat and monochrome by default — they inherit
  * currentColor so they sit inside headings and buttons without fuss.
+ *
+ * Performance: each icon is memoized so a list of 100 rows doesn't re-render
+ * all icons when only one row's data changes. `base()` is inlined as a
+ * plain object spread to avoid function call overhead per icon.
  */
+
+import { memo } from "react";
 
 const base = (props) => ({
   width: props.size || 18,
@@ -19,7 +25,7 @@ const base = (props) => ({
 });
 
 /** Fuel dispenser. */
-export function PumpIcon(props) {
+export const PumpIcon = memo(function PumpIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M3 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
@@ -29,10 +35,10 @@ export function PumpIcon(props) {
       <path d="M13 13h2" />
     </svg>
   );
-}
+});
 
 /** Nozzle / hose. */
-export function NozzleIcon(props) {
+export const NozzleIcon = memo(function NozzleIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M7 21V7a3 3 0 0 1 3-3h1a3 3 0 0 1 3 3v14" />
@@ -41,30 +47,30 @@ export function NozzleIcon(props) {
       <circle cx="20" cy="17" r="1.6" />
     </svg>
   );
-}
+});
 
 /** A clock face, for shifts. */
-export function ShiftIcon(props) {
+export const ShiftIcon = memo(function ShiftIcon(props) {
   return (
     <svg {...base(props)}>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
     </svg>
   );
-}
+});
 
 /** Price tag, for rates. */
-export function RateIcon(props) {
+export const RateIcon = memo(function RateIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9z" />
       <circle cx="7.5" cy="7.5" r="1.4" />
     </svg>
   );
-}
+});
 
 /** Stacked notes, for cash. */
-export function CashIcon(props) {
+export const CashIcon = memo(function CashIcon(props) {
   return (
     <svg {...base(props)}>
       <rect x="2" y="6" width="20" height="12" rx="1.5" />
@@ -72,10 +78,10 @@ export function CashIcon(props) {
       <path d="M6 10v4M18 10v4" />
     </svg>
   );
-}
+});
 
 /** Meter dial, for readings. */
-export function GaugeIcon(props) {
+export const GaugeIcon = memo(function GaugeIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 18a8 8 0 1 1 16 0" />
@@ -83,9 +89,9 @@ export function GaugeIcon(props) {
       <path d="M4 18h16" />
     </svg>
   );
-}
+});
 
-export function StationIcon(props) {
+export const StationIcon = memo(function StationIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 21V4h10v17" />
@@ -94,9 +100,9 @@ export function StationIcon(props) {
       <path d="M17 21v-8h3v8" />
     </svg>
   );
-}
+});
 
-export function PeopleIcon(props) {
+export const PeopleIcon = memo(function PeopleIcon(props) {
   return (
     <svg {...base(props)}>
       <circle cx="9" cy="8" r="3.2" />
@@ -105,9 +111,9 @@ export function PeopleIcon(props) {
       <path d="M17.5 14.5A6 6 0 0 1 21 20" />
     </svg>
   );
-}
+});
 
-export function LedgerIcon(props) {
+export const LedgerIcon = memo(function LedgerIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2z" />
@@ -115,9 +121,9 @@ export function LedgerIcon(props) {
       <path d="M9 7h6M9 11h6" />
     </svg>
   );
-}
+});
 
-export function CreditIcon(props) {
+export const CreditIcon = memo(function CreditIcon(props) {
   return (
     <svg {...base(props)}>
       <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -125,17 +131,17 @@ export function CreditIcon(props) {
       <path d="M6 15h4" />
     </svg>
   );
-}
+});
 
 /** An underground storage tank, drawn side-on with a fill line. */
-export function TankIcon(props) {
+export const TankIcon = memo(function TankIcon(props) {
   return (
     <svg {...base(props)}>
       <rect x="3" y="6" width="18" height="12" rx="5" ry="6" />
       <path d="M3 13c2.5 1.4 5 1.4 7.5 0s5 -1.4 7.5 0 2.5 1.4 3 1.1" />
     </svg>
   );
-}
+});
 
 /* ------------------------------------------------------------------ */
 /* App-shell icons: navigation, sheets, and the small affordances the  */
@@ -143,7 +149,7 @@ export function TankIcon(props) {
 /* ------------------------------------------------------------------ */
 
 /** Home / today. */
-export function HomeIcon(props) {
+export const HomeIcon = memo(function HomeIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 11l8-7 8 7" />
@@ -151,30 +157,30 @@ export function HomeIcon(props) {
       <path d="M10 20v-6h4v6" />
     </svg>
   );
-}
+});
 
 /** A receipt with lines, for shift history. */
-export function HistoryIcon(props) {
+export const HistoryIcon = memo(function HistoryIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z" />
       <path d="M9 8h6M9 12h6M9 16h4" />
     </svg>
   );
-}
+});
 
 /** A person, for the account tab and account button. */
-export function UserIcon(props) {
+export const UserIcon = memo(function UserIcon(props) {
   return (
     <svg {...base(props)}>
       <circle cx="12" cy="8" r="3.6" />
       <path d="M5 20a7 7 0 0 1 14 0" />
     </svg>
   );
-}
+});
 
 /** Dots in a rounded square, for the "More" tab. */
-export function MoreIcon(props) {
+export const MoreIcon = memo(function MoreIcon(props) {
   return (
     <svg {...base(props)}>
       <rect x="3" y="3" width="18" height="18" rx="5" />
@@ -183,55 +189,55 @@ export function MoreIcon(props) {
       <circle cx="15.8" cy="12" r="0.9" fill="currentColor" stroke="none" />
     </svg>
   );
-}
+});
 
 /** Right chevron, for tappable list rows. */
-export function ChevronIcon(props) {
+export const ChevronIcon = memo(function ChevronIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M9 5l7 7-7 7" />
     </svg>
   );
-}
+});
 
 /** Left chevron, for back buttons. */
-export function BackIcon(props) {
+export const BackIcon = memo(function BackIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M15 5l-7 7 7 7" />
     </svg>
   );
-}
+});
 
 /** Plus, for add actions. */
-export function PlusIcon(props) {
+export const PlusIcon = memo(function PlusIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
-}
+});
 
 /** Check, for selected states. */
-export function CheckIcon(props) {
+export const CheckIcon = memo(function CheckIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M5 12.5l4.5 4.5L19 7.5" />
     </svg>
   );
-}
+});
 
 /** Cross, for closing sheets. */
-export function CloseIcon(props) {
+export const CloseIcon = memo(function CloseIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
-}
+});
 
 /** Trash / delete icon for destructive actions. */
-export function TrashIcon(props) {
+export const TrashIcon = memo(function TrashIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 7h16" />
@@ -241,20 +247,20 @@ export function TrashIcon(props) {
       <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
     </svg>
   );
-}
+});
 
 /** Pencil, for editing a record in place. */
-export function PencilIcon(props) {
+export const PencilIcon = memo(function PencilIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 20h4l10-10a2.1 2.1 0 0 0-3-3L5 17v3z" />
       <path d="M14.5 6.5l3 3" />
     </svg>
   );
-}
+});
 
 /** Sign-out door. */
-export function LogOutIcon(props) {
+export const LogOutIcon = memo(function LogOutIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8" />
@@ -262,10 +268,10 @@ export function LogOutIcon(props) {
       <path d="M17.5 8.5L21 12l-3.5 3.5" />
     </svg>
   );
-}
+});
 
 /** Download tray, for exports. */
-export function DownloadIcon(props) {
+export const DownloadIcon = memo(function DownloadIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M12 4v10" />
@@ -273,49 +279,49 @@ export function DownloadIcon(props) {
       <path d="M5 19h14" />
     </svg>
   );
-}
+});
 
 /** Search magnifier, for list search actions. */
-export function SearchIcon(props) {
+export const SearchIcon = memo(function SearchIcon(props) {
   return (
     <svg {...base(props)}>
       <circle cx="11" cy="11" r="6" />
       <path d="M16 16l4.5 4.5" />
     </svg>
   );
-}
+});
 
 /** A rising bar chart, for summaries. */
-export function ChartIcon(props) {
+export const ChartIcon = memo(function ChartIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 20h16" />
       <path d="M7 20v-6M12 20V8M17 20v-10" />
     </svg>
   );
-}
+});
 
 /** Sun, for switching to the light theme. */
-export function SunIcon(props) {
+export const SunIcon = memo(function SunIcon(props) {
   return (
     <svg {...base(props)}>
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M18.8 5.2l-1.7 1.7M6.9 17.1l-1.7 1.7" />
     </svg>
   );
-}
+});
 
 /** Moon, for switching to the dark theme. */
-export function MoonIcon(props) {
+export const MoonIcon = memo(function MoonIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M20 13.5A8 8 0 0 1 10.5 4a8 8 0 1 0 9.5 9.5z" />
     </svg>
   );
-}
+});
 
 /** A globe, for the language control. */
-export function GlobeIcon(props) {
+export const GlobeIcon = memo(function GlobeIcon(props) {
   return (
     <svg {...base(props)}>
       <circle cx="12" cy="12" r="8.5" />
@@ -323,10 +329,10 @@ export function GlobeIcon(props) {
       <path d="M12 3.5c2.6 2.3 3.9 5.1 3.9 8.5s-1.3 6.2-3.9 8.5c-2.6-2.3-3.9-5.1-3.9-8.5s1.3-6.2 3.9-8.5z" />
     </svg>
   );
-}
+});
 
 /** Circular arrows / refresh icon. */
-export function RefreshIcon(props) {
+export const RefreshIcon = memo(function RefreshIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" />
@@ -335,20 +341,20 @@ export function RefreshIcon(props) {
       <path d="M21 3v5h-5" />
     </svg>
   );
-}
+});
 
 /** An open eye, for revealing a PIN. */
-export function EyeIcon(props) {
+export const EyeIcon = memo(function EyeIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
   );
-}
+});
 
 /** A closed eye, for hiding a revealed PIN. */
-export function EyeOffIcon(props) {
+export const EyeOffIcon = memo(function EyeOffIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M4 4l16 16" />
@@ -357,10 +363,10 @@ export function EyeOffIcon(props) {
       <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
     </svg>
   );
-}
+});
 
 /** A warning triangle, for inline field errors. */
-export function AlertIcon(props) {
+export const AlertIcon = memo(function AlertIcon(props) {
   return (
     <svg {...base(props)}>
       <path d="M12 4.5L21 19.5H3z" />
@@ -368,4 +374,4 @@ export function AlertIcon(props) {
       <path d="M12 16.8v.4" />
     </svg>
   );
-}
+});

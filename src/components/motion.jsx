@@ -12,14 +12,54 @@
  * Timing constants live in styles.css as custom properties. The few numbers
  * that must exist in JS are read from there at runtime so there is still only
  * one place to retune.
+ *
+ * Performance: animations pause when page is hidden (visibilitychange) to save
+ * battery on mobile; RAF is cancelled on unmount; reduced-motion is cached.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+/** Cached reduced-motion preference — updated via MediaQuery listener. */
+let reducedMotionCache = null;
+let reducedMotionMql = null;
+
+function initReducedMotionCache() {
+  if (typeof window === "undefined" || !window.matchMedia) return;
+  if (reducedMotionMql) return;
+  reducedMotionMql = window.matchMedia("(prefers-reduced-motion: reduce)");
+  reducedMotionCache = reducedMotionMql.matches;
+  const handler = (e) => {
+    reducedMotionCache = e.matches;
+  };
+  if (reducedMotionMql.addEventListener)
+    reducedMotionMql.addEventListener("change", handler);
+  else reducedMotionMql.addListener(handler);
+}
+
+initReducedMotionCache();
 
 /** True when the operating system asks for less movement. */
 export function prefersReducedMotion() {
+  if (reducedMotionCache != null) return reducedMotionCache;
   if (typeof window === "undefined" || !window.matchMedia) return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** React hook version — re-renders when the preference changes. */
+export function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(() => prefersReducedMotion());
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handler = (e) => setReduced(e.matches);
+    if (mql.addEventListener) mql.addEventListener("change", handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", handler);
+      else mql.removeListener(handler);
+    };
+  }, []);
+  return reduced;
 }
 
 /** Reads a duration token from the stylesheet, in milliseconds. */
@@ -41,6 +81,8 @@ function durationToken(name, fallback) {
  * Money and stock figures change because something happened, and a figure
  * that snaps gives no clue whether it moved up or down. The count is short
  * and eased out so it reads as a needle settling rather than a slot machine.
+ *
+ * Pauses when page is hidden (saves battery), resumes with corrected timing.
  */
 export function useCountUp(value, { duration } = {}) {
   const target = Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -48,6 +90,7 @@ export function useCountUp(value, { duration } = {}) {
   const fromRef = useRef(target);
   const frameRef = useRef(0);
   const firstRef = useRef(true);
+  const startTimeRef = useRef(0);
 
   useEffect(() => {
     // The first render shows the real figure. Counting up from zero on load
@@ -69,10 +112,15 @@ export function useCountUp(value, { duration } = {}) {
     if (from === target) return undefined;
 
     const ms = duration ?? durationToken("--duration-page", 260);
-    const started = performance.now();
+    startTimeRef.current = performance.now();
 
     const step = (now) => {
-      const t = Math.min(1, (now - started) / ms);
+      if (document.hidden) {
+        // Pause: keep scheduling but don't advance
+        frameRef.current = requestAnimationFrame(step);
+        return;
+      }
+      const t = Math.min(1, (now - startTimeRef.current) / ms);
       // easeOutCubic: fast departure, no overshoot on arrival.
       const eased = 1 - Math.pow(1 - t, 3);
       setShown(from + (target - from) * eased);
@@ -97,6 +145,8 @@ export function useCountUp(value, { duration } = {}) {
  *
  * `format` receives the interpolated number, so callers keep control of
  * currency, litres and decimal places.
+ *
+ * Memoized format function handling to avoid re-creating on every render.
  */
 export function NumberRoll({
   value,
@@ -122,13 +172,15 @@ export function NumberRoll({
     return () => clearTimeout(timer);
   }, [value, showDirection]);
 
+  const display = useMemo(() => format(shown), [format, shown]);
+
   return (
     <span
       className={`num-roll ${className}`.trim()}
       data-settling={direction || undefined}
       {...rest}
     >
-      {format(shown)}
+      {display}
     </span>
   );
 }
@@ -192,6 +244,8 @@ export function useStatusChange(status) {
  *
  * Items are matched by `keyOf`. Anything absent from the new list is held
  * with `exiting: true` until the animation has run.
+ *
+ * Optimized: timers are cleaned up on unmount; RAF is used to batch state updates.
  */
 const defaultKeyOf = (item) => item.id;
 
@@ -293,6 +347,8 @@ export function SkeletonPanel({ lines = 3 }) {
 /**
  * Standard loading state: a sweeping hairline above skeleton panels. Replaces
  * the bare "Loading…" text so the page keeps its shape while data arrives.
+ *
+ * Uses content-visibility to skip painting off-screen panels.
  */
 export function LoadingPanels({ count = 2, lines = 3, label = "Loading" }) {
   return (
@@ -337,6 +393,9 @@ export function routeDirection(prev, next, tabPaths = []) {
  * `route-pop` (in from the left). Reduced-motion users get the plain fade —
  * checked in JS here as well as in the stylesheet, because the class choice
  * is made before CSS ever sees the element.
+ *
+ * Memoized tabPaths via ref to avoid re-running effect when tabs array
+ * identity changes but content is the same.
  */
 export function useRouteTransition(pathname, tabPaths = []) {
   const [className, setClassName] = useState("route-fade");

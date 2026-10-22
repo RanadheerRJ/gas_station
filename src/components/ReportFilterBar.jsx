@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { Chip, ChipRow } from "./Chip.jsx";
 import { Field } from "./ui.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
@@ -47,8 +48,11 @@ export function reportFilters(report) {
  * The staff list is roster data, so the employee picker only appears for the
  * roles that may read it (`canScopeEmployee`); an attendant exports their own
  * shifts without being shown a control with one option in it.
+ *
+ * Memoized: report filters sit inside a sheet that re-renders as the date
+ * range changes; memo keeps the chip row from re-rendering when only dates changed.
  */
-export default function ReportFilterBar({
+function ReportFilterBar({
   report,
   fuelGroup = "ALL",
   onFuelGroup,
@@ -63,6 +67,10 @@ export default function ReportFilterBar({
   const { t } = useLanguage();
   const scope = reportFilters(report);
   const showEmployee = scope.employee && canScopeEmployee;
+  const handleFuel = useCallback((v) => () => onFuelGroup?.(v), [onFuelGroup]);
+  const handleEmployee = useCallback((e) => onEmployee?.(e.target.value), [onEmployee]);
+  const handleStatus = useCallback((e) => onStatus?.(e.target.value), [onStatus]);
+
   if (!scope.fuel && !showEmployee && !scope.status) return null;
 
   return (
@@ -76,7 +84,7 @@ export default function ReportFilterBar({
                 key={value}
                 label={value === "ALL" ? t("report.allFuels") : value}
                 selected={fuelGroup === value}
-                onClick={() => onFuelGroup?.(value)}
+                onClick={handleFuel(value)}
               />
             ))}
           </ChipRow>
@@ -88,7 +96,7 @@ export default function ReportFilterBar({
           <select
             id={`${idPrefix}-employee`}
             value={employeeId}
-            onChange={(event) => onEmployee?.(event.target.value)}
+            onChange={handleEmployee}
           >
             <option value="">{t("report.allEmployees")}</option>
             {staff.map((member) => (
@@ -102,11 +110,7 @@ export default function ReportFilterBar({
 
       {scope.status && (
         <Field label={t("report.status")}>
-          <select
-            id={`${idPrefix}-status`}
-            value={status}
-            onChange={(event) => onStatus?.(event.target.value)}
-          >
+          <select id={`${idPrefix}-status`} value={status} onChange={handleStatus}>
             {STATUSES.map(([value, key]) => (
               <option key={value} value={value}>
                 {t(key)}
@@ -118,3 +122,5 @@ export default function ReportFilterBar({
     </div>
   );
 }
+
+export default memo(ReportFilterBar);

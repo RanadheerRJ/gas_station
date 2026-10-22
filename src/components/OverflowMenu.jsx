@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
 /** Three dots in a row — the conventional "more" mark, unlike the nav's Others tab icon. */
@@ -32,14 +32,11 @@ function DotsIcon({ size = 20 }) {
  * Keyboard: Enter/Space/ArrowDown on the trigger opens it, Arrow keys, Home
  * and End move between items, Escape closes and returns focus to the trigger,
  * and Tab closes it. A press outside also closes it.
+ *
+ * Performance: memoized — the menu is often rendered per-row in lists; memo
+ * keeps closed menus from re-rendering when list state changes.
  */
-export default function OverflowMenu({
-  items,
-  label,
-  placement = "up",
-  align = "end",
-  className = "",
-}) {
+function OverflowMenu({ items, label, placement = "up", align = "end", className = "" }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -47,6 +44,13 @@ export default function OverflowMenu({
   const listRef = useRef(null);
   const menuId = useId();
   const visible = (items || []).filter(Boolean);
+
+  const toggle = useCallback(() => setOpen((v) => !v), []);
+
+  const closeAndRestore = useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -57,52 +61,53 @@ export default function OverflowMenu({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  const enabledItems = () =>
-    Array.from(
-      listRef.current?.querySelectorAll('[role="menuitem"]:not(:disabled)') || []
-    );
+  const enabledItems = useCallback(
+    () =>
+      Array.from(
+        listRef.current?.querySelectorAll('[role="menuitem"]:not(:disabled)') || []
+      ),
+    []
+  );
 
   // Move focus into the menu as it opens so the keyboard lands on the first item.
   useEffect(() => {
     if (open) enabledItems()[0]?.focus();
-  }, [open]);
+  }, [open, enabledItems]);
+
+  const onKeyDown = useCallback(
+    (event) => {
+      if (!open) {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          setOpen(true);
+        }
+        return;
+      }
+      const nodes = enabledItems();
+      const index = nodes.indexOf(document.activeElement);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAndRestore();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        nodes[(index + 1) % nodes.length]?.focus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        nodes[(index - 1 + nodes.length) % nodes.length]?.focus();
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        nodes[0]?.focus();
+      } else if (event.key === "End") {
+        event.preventDefault();
+        nodes[nodes.length - 1]?.focus();
+      } else if (event.key === "Tab") {
+        setOpen(false);
+      }
+    },
+    [open, enabledItems, closeAndRestore]
+  );
 
   if (!visible.length) return null;
-
-  const closeAndRestore = () => {
-    setOpen(false);
-    triggerRef.current?.focus();
-  };
-
-  const onKeyDown = (event) => {
-    if (!open) {
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        setOpen(true);
-      }
-      return;
-    }
-    const nodes = enabledItems();
-    const index = nodes.indexOf(document.activeElement);
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeAndRestore();
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      nodes[(index + 1) % nodes.length]?.focus();
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      nodes[(index - 1 + nodes.length) % nodes.length]?.focus();
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      nodes[0]?.focus();
-    } else if (event.key === "End") {
-      event.preventDefault();
-      nodes[nodes.length - 1]?.focus();
-    } else if (event.key === "Tab") {
-      setOpen(false);
-    }
-  };
 
   return (
     <div
@@ -119,7 +124,7 @@ export default function OverflowMenu({
         aria-controls={open ? menuId : undefined}
         aria-label={label || t("common.moreActions")}
         title={label || t("common.moreActions")}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       >
         <DotsIcon size={20} />
       </button>
@@ -156,3 +161,5 @@ export default function OverflowMenu({
     </div>
   );
 }
+
+export default memo(OverflowMenu);

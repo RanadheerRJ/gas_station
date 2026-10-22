@@ -1,0 +1,122 @@
+/* =====================================================================
+   PÉTRAV — performance & robustness layer
+   ---------------------------------------------------------------------
+   Rendering hints only. Device sizing lives in scaling.css. In particular,
+   the scrolling shell and interactive cards must NOT get paint containment
+   or a transform: either one can become the containing block for fixed bars
+   and clip overflow menus. Keeping those elements out of compositor hacks is
+   part of keeping the UI aligned on mobile Safari and Android WebView.
+   ===================================================================== */
+
+/* Isolate placeholder geometry without affecting real interactive content. */
+.skeleton-card,
+.skeleton-row,
+.skeleton-avatar,
+.skeleton-figure,
+.skeleton-line,
+.skeleton-trailing {
+  contain: layout style paint;
+}
+
+/* Long, simple lists can skip off-screen painting. Focused content is always
+   rendered. Tables are excluded: content-visibility on table rows is still
+   inconsistent in WebKit and can change their track sizing. */
+@supports (content-visibility: auto) {
+  .list-stack .card,
+  .list-stack .list-row,
+  .history-list .history-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
+  }
+
+  .list-row:focus-within,
+  .card:focus-within,
+  .row-enter,
+  .row-exit {
+    content-visibility: visible;
+  }
+}
+
+/* Promote only elements that are actually animating. Blanket translateZ(0)
+   on cards and fixed bars wastes GPU memory and overrides centering transforms
+   on the connection/install toasts. */
+.sheet-root .sheet,
+.sheet-root .backdrop {
+  will-change: transform, opacity;
+}
+
+/* Instant touch feedback without disabling browser zoom. */
+button,
+a,
+.card--pressable,
+.list-row--press,
+.chip,
+.tab,
+.more-tile,
+.tool-btn,
+.overflow-menu__trigger {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable] {
+  user-select: text;
+}
+
+.sheet__body,
+.chip-row,
+.quick-stat-row,
+.hero-carousel,
+.main {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.chip-row,
+.quick-stat-row,
+.hero-carousel {
+  scrollbar-width: none;
+}
+
+.chip-row::-webkit-scrollbar,
+.quick-stat-row::-webkit-scrollbar,
+.hero-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.screen-head,
+.appbar {
+  content-visibility: visible;
+}
+
+.skeleton {
+  backface-visibility: hidden;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-root .sheet,
+  .sheet-root .backdrop {
+    will-change: auto;
+  }
+
+  .loading-bar::after,
+  .skeleton,
+  .live-dot,
+  .spinner {
+    animation: none !important;
+  }
+}

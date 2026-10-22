@@ -11,8 +11,12 @@
  * still renders correctly anywhere the stylesheet has not loaded. Geometry
  * changes must be mirrored in scripts/branding/build-branding.mjs, which
  * regenerates the favicon, PWA and maskable icons from the same paths.
+ *
+ * Performance: all components memoized — branding appears on every screen
+ * (appbar, sidebar, boot) and should never re-render due to parent state.
  */
 
+import { memo } from "react";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
 /* The mark: a fuel pump with a ₹ display, a fuel drop, a red nozzle and
@@ -57,7 +61,12 @@ function tone(name, fallback, mono) {
  * the mark is decorative and hidden from assistive technology — pass a
  * label only where it is the only thing naming the brand on screen.
  */
-export function PetravMark({ size = 28, mono = false, label, className = "" }) {
+export const PetravMark = memo(function PetravMark({
+  size = 28,
+  mono = false,
+  label,
+  className = "",
+}) {
   const c = (name, fallback) => tone(name, fallback, mono);
   return (
     <svg
@@ -152,14 +161,18 @@ export function PetravMark({ size = 28, mono = false, label, className = "" }) {
       </g>
     </svg>
   );
-}
+});
 
 /**
  * The PÉTRAV wordmark. Strokes `currentColor` so it follows the text colour
  * of wherever it sits (near-black in light theme, near-white in dark);
  * `mono` also flattens the red A bar for single-colour contexts.
  */
-export function PetravWordmark({ height = 16, mono = false, className = "" }) {
+export const PetravWordmark = memo(function PetravWordmark({
+  height = 16,
+  mono = false,
+  className = "",
+}) {
   const red = tone("red", "#E31B23", mono);
   return (
     <svg
@@ -194,20 +207,24 @@ export function PetravWordmark({ height = 16, mono = false, className = "" }) {
       />
     </svg>
   );
-}
+});
 
 /**
  * The horizontal lockup — [mark] PÉTRAV — for the app bar and the desktop
  * sidebar. One accessible name for the whole group; the parts are decorative.
  */
-export function PetravLockup({ markSize = 26, wordHeight = 15, label = "PÉTRAV" }) {
+export const PetravLockup = memo(function PetravLockup({
+  markSize = 26,
+  wordHeight = 15,
+  label = "PÉTRAV",
+}) {
   return (
     <div className="brand-lockup" role="img" aria-label={label}>
       <PetravMark size={markSize} />
       <PetravWordmark height={wordHeight} />
     </div>
   );
-}
+});
 
 /**
  * The boot screen: the mark draws itself in (pump rises, ₹ lights up, drop

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useAuth } from "../state/AuthContext";
 import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
@@ -16,16 +16,29 @@ const ROLE_LABEL = {
 };
 
 /** Identity and device preferences, grouped into calm, independent sections. */
-export default function AccountPanel({ onDone, stationName = "" }) {
+function AccountPanel({ onDone, stationName = "" }) {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
     setRefreshing(true);
-    await hardRefreshApp();
-  };
+    try {
+      await hardRefreshApp();
+    } finally {
+      // hardRefresh may reload the page; if not, reset
+      setRefreshing(false);
+    }
+  }, [refreshing]);
+
+  const handleLogout = useCallback(() => {
+    onDone?.();
+    logout();
+  }, [onDone, logout]);
+
+  const handleToggleTheme = useCallback(() => toggleTheme(), [toggleTheme]);
 
   return (
     <div className="account-panel">
@@ -56,7 +69,7 @@ export default function AccountPanel({ onDone, stationName = "" }) {
           <button
             type="button"
             className="account-panel__control account-panel__button"
-            onClick={toggleTheme}
+            onClick={handleToggleTheme}
           >
             {theme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
             <span>{t("account.appearance")}</span>
@@ -114,6 +127,7 @@ export default function AccountPanel({ onDone, stationName = "" }) {
           }}
           onClick={handleRefresh}
           disabled={refreshing}
+          aria-busy={refreshing || undefined}
           title={t("chrome.hardRefreshHint")}
         >
           <RefreshIcon size={13} className={refreshing ? "spin" : ""} />
@@ -124,10 +138,7 @@ export default function AccountPanel({ onDone, stationName = "" }) {
       <button
         type="button"
         className="account-panel__control account-panel__button account-panel__signout"
-        onClick={() => {
-          if (onDone) onDone();
-          logout();
-        }}
+        onClick={handleLogout}
       >
         <LogOutIcon size={18} />
         {t("chrome.signOut")}
@@ -135,3 +146,5 @@ export default function AccountPanel({ onDone, stationName = "" }) {
     </div>
   );
 }
+
+export default memo(AccountPanel);

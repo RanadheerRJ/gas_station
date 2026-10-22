@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { CheckIcon } from "./icons.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
@@ -14,19 +15,26 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  * Colour is never the only signal: completed dots carry a check mark, the
  * current dot is the only ringed one, and the text label always spells out
  * the step.
+ *
+ * Memoized: steps array identity can change on every render; we derive
+ * `firstOpen`/`complete`/`label` via useMemo to avoid recomputing.
  */
-export default function StepProgress({ steps }) {
+function StepProgress({ steps }) {
   const { t } = useLanguage();
-  const firstOpen = steps.findIndex((step) => !step.done);
-  const complete = firstOpen === -1;
-  const activeIndex = complete ? steps.length - 1 : firstOpen;
-  const label = complete
-    ? t("close.readyToSend")
-    : t("close.stepLabel", {
-        step: activeIndex + 1,
-        count: steps.length,
-        label: steps[activeIndex].label,
-      });
+
+  const { complete, activeIndex, label } = useMemo(() => {
+    const open = steps.findIndex((step) => !step.done);
+    const done = open === -1;
+    const active = done ? steps.length - 1 : open;
+    const text = done
+      ? t("close.readyToSend")
+      : t("close.stepLabel", {
+          step: active + 1,
+          count: steps.length,
+          label: steps[active].label,
+        });
+    return { complete: done, activeIndex: active, label: text };
+  }, [steps, t]);
 
   return (
     <div
@@ -62,3 +70,5 @@ export default function StepProgress({ steps }) {
     </div>
   );
 }
+
+export default memo(StepProgress);

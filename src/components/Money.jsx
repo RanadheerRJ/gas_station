@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { money } from "../lib/format.js";
 import { varianceLabel } from "../lib/shiftMath.js";
 
@@ -22,30 +23,36 @@ const VARIANCE_MARKERS = {
  * colour-vision difference) still says received, spent, on credit, total, or
  * the direction of a variance. `label` names the figure to assistive tech;
  * the surrounding row continues to carry the visible translated label.
+ *
+ * Memoized: Money appears in every row of every table — memo + useMemo
+ * avoid recomputing format/variance on re-renders caused by unrelated state.
  */
-export default function Money({ kind, value, label, size = "md" }) {
-  const numeric = Number(value);
-  const amount = Number.isFinite(numeric) ? numeric : 0;
-  const verdict = kind === "variance" ? varianceLabel(value) : null;
-  const varianceState =
-    verdict === "balanced"
-      ? "ok"
-      : verdict === "short"
-        ? "short"
-        : verdict === "excess"
-          ? "over"
-          : "neutral";
-  const marker = kind === "variance" ? VARIANCE_MARKERS[verdict] : MARKERS[kind];
-  const classes = [
-    "money",
-    `money--${kind}`,
-    kind === "variance" ? `money--${varianceState}` : "",
-    size === "lg" ? "money--lg" : "money--md",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const formatted = money(Math.abs(amount));
-  const accessibleAmount = `${amount < 0 ? "minus " : ""}${formatted}`;
+function Money({ kind, value, label, size = "md" }) {
+  const { marker, formatted, accessibleAmount, classes, verdict } = useMemo(() => {
+    const numeric = Number(value);
+    const amount = Number.isFinite(numeric) ? numeric : 0;
+    const v = kind === "variance" ? varianceLabel(value) : null;
+    const varianceState =
+      v === "balanced"
+        ? "ok"
+        : v === "short"
+          ? "short"
+          : v === "excess"
+            ? "over"
+            : "neutral";
+    const m = kind === "variance" ? VARIANCE_MARKERS[v] : MARKERS[kind];
+    const cls = [
+      "money",
+      `money--${kind}`,
+      kind === "variance" ? `money--${varianceState}` : "",
+      size === "lg" ? "money--lg" : "money--md",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const fmt = money(Math.abs(amount));
+    const acc = `${amount < 0 ? "minus " : ""}${fmt}`;
+    return { marker: m, formatted: fmt, accessibleAmount: acc, classes: cls, verdict: v };
+  }, [kind, value, size]);
 
   return (
     <span
@@ -62,3 +69,5 @@ export default function Money({ kind, value, label, size = "md" }) {
     </span>
   );
 }
+
+export default memo(Money);

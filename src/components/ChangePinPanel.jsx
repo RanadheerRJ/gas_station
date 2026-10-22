@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import PinField, { pinReady } from "./PinField";
 import { Notice } from "./ui";
 import { readableError, resetOwnPin } from "../lib/api";
@@ -11,8 +11,11 @@ import { useLanguage } from "../state/LanguageContext.jsx";
  *
  * Collapsed, this is one calm button; expanded, a three-field form. Both
  * shapes live inside the account panel.
+ *
+ * Robust: prevents double-submit via busy guard, clears error on typing,
+ * sanitizes inputs, announces errors via role=alert.
  */
-export default function ChangePinPanel() {
+function ChangePinPanel() {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
@@ -22,35 +25,51 @@ export default function ChangePinPanel() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
-  const close = () => {
+  const close = useCallback(() => {
     setOpen(false);
     setCurrent("");
     setPin("");
     setConfirm("");
     setError("");
     setDone(false);
-  };
+  }, []);
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      await resetOwnPin({ currentPin: current, newPin: pin });
-      setDone(true);
-    } catch (err) {
-      setError(readableError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const openPanel = useCallback(() => setOpen(true), []);
+
+  const handleCurrent = useCallback(
+    (e) => {
+      setCurrent(e.target.value.replace(/\D/g, "").slice(0, 4));
+      if (error) setError("");
+    },
+    [error]
+  );
+
+  const canSubmit = current.length === 4 && pinReady(pin, confirm) && !busy;
+
+  const submit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!canSubmit) return;
+      setError("");
+      setBusy(true);
+      try {
+        await resetOwnPin({ currentPin: current, newPin: pin });
+        setDone(true);
+      } catch (err) {
+        setError(readableError(err));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [canSubmit, current, pin]
+  );
 
   if (!open) {
     return (
       <button
         type="button"
         className="account-panel__control account-panel__button"
-        onClick={() => setOpen(true)}
+        onClick={openPanel}
       >
         {t("account.changePin")}
       </button>
@@ -72,7 +91,7 @@ export default function ChangePinPanel() {
   }
 
   return (
-    <form className="stack" style={{ gap: 12 }} onSubmit={submit}>
+    <form className="stack" style={{ gap: 12 }} onSubmit={submit} noValidate>
       <label className="field">
         <span>
           {t("cred.currentPin")}
@@ -89,8 +108,9 @@ export default function ChangePinPanel() {
           maxLength={4}
           required
           value={current}
-          onChange={(e) => setCurrent(e.target.value.replace(/\D/g, ""))}
+          onChange={handleCurrent}
           placeholder="••••"
+          autoComplete="current-password"
           style={{ letterSpacing: "0.35em", textAlign: "center" }}
         />
       </label>
@@ -102,12 +122,17 @@ export default function ChangePinPanel() {
         label={t("cred.newPin")}
         hint={t("cred.ownPinHint")}
       />
-      {error && <Notice kind="error">{error}</Notice>}
+      {error && (
+        <Notice kind="error" role="alert">
+          {error}
+        </Notice>
+      )}
       <div className="row" style={{ gap: 8 }}>
         <button
           className="primary"
           type="submit"
-          disabled={busy || current.length !== 4 || !pinReady(pin, confirm)}
+          disabled={!canSubmit}
+          aria-busy={busy || undefined}
         >
           {busy ? t("cred.changing") : t("cred.setNewPin")}
         </button>
@@ -118,3 +143,5 @@ export default function ChangePinPanel() {
     </form>
   );
 }
+
+export default memo(ChangePinPanel);
