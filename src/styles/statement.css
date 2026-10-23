@@ -78,6 +78,14 @@
   color: var(--rust);
 }
 
+/* The last payment, stated once under the figure: the sentence that decides
+   whether an account needs a phone call today. */
+.balance-card__last {
+  display: block;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
 .balance-card__actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

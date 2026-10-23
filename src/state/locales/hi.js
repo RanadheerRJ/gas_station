@@ -921,6 +921,8 @@ const hi = {
   "shifts.tabRunning": "चल रही",
   "shifts.searchEmployee": "कर्मचारी खोजें",
   "shifts.searchEmployeeHint": "कर्मचारी के नाम से खोजें",
+  "shifts.clearSearch": "खोज साफ़ करें",
+  "shifts.showingCount": "{total} शिफ्ट में से {shown} दिख रही हैं",
   "shifts.presetToday": "आज",
   "shifts.presetYesterday": "कल",
   "shifts.presetLast7": "पिछले 7 दिन",

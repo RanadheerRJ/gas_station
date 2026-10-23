@@ -116,9 +116,9 @@ export default function ShiftDetail() {
 }
 
 /** One receipt section: a card behind a native, keyboard-safe disclosure. */
-export function CollapsibleSection({ title, children, testId }) {
+export function CollapsibleSection({ title, children, testId, defaultOpen = true }) {
   return (
-    <details className="shift-collapse" open data-testid={testId}>
+    <details className="shift-collapse" open={defaultOpen} data-testid={testId}>
       <summary className="shift-collapse__summary">
         <span>{title}</span>
         <span className="shift-collapse__chev" aria-hidden="true">
@@ -261,7 +261,10 @@ export function SettledShiftDetail({
         </CollapsibleSection>
       </div>
 
-      <CollapsibleSection title={t("shifts.expensesAndTesting")}>
+      {/* A reviewer arrives to correct expenses and testing, so that section
+          is already open for them. Everybody else gets the receipts folded
+          away and the money-first sections open. */}
+      <CollapsibleSection title={t("shifts.expensesAndTesting")} defaultOpen={canReview}>
         <ExpensesTestingCard
           shift={shift}
           totals={totals}
@@ -281,13 +284,13 @@ export function SettledShiftDetail({
       </CollapsibleSection>
 
       {canReview && creditReview && (
-        <CollapsibleSection title={t("shifts.creditReview")}>
+        <CollapsibleSection title={t("shifts.creditReview")} defaultOpen={false}>
           <CreditReviewCard review={creditReview} />
         </CollapsibleSection>
       )}
 
       {(shift.creditSales || []).length > 0 && (
-        <CollapsibleSection title={t("shifts.creditSalesHeading")}>
+        <CollapsibleSection title={t("shifts.creditSalesHeading")} defaultOpen={false}>
           <CreditSalesCard creditSales={shift.creditSales} customers={customers} />
         </CollapsibleSection>
       )}

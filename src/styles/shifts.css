@@ -770,6 +770,18 @@ a.shift-card:active {
     0 0 0 1px rgba(21, 163, 74, 0.08);
 }
 
+/* Waiting on a sign-off is the one card state that asks the reader to do
+   something, so it is marked at the edge instead of with one more badge. */
+.shift-card[data-status="pending_review"] {
+  border-left: 3px solid var(--amber);
+  padding-left: 13px;
+}
+
+.shift-card[data-status="rejected"] {
+  border-left: 3px solid var(--money-out);
+  padding-left: 13px;
+}
+
 .shift-card__avatar {
   width: 42px;
   height: 42px;
@@ -825,7 +837,9 @@ a.shift-card:active {
   flex-direction: column;
   align-items: flex-end;
   gap: 1px;
+  max-width: 45%;
   text-align: right;
+  overflow: hidden;
 }
 
 .shift-card__amount .k {
@@ -838,6 +852,12 @@ a.shift-card:active {
 
 .shift-card__amount .money {
   font-size: 16px;
+}
+
+.shift-card__gross {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .shift-card__foot {
@@ -883,6 +903,53 @@ a.shift-card:active {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* The running card's foot: fuel tags on the left, the three actions on the
+   right. Below 640px the actions take their own full-width row and the close
+   button keeps the right edge, so a thumb never has to aim at a 38px target
+   squeezed between two others. */
+.shift-card__foot--live {
+  gap: 10px;
+}
+
+.shift-card__fuel {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.shift-card__act {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.shift-card__act:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-strong);
+}
+
+.shift-card__act:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 640px) {
+  .shift-card__actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .shift-card__actions .shift-card__close {
+    margin-left: auto;
+  }
 }
 
 /* Closing a shift is the card's one decisive action, so it is a filled
@@ -1112,29 +1179,119 @@ a.shift-card:active {
 }
 
 /* ---- Prompt 8: status chips, search, date groups, receipt detail ---- */
-.shifts-filterbar {
+
+/* The list's one control block. It sticks under the top of the scroll so the
+   search field and the shelves stay reachable while a long feed scrolls; the
+   opaque background is the page colour, not a translucent bar, because rows
+   sliding under a half-transparent strip look like a rendering fault. */
+.shifts-toolbar {
   position: sticky;
   top: 0;
   z-index: 15;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 10px;
+  background: var(--bg);
+}
+
+.shifts-filterbar {
+  display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  padding: 6px 0 10px;
-  background: var(--topbar-bg);
 }
+
 .shifts-filterbar .chip-row {
   flex: 1 1 auto;
 }
-.shifts-date-pill {
-  min-height: var(--tap-min, 44px);
+
+/* Date range reads as a filter, so it states its value and turns on only
+   when it is narrowing the list. */
+.shifts-date-pill.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
+
 .shifts-search {
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-height: var(--tap-min, 44px);
+  padding: 0 6px 0 14px;
   border-radius: var(--radius-pill, 999px);
-  padding: 0 16px;
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: var(--shadow-xs);
 }
+
+.shifts-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.shifts-search input {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: calc(var(--tap-min, 44px) - 2px);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.shifts-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.shifts-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.shifts-search__clear {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--muted);
+}
+
+.shifts-search__clear:hover {
+  color: var(--ink);
+}
+
+.shifts-search__clear:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.shifts-clear {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.shifts-count {
+  margin: -4px 0 0;
+}
+
 .shifts-date-field {
   flex: 1;
   min-width: 130px;
@@ -1146,26 +1303,6 @@ a.shift-card:active {
 .shift-date-group__title {
   font-size: 15px;
   margin: 8px 0 0;
-}
-.shift-card-wrap {
-  position: relative;
-  display: grid;
-}
-.shift-card__review {
-  justify-self: end;
-  margin-top: -6px;
-  min-height: var(--tap-min, 44px);
-  display: inline-flex;
-  align-items: center;
-  padding: 0 16px;
-  border-radius: var(--radius-pill, 999px);
-  background: var(--cta-bg, var(--ink-strong));
-  color: var(--cta-ink, var(--surface));
-  font-weight: 700;
-  text-decoration: none;
-}
-.shift-card__review:active {
-  transform: scale(0.97);
 }
 .shifts-show-more {
   min-height: var(--tap-min, 44px);
@@ -1179,14 +1316,15 @@ a.shift-card:active {
   align-items: flex-start;
 }
 .shift-hero__figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
   margin-top: 14px;
 }
 .shift-hero__figures > span {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 .shift-hero__figures .k {
   font-size: 12px;
@@ -1214,6 +1352,11 @@ a.shift-card:active {
 .shift-collapse__summary::-webkit-details-marker {
   display: none;
 }
+.shift-collapse__summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-card, 20px);
+}
 .shift-collapse:not([open]) .shift-collapse__chev {
   transform: rotate(-90deg);
 }
@@ -1230,10 +1373,30 @@ a.shift-card:active {
   display: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .shift-card__review:active {
-    transform: none;
-  }
   .shift-collapse__chev {
     transition: none;
+  }
+}
+
+/* ---- wider screens ---- */
+
+@media (min-width: 861px) {
+  .shift-hero__figures {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* A phone already has one primary route to the start flow — the raised centre
+   button in the tab bar — so the header button is removed there instead of
+   stacking a second, narrower copy of it beside the title. */
+@media (max-width: 860px) {
+  .shifts-head-cta {
+    display: none;
+  }
+
+  /* Export is secondary: a compact pill on the right of the title row rather
+     than a full-width bar the label wraps inside. */
+  .shifts-report-cta {
+    margin-left: auto;
   }
 }

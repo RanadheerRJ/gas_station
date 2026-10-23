@@ -1852,6 +1852,23 @@ tbody tr.money-row--variance:hover > td {
   color: var(--ink);
 }
 
+/* An error line with its own retry control: the sentence stays readable and
+   the button keeps a 44px tap target instead of shrinking to the text size. */
+.notice-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.notice-line .quiet {
+  min-height: 36px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .notice.error {
   border-left-color: var(--rust);
   background: rgba(220, 38, 38, 0.08);
