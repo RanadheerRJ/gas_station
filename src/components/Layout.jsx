@@ -24,6 +24,7 @@ import Sheet from "./Sheet.jsx";
 import { avatarHue, initials } from "../lib/avatar.js";
 import AccountPanel from "./AccountPanel.jsx";
 import ListRow from "./ListRow.jsx";
+import ServiceLauncher from "./ServiceLauncher.jsx";
 import { Chip } from "./Chip.jsx";
 import {
   BackIcon,
@@ -55,6 +56,12 @@ const ROLE_LABEL = {
   attendant: "role.attendant",
 };
 
+const ROLE_HOME = {
+  owner: "/owner",
+  manager: "/station",
+  attendant: "/today",
+};
+
 const MOBILE_NAV_LABEL = {
   "nav.creditCustomers": "nav.mobile.credit",
   "nav.groundStock": "nav.mobile.stock",
@@ -71,9 +78,9 @@ const MOBILE_NAV_LABEL = {
  * is a single page, so it gets no tab bar at all — one tab is a label, not a
  * menu.
  *
- * The same list drives the desktop sidebar (where everything is shown flat —
- * there is room), the mobile tab bar and the More sheet's tile grid, so the
- * three never drift apart.
+ * The same list drives the service launcher, desktop sidebar (where everything
+ * is shown flat — there is room), mobile tab bar and More sheet's tile grid,
+ * so the four never drift apart.
  */
 export function destinationsFor(role) {
   switch (role) {
@@ -203,10 +210,14 @@ export default function Layout() {
   // order between renders and React throws.
   const { online, restored } = useConnection();
   const install = useInstallPrompt();
-  const { pathname } = useLocation();
+  const { pathname, key: locationKey } = useLocation();
   const { stations, station, stationId, setStation } = useStation();
   const [accountOpen, setAccountOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // A home route opens as a launcher on each new history entry. Revealing its
+  // original dashboard is remembered only for that entry, so browser Back can
+  // restore the dashboard while a fresh tap on Home returns to the grid.
+  const [revealedHomeKey, setRevealedHomeKey] = useState(null);
   // The More sheet shows the tile grid, or swaps to the language choices when
   // a Language tile (or the top-bar globe) asked for them.
   const [morePanel, setMorePanel] = useState("tiles");
@@ -241,6 +252,9 @@ export default function Layout() {
         : profile?.role === "attendant"
           ? "/today/start"
           : null;
+  const homePath = ROLE_HOME[profile?.role];
+  const isRoleHome = pathname === homePath;
+  const showLauncher = isRoleHome && revealedHomeKey !== locationKey;
 
   const openMoreTiles = useCallback(() => {
     setMorePanel("tiles");
@@ -275,8 +289,22 @@ export default function Layout() {
   }, [toggleTheme]);
 
   const toggleThemeCb = useCallback(() => toggleTheme(), [toggleTheme]);
+  const openHomePanel = useCallback(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+    setRevealedHomeKey(locationKey);
+  }, [locationKey]);
+  const closeHomePanel = useCallback(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+    setRevealedHomeKey(null);
+  }, []);
 
   useScrollMemory(pathname, tabPaths, mainRef);
+  // The launcher and its dashboard have different heights and must not share
+  // a saved scroll offset. A revealed dashboard still restores its own offset
+  // on browser Back through useScrollMemory above.
+  useLayoutEffect(() => {
+    if (showLauncher && mainRef.current) mainRef.current.scrollTop = 0;
+  }, [showLauncher, locationKey]);
 
   if (!profile) return null;
 
@@ -421,7 +449,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className="main" ref={mainRef}>
+      <div className={`main${showLauncher ? " main--launcher" : ""}`} ref={mainRef}>
         <ConnBanner online={online} restored={restored} t={t} />
         <InstallBar install={install} t={t} />
 
@@ -429,7 +457,34 @@ export default function Layout() {
             The class says which way the screen is travelling; reduced-motion
             users always get the plain fade (see motion.jsx). */}
         <div className={transitionClass} key={pathname}>
-          <Outlet />
+          {showLauncher ? (
+            <>
+              <ScreenHeader title={t("home.services")} sub={t("home.servicesSubtitle")} />
+              <ServiceLauncher
+                tabs={tabs}
+                more={more}
+                startPath={startPath}
+                homePath={homePath}
+                onOpenHome={openHomePanel}
+              />
+            </>
+          ) : (
+            <>
+              {isRoleHome && (
+                <div className="home-return">
+                  <button
+                    type="button"
+                    className="home-return__button"
+                    onClick={closeHomePanel}
+                  >
+                    <BackIcon size={18} />
+                    {t("home.allServices")}
+                  </button>
+                </div>
+              )}
+              <Outlet />
+            </>
+          )}
         </div>
       </div>
 

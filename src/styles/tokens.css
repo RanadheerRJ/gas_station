@@ -19,6 +19,7 @@
   --panel: #ffffff;
   --surface-raised: #ffffff;
   --surface-sunken: #f1f3f7;
+  --launcher-bg: #f6f3f8;
   --ink: #101828;
   --ink-strong: #0a1120;
   --muted: #667085;
@@ -197,6 +198,7 @@
   --panel: #131a24;
   --surface-raised: #182130;
   --surface-sunken: #0e141d;
+  --launcher-bg: #0e121b;
   --ink: #e8edf4;
   --ink-strong: #f6f8fb;
   --muted: #8f9cb0;

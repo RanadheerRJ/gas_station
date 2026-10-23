@@ -405,6 +405,116 @@ describe("the station switcher", () => {
   });
 });
 
+describe("the role-home service launcher", () => {
+  let container = null;
+  let root = null;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    stationsMock.list = [];
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      root?.unmount();
+    });
+    container?.remove();
+    container = null;
+    root = null;
+    auth.profile = null;
+    lastLocation.current = null;
+  });
+
+  async function renderHome(role, route) {
+    auth.profile = {
+      uid: `u-${role}`,
+      role,
+      name: `${role} User`,
+      username: role,
+    };
+    await act(async () => {
+      root = createRoot(container);
+      root.render(
+        <MemoryRouter initialEntries={[route]}>
+          <LocationProbe />
+          <ThemeProvider>
+            <LanguageProvider>
+              <Routes>
+                <Route element={<Layout />}>
+                  <Route
+                    path={route}
+                    element={<div data-testid="home-workspace">Dashboard details</div>}
+                  />
+                  <Route
+                    path="/owner/stock"
+                    element={<div data-testid="stock-workspace">Stock workspace</div>}
+                  />
+                </Route>
+              </Routes>
+            </LanguageProvider>
+          </ThemeProvider>
+        </MemoryRouter>
+      );
+    });
+  }
+
+  it.each([
+    ["owner", "/owner", "Overview", 9],
+    ["manager", "/station", "Shifts", 7],
+    ["attendant", "/today", "Today", 6],
+  ])(
+    "hides the %s dashboard until its home tile is tapped",
+    async (role, route, homeLabel, serviceCount) => {
+      await renderHome(role, route);
+
+      expect(container.querySelector(".screen-head h1").textContent).toBe("Services");
+      expect(container.querySelector('[data-testid="home-workspace"]')).toBeNull();
+      expect(container.querySelectorAll(".service-grid .service-tile")).toHaveLength(
+        serviceCount
+      );
+
+      const homeTile = Array.from(
+        container.querySelectorAll(".service-grid .service-tile")
+      ).find((tile) => tile.textContent.trim() === homeLabel);
+      expect(homeTile.tagName).toBe("BUTTON");
+
+      container.querySelector(".main").scrollTop = 180;
+      await act(async () => {
+        homeTile.click();
+      });
+      expect(container.querySelector(".service-grid")).toBeNull();
+      expect(container.querySelector('[data-testid="home-workspace"]')).toBeTruthy();
+      expect(container.querySelector(".main").scrollTop).toBe(0);
+
+      const allServices = Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent.trim() === "All services"
+      );
+      expect(allServices).toBeTruthy();
+      container.querySelector(".main").scrollTop = 180;
+      await act(async () => {
+        allServices.click();
+      });
+      expect(container.querySelector('[data-testid="home-workspace"]')).toBeNull();
+      expect(container.querySelector(".service-grid")).toBeTruthy();
+      expect(container.querySelector(".main").scrollTop).toBe(0);
+    }
+  );
+
+  it("opens non-home services on their existing routes", async () => {
+    await renderHome("owner", "/owner");
+    const stockTile = container.querySelector('.service-grid a[href="/owner/stock"]');
+    expect(stockTile).toBeTruthy();
+
+    await act(async () => {
+      stockTile.click();
+    });
+    expect(lastLocation.current.pathname).toBe("/owner/stock");
+    expect(container.querySelector('[data-testid="stock-workspace"]')).toBeTruthy();
+    expect(container.querySelector(".service-grid")).toBeNull();
+  });
+});
+
 describe("scroll behaviour between screens", () => {
   let container = null;
   let root = null;
@@ -441,6 +551,10 @@ describe("scroll behaviour between screens", () => {
                     path="/owner/shifts"
                     element={<div style={{ height: 3000 }}>shifts</div>}
                   />
+                  <Route
+                    path="/owner/stock"
+                    element={<div style={{ height: 3000 }}>stock</div>}
+                  />
                 </Route>
               </Routes>
             </LanguageProvider>
@@ -455,6 +569,30 @@ describe("scroll behaviour between screens", () => {
   }
 
   it("starts a forward navigation at the top and restores the position on back", async () => {
+    await renderShell("/owner/shifts");
+    main().scrollTop = 500;
+
+    const stockTab = Array.from(container.querySelectorAll(".tabbar .tab")).find((tab) =>
+      tab.textContent.includes("Stock")
+    );
+    await act(async () => {
+      stockTab.click();
+    });
+    // Opening another workspace starts it at the top.
+    expect(main().scrollTop).toBe(0);
+
+    main().scrollTop = 300;
+    const shiftsTab = Array.from(container.querySelectorAll(".tabbar .tab")).find((tab) =>
+      tab.textContent.includes("Shifts")
+    );
+    await act(async () => {
+      shiftsTab.click();
+    });
+    // Coming back returns the list to where it was left.
+    expect(main().scrollTop).toBe(500);
+  });
+
+  it("does not apply a dashboard's old scroll offset to the service launcher", async () => {
     await renderShell("/owner");
     main().scrollTop = 500;
 
@@ -464,17 +602,14 @@ describe("scroll behaviour between screens", () => {
     await act(async () => {
       shiftsTab.click();
     });
-    // Going deeper into the app starts the new screen at the top.
-    expect(main().scrollTop).toBe(0);
-
-    main().scrollTop = 300;
     const homeTab = Array.from(container.querySelectorAll(".tabbar .tab")).find((tab) =>
       tab.textContent.includes("Overview")
     );
     await act(async () => {
       homeTab.click();
     });
-    // Coming back returns the list to where it was left.
-    expect(main().scrollTop).toBe(500);
+
+    expect(container.querySelector(".service-grid")).toBeTruthy();
+    expect(main().scrollTop).toBe(0);
   });
 });
