@@ -4,17 +4,11 @@ import { CredentialPanel, Field, Notice } from "../components/ui.jsx";
 import { useAuth } from "../state/AuthContext";
 import { useStations } from "../state/useStations";
 import PinField, { pinReady } from "../components/PinField";
-import ResetPinPanel from "../components/ResetPinPanel";
 import Sheet from "../components/Sheet.jsx";
+import StaffRoster from "../components/StaffRoster.jsx";
 import { PlusIcon } from "../components/icons.jsx";
 import { createStaff, listStaff, readableError } from "../lib/api";
 import { phoneProblem } from "../lib/validate.js";
-import { formatStamp } from "../lib/format";
-import { Chip, ChipRow } from "../components/Chip.jsx";
-import Skeleton from "../components/Skeleton.jsx";
-import EmptyState from "../components/EmptyState.jsx";
-import ListRow from "../components/ListRow.jsx";
-import { PeopleIcon } from "../components/icons.jsx";
 import { useLanguage } from "../state/LanguageContext.jsx";
 
 /**
@@ -40,10 +34,6 @@ export default function OwnerStaff() {
   const [error, setError] = useState("");
   const [credentials, setCredentials] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [resetting, setResetting] = useState(null);
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -120,64 +110,12 @@ export default function OwnerStaff() {
         }
       />
       <div className="content stack">
-        {loading ? (
-          <Skeleton shape="row" count={3} />
-        ) : staff.length === 0 ? (
-          <EmptyState icon={PeopleIcon} headline={t("staff.none")} />
-        ) : (
-          <>
-            <input
-              type="search"
-              className="shifts-search"
-              aria-label={t("staff.searchStaff")}
-              placeholder={t("staff.searchStaff")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <ChipRow label={t("staff.role")}>
-              {[
-                ["all", t("staff.allRoles")],
-                ["manager", t("role.manager")],
-                ["attendant", t("role.attendant")],
-              ].map(([id, label]) => (
-                <Chip
-                  key={id}
-                  label={label}
-                  count={
-                    id === "all"
-                      ? staff.length
-                      : staff.filter((m) => m.role === id).length
-                  }
-                  selected={roleFilter === id}
-                  onClick={() => setRoleFilter(id)}
-                />
-              ))}
-            </ChipRow>
-            <section className="card">
-              {staff
-                .filter(
-                  (m) =>
-                    (roleFilter === "all" || m.role === roleFilter) &&
-                    (!search.trim() ||
-                      `${m.name} ${m.phone} ${m.username}`
-                        .toLowerCase()
-                        .includes(search.trim().toLowerCase()))
-                )
-                .map((member) => (
-                  <ListRow
-                    key={member.uid}
-                    avatar={member.name}
-                    title={member.name}
-                    subtitle={`${t(`role.${member.role}`)} · ${stationName((member.stationIds || [])[0])} · ${member.phone || ""}`}
-                    trailing={
-                      <span className="small muted">{formatStamp(member.createdAt)}</span>
-                    }
-                    onClick={() => setSelected(member)}
-                  />
-                ))}
-            </section>
-          </>
-        )}
+        <StaffRoster
+          staff={staff}
+          loading={loading}
+          emptyHeadline={t("staff.none")}
+          stationName={stationName}
+        />
       </div>
 
       {/* ---- create a login ---- */}
@@ -287,41 +225,6 @@ export default function OwnerStaff() {
               </button>
             </div>
           </form>
-        )}
-      </Sheet>
-
-      <Sheet
-        open={!!selected}
-        onClose={() => setSelected(null)}
-        title={selected?.name || ""}
-      >
-        {selected && (
-          <div className="stack">
-            <p className="small muted">
-              {t(`role.${selected.role}`)} · {selected.phone || ""} · @{selected.username}
-            </p>
-            <button
-              type="button"
-              className="cta"
-              onClick={() => {
-                setResetting(selected);
-                setSelected(null);
-              }}
-            >
-              {t("staff.resetPin")}
-            </button>
-          </div>
-        )}
-      </Sheet>
-
-      {/* ---- reset a PIN ---- */}
-      <Sheet
-        open={!!resetting}
-        onClose={() => setResetting(null)}
-        title={t("cred.settingFor", { name: resetting?.name || "" })}
-      >
-        {resetting && (
-          <ResetPinPanel target={resetting} onDone={() => setResetting(null)} />
         )}
       </Sheet>
     </>

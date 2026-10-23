@@ -200,6 +200,17 @@ export default function Login() {
           : "";
 
   const submit = tab === "staff" ? submitStaff : submitDeveloper;
+  const feedback = (
+    <>
+      {!supabaseConfigured && <Notice kind="error">{t("login.noProject")}</Notice>}
+      {error && (
+        <p className="login-error" role="alert">
+          <AlertIcon size={15} />
+          {error}
+        </p>
+      )}
+    </>
+  );
 
   return (
     <div className="login">
@@ -294,15 +305,7 @@ export default function Login() {
                 />
               </div>
 
-              {!supabaseConfigured && (
-                <Notice kind="error">{t("login.noProject")}</Notice>
-              )}
-              {error && (
-                <p className="login-error" role="alert">
-                  <AlertIcon size={15} />
-                  {error}
-                </p>
-              )}
+              {feedback}
 
               <p className="small muted login__note">{t("login.forgotPin")}</p>
             </form>
@@ -339,15 +342,7 @@ export default function Login() {
                 />
               </FloatField>
 
-              {!supabaseConfigured && (
-                <Notice kind="error">{t("login.noProject")}</Notice>
-              )}
-              {error && (
-                <p className="login-error" role="alert">
-                  <AlertIcon size={15} />
-                  {error}
-                </p>
-              )}
+              {feedback}
 
               <p className="small muted login__note">{t("login.developerNote")}</p>
             </form>
