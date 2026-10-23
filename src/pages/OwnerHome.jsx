@@ -156,14 +156,16 @@ export default function OwnerHome() {
           date: todayISO(),
         })}
         actions={
-          <button
-            type="button"
-            className="tool-btn tool-btn--primary"
-            onClick={() => setShowAdd(true)}
-          >
-            <PlusIcon size={16} />
-            {t("owner.addStation")}
-          </button>
+          stations.length > 0 && (
+            <button
+              type="button"
+              className="tool-btn tool-btn--primary"
+              onClick={() => setShowAdd(true)}
+            >
+              <PlusIcon size={16} />
+              {t("owner.addStation")}
+            </button>
+          )
         }
       />
       <div className="content stack home-feed">
@@ -300,18 +302,6 @@ export default function OwnerHome() {
                     <span>{t(label)}</span>
                   </Link>
                 ))}
-                {quickTab === "station" && (
-                  <button
-                    type="button"
-                    className="quick-tile"
-                    onClick={() => setShowAdd(true)}
-                  >
-                    <span className="quick-tile__icon" aria-hidden="true">
-                      <PlusIcon size={23} />
-                    </span>
-                    <span>{t("owner.addStation")}</span>
-                  </button>
-                )}
               </div>
             </section>
 

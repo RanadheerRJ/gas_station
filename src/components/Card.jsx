@@ -151,20 +151,5 @@ const Card = memo(
 
 Card.displayName = "Card";
 
-export function CardSkeleton({ count = 1 } = {}) {
-  const n = Math.max(1, Math.min(count, 6));
-  return (
-    <div className="skeleton-stack" role="status" aria-busy="true" aria-label="Loading">
-      {Array.from({ length: n }).map((_, i) => (
-        <div key={i} className="skeleton-card" aria-hidden="true">
-          <div className="skeleton skeleton-line short" />
-          <div className="skeleton skeleton-figure" />
-          <div className="skeleton skeleton-line wide" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export { Card };
 export default Card;

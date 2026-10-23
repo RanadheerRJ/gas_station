@@ -1,10 +1,10 @@
-import { Empty, Field, Panel } from "../../components/ui";
+import { Empty, Panel } from "../../components/ui";
 import { PumpIcon } from "../../components/icons";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { useLanguage } from "../../state/LanguageContext.jsx";
 import PumpCard from "./PumpCard.jsx";
 
-/** Every pump at the station, plus the one field that adds another. */
+/** Every pump at the station. Adding a pump lives in the screen's single sheet. */
 export default function EquipmentPanel({
   loading,
   pumps,
@@ -12,9 +12,6 @@ export default function EquipmentPanel({
   tanks,
   active,
   busy,
-  pumpName,
-  setPumpName,
-  onSubmitPump,
   nozzleFor,
   nozzleForm,
   setNozzleForm,
@@ -34,26 +31,6 @@ export default function EquipmentPanel({
       }
       flush
     >
-      <div className="body" style={{ borderBottom: "1px solid var(--hairline)" }}>
-        <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
-          <Field label={t("setup.addAPump")}>
-            <input
-              value={pumpName}
-              onChange={(e) => setPumpName(e.target.value)}
-              placeholder="Pump 3"
-              style={{ width: 200 }}
-            />
-          </Field>
-          <button
-            type="button"
-            disabled={busy || !pumpName.trim()}
-            onClick={onSubmitPump}
-          >
-            {t("setup.addPump")}
-          </button>
-        </div>
-      </div>
-
       {loading ? (
         <LoadingPanels count={2} lines={3} label={t("common.loading")} />
       ) : pumps.length === 0 ? (

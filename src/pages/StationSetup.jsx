@@ -114,9 +114,6 @@ export default function StationSetup() {
             tanks={tanks}
             active={active}
             busy={busy}
-            pumpName={pumpName}
-            setPumpName={setPumpName}
-            onSubmitPump={submitPump}
             nozzleFor={nozzleFor}
             nozzleForm={nozzleForm}
             setNozzleForm={setNozzleForm}
