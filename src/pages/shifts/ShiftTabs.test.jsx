@@ -292,7 +292,11 @@ describe("ShiftsList & TodayHistory tabbed UI", () => {
     });
     expect(container.textContent).toContain("Ravi Kumar");
     expect(container.textContent).not.toContain("Anitha Rao");
-    expect(container.querySelector(".shift-card__review")).toBeTruthy();
+    // The card itself carries the review state, so the row is marked without
+    // a second floating link to the same detail screen.
+    expect(
+      container.querySelector('.shift-card[data-status="pending_review"]')
+    ).toBeTruthy();
 
     // Sent back: Anitha Rao only.
     await act(async () => {
@@ -311,12 +315,7 @@ describe("ShiftsList & TodayHistory tabbed UI", () => {
 
   it("searches by employee name and clears filters back to every shift", async () => {
     await mount(<ShiftsList />);
-    const searchBtn = [...container.querySelectorAll("button")].find((b) =>
-      b.textContent.includes("Search")
-    );
-    await act(async () => {
-      searchBtn.click();
-    });
+    // The search field is always on screen now — there is no mode to open.
     const input = container.querySelector('input[type="search"]');
     expect(input).toBeTruthy();
     await act(async () => {

@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import { Notice } from "../../components/ui.jsx";
 import { LoadingPanels } from "../../components/motion.jsx";
-import { ChevronIcon, PlusIcon, SearchIcon, ShiftIcon } from "../../components/icons.jsx";
+import {
+  ChevronIcon,
+  CloseIcon,
+  PlusIcon,
+  SearchIcon,
+  ShiftIcon,
+} from "../../components/icons.jsx";
 import { Chip, ChipRow } from "../../components/Chip.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
@@ -84,7 +90,6 @@ export default function ShiftsList() {
   const [shifts, setShifts] = useState([]);
   const [statusFilter, setStatusFilter] = useState(STATUS_FILTER.ALL);
   const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [preset, setPreset] = useState(DATE_PRESET.ALL);
   const [customFrom, setCustomFrom] = useState(todayISO());
   const [customTo, setCustomTo] = useState(todayISO());
@@ -219,26 +224,17 @@ export default function ShiftsList() {
         }
         actions={
           <>
-            <button
-              type="button"
-              className="tool-btn"
-              aria-expanded={searchOpen}
-              aria-label={t("shifts.searchEmployee")}
-              onClick={() => setSearchOpen((v) => !v)}
-            >
-              <SearchIcon size={16} />
-              {t("common.search")}
-            </button>
             <ReportSheet
               report="shifts"
               title={t("shifts.statement")}
+              triggerClassName="tool-btn tool-btn--compact shifts-report-cta"
               fileTitle="Daily Sales Statement"
               stationName={station?.name || ""}
               buildReport={buildReport}
             />
             <button
               type="button"
-              className="tool-btn tool-btn--primary"
+              className="tool-btn tool-btn--primary shifts-head-cta"
               onClick={() => navigate(paths.start)}
             >
               <PlusIcon size={16} />
@@ -248,51 +244,99 @@ export default function ShiftsList() {
         }
       />
       <div className="content stack">
-        {error && <Notice kind="error">{error}</Notice>}
+        {error && (
+          <Notice kind="error">
+            <span className="notice-line">
+              {error}
+              <button type="button" className="small quiet" onClick={load}>
+                {t("common.retry")}
+              </button>
+            </span>
+          </Notice>
+        )}
 
         {loading ? (
           <Skeleton shape="card" count={3} />
         ) : (
           <>
-            {searchOpen && (
-              <input
-                type="search"
-                className="shifts-search"
-                aria-label={t("shifts.searchEmployee")}
-                placeholder={t("shifts.searchEmployeeHint")}
-                value={query}
-                autoFocus
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setLimit(PAGE_SIZE);
-                }}
-              />
-            )}
-            <div className="shifts-filterbar">
-              <ChipRow label={t("common.status")}>
-                {statusDefs.map((def) => (
-                  <Chip
-                    key={def.id}
-                    label={def.label}
-                    count={def.count}
-                    selected={statusFilter === def.id}
+            {/* One control block above the feed: a search field that is
+                always there (no hidden mode to discover), the status shelves,
+                and the date range — which used to be a chip lost among five
+                equally-weighted ones. */}
+            <div className="shifts-toolbar">
+              <div className="shifts-search">
+                <SearchIcon size={16} />
+                <input
+                  type="search"
+                  aria-label={t("shifts.searchEmployee")}
+                  placeholder={t("shifts.searchEmployeeHint")}
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setLimit(PAGE_SIZE);
+                  }}
+                />
+                {query && (
+                  <button
+                    type="button"
+                    className="shifts-search__clear"
+                    aria-label={t("shifts.clearSearch")}
                     onClick={() => {
-                      setStatusFilter(def.id);
+                      setQuery("");
                       setLimit(PAGE_SIZE);
                     }}
-                  />
-                ))}
-              </ChipRow>
-              <button
-                type="button"
-                className="chip shifts-date-pill"
-                aria-haspopup="dialog"
-                onClick={() => setDateSheetOpen(true)}
-              >
-                {t("shifts.dateFilter")}:{" "}
-                {t(PRESET_DEFS.find(([id]) => id === preset)?.[1] || "shifts.presetAll")}
-              </button>
+                  >
+                    <CloseIcon size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="shifts-filterbar">
+                <ChipRow label={t("common.status")}>
+                  {statusDefs.map((def) => (
+                    <Chip
+                      key={def.id}
+                      label={def.label}
+                      count={def.count}
+                      selected={statusFilter === def.id}
+                      onClick={() => {
+                        setStatusFilter(def.id);
+                        setLimit(PAGE_SIZE);
+                      }}
+                    />
+                  ))}
+                </ChipRow>
+                <button
+                  type="button"
+                  className={`chip shifts-date-pill${
+                    preset !== DATE_PRESET.ALL ? " is-active" : ""
+                  }`}
+                  aria-haspopup="dialog"
+                  onClick={() => setDateSheetOpen(true)}
+                >
+                  {t(
+                    PRESET_DEFS.find(([id]) => id === preset)?.[1] || "shifts.presetAll"
+                  )}
+                </button>
+              </div>
+              {filtersActive && (
+                <button
+                  type="button"
+                  className="shifts-clear small"
+                  onClick={clearFilters}
+                >
+                  {t("shifts.clearFilters")}
+                </button>
+              )}
             </div>
+
+            {visible.length > 0 && (
+              <p className="shifts-count small muted">
+                {t("shifts.showingCount", {
+                  shown: Math.min(limit, visible.length),
+                  total: visible.length,
+                })}
+              </p>
+            )}
 
             {visible.length === 0 ? (
               <EmptyState
@@ -303,8 +347,10 @@ export default function ShiftsList() {
                 body={
                   filtersActive ? t("shifts.noMatchesBody") : t("shifts.emptyClosedBody")
                 }
-                actionLabel={filtersActive ? t("shifts.clearFilters") : undefined}
-                onAction={filtersActive ? clearFilters : undefined}
+                actionLabel={
+                  filtersActive ? t("shifts.clearFilters") : t("shifts.startShift")
+                }
+                onAction={filtersActive ? clearFilters : () => navigate(paths.start)}
               />
             ) : (
               <>
@@ -327,16 +373,8 @@ export default function ShiftsList() {
                           );
                         }
                         return (
-                          <div key={shift.id} className="row-enter shift-card-wrap">
+                          <div key={shift.id} className="row-enter">
                             <ShiftCard shift={shift} to={link(paths.detail(shift.id))} />
-                            {shift.status === SHIFT_STATUS.PENDING_REVIEW && (
-                              <Link
-                                className="shift-card__review"
-                                to={link(paths.detail(shift.id))}
-                              >
-                                {t("shifts.reviewShift")}
-                              </Link>
-                            )}
                           </div>
                         );
                       })}

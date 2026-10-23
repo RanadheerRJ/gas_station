@@ -83,15 +83,27 @@ export function LiveShiftCard({ shift, closeHref, onAddExpense, onAddNozzle, ela
         {t("shifts.liveNow")}
         {elapsed ? ` · ${elapsed}` : ""}
       </span>
-      <div className="shift-card__foot">
-        <FuelChips nozzles={shift.nozzles} />
+      <div className="shift-card__foot shift-card__foot--live">
+        <span className="shift-card__fuel">
+          <FuelChips nozzles={shift.nozzles} />
+        </span>
         {/* A running shift is not frozen: a free nozzle can still join it,
-            and one taken by mistake can be given back. */}
+            and one taken by mistake can be given back. Closing stays the one
+            filled button, on its own row on a phone so three controls never
+            fight for 375px. */}
         <span className="shift-card__actions">
-          <button type="button" className="small" onClick={() => onAddExpense?.(shift)}>
+          <button
+            type="button"
+            className="small shift-card__act"
+            onClick={() => onAddExpense?.(shift)}
+          >
             {t("shifts.addExpense")}
           </button>
-          <button type="button" className="small" onClick={() => onAddNozzle?.(shift)}>
+          <button
+            type="button"
+            className="small shift-card__act"
+            onClick={() => onAddNozzle?.(shift)}
+          >
             {t("shifts.addNozzle")}
           </button>
           <Link className="shift-card__close" to={closeHref}>
@@ -123,7 +135,12 @@ export function ShiftCard({ shift, to, title }) {
       : dateLabel;
 
   return (
-    <Link to={to} className="shift-card">
+    <Link
+      to={to}
+      className="shift-card"
+      data-status={shift.status}
+      aria-label={`${title || name} · ${when} · ₹ ${money(totals.net)}`}
+    >
       <OperatorAvatar name={name} />
       <span className="shift-card__main">
         <span className="shift-card__name">{title || name}</span>
@@ -134,16 +151,18 @@ export function ShiftCard({ shift, to, title }) {
       <span className="shift-card__amount">
         <span className="k">{t("shifts.net")}</span>
         <Money kind="neutral" value={totals.net} label={t("shifts.net")} />
+        {/* Gross used to sit in the footer beside variance, where a phone
+            wrapped it onto a second line and pushed the chevron out. Under
+            the net figure it stays a quiet second line. */}
+        <small className="shift-card__gross">
+          {t("shifts.gross")} ₹ {money(totals.gross)}
+        </small>
       </span>
       <span className="shift-card__foot">
         <StatusTag status={shift.status} reopened={Boolean(shift.approvedAt)} />
         <span className="shift-card__stat">
           <span className="k">{t("shifts.variance")}</span>
           <Money kind="variance" value={totals.variance} label={t("shifts.variance")} />
-        </span>
-        <span className="shift-card__stat">
-          <span className="k">{t("shifts.gross")}</span>
-          <span className="v mono">₹ {money(totals.gross)}</span>
         </span>
         <span className="shift-card__chev">
           <ChevronIcon size={17} />

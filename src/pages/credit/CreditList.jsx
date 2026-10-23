@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
-import { Notice, Segmented } from "../../components/ui.jsx";
+import { Notice } from "../../components/ui.jsx";
 import { Chip, ChipRow } from "../../components/Chip.jsx";
 import Skeleton from "../../components/Skeleton.jsx";
 import EmptyState from "../../components/EmptyState.jsx";
 import { CreditIcon } from "../../components/icons.jsx";
 import { LoadingPanels, NumberRoll } from "../../components/motion.jsx";
-import { ChevronIcon, CloseIcon, PlusIcon } from "../../components/icons.jsx";
+import { ChevronIcon, CloseIcon, PlusIcon, SearchIcon } from "../../components/icons.jsx";
 import StationFilter from "../../components/StationFilter.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import Sheet from "../../components/Sheet.jsx";
@@ -34,6 +34,13 @@ export function creditBase(role) {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** How the list can be ordered, and the label each order is stated with. */
+const SORT_OPTIONS = [
+  ["balance", "credit.sortBalance"],
+  ["recent", "credit.sortRecent"],
+  ["name", "credit.sortName"],
+];
 
 /** Whole days between an ISO date/timestamp and now; null when unknown. */
 export function daysSince(value, now = new Date()) {
@@ -159,6 +166,7 @@ export default function CreditList() {
   const [filter, setFilter] = useState("all"),
     [search, setSearch] = useState(""),
     [sort, setSort] = useState("balance"),
+    [sortOpen, setSortOpen] = useState(false),
     [addOpen, setAddOpen] = useState(false),
     [newCustomer, setNewCustomer] = useState({ name: "", phone: "" }),
     [addedNotice, setAddedNotice] = useState("");
@@ -280,7 +288,7 @@ export default function CreditList() {
             )}
             <button
               type="button"
-              className="tool-btn tool-btn--primary"
+              className="tool-btn tool-btn--primary credit-head-add"
               onClick={() => setAddOpen(true)}
             >
               <PlusIcon size={16} />
@@ -297,12 +305,13 @@ export default function CreditList() {
         ) : (
           <>
             {!attendant && <CreditHero insights={insights} t={t} />}
-            {!attendant && <CreditActivity stationId={stationId} />}
             {attendant && <p className="muted small">{t("credit.attendantDirectory")}</p>}
 
             <div className="credit-toolbar">
               <div className="credit-search">
+                <SearchIcon size={16} />
                 <input
+                  type="search"
                   aria-label={t("credit.search")}
                   placeholder={t("credit.search")}
                   value={search}
@@ -338,18 +347,23 @@ export default function CreditList() {
                       />
                     ))}
                   </ChipRow>
-                  <div className="credit-sort">
-                    <span className="small muted">{t("credit.sortBy")}</span>
-                    <Segmented
-                      value={sort}
-                      onChange={setSort}
-                      options={[
-                        { value: "balance", label: t("credit.sortBalance") },
-                        { value: "recent", label: t("credit.sortRecent") },
-                        { value: "name", label: t("credit.sortName") },
-                      ]}
-                    />
-                  </div>
+                  {/* Sort is a preference, not a filter: it sits behind one
+                      chip that states the current order, instead of a
+                      three-way segmented control competing with the status
+                      chips for the width of a phone. */}
+                  <button
+                    type="button"
+                    className="chip credit-sort-chip"
+                    aria-haspopup="dialog"
+                    aria-expanded={sortOpen}
+                    onClick={() => setSortOpen(true)}
+                  >
+                    {t("credit.sortBy")}:{" "}
+                    {t(
+                      SORT_OPTIONS.find(([value]) => value === sort)?.[1] ||
+                        "credit.sortBalance"
+                    )}
+                  </button>
                 </>
               )}
             </div>
@@ -366,9 +380,19 @@ export default function CreditList() {
                 }
                 body={searching ? t("credit.searchEmptyHint") : t("credit.emptyHint")}
                 actionLabel={
-                  searching ? t("credit.clearSearch") : t("credit.addCustomer")
+                  searching
+                    ? t("credit.clearSearch")
+                    : filter === "archived"
+                      ? t("credit.all")
+                      : t("credit.addCustomer")
                 }
-                onAction={() => (searching ? setSearch("") : setAddOpen(true))}
+                onAction={() =>
+                  searching
+                    ? setSearch("")
+                    : filter === "archived"
+                      ? setFilter("all")
+                      : setAddOpen(true)
+                }
               />
             ) : (
               <div className="customer-list">
@@ -387,11 +411,14 @@ export default function CreditList() {
             )}
           </>
         )}
+        {/* The day's totals are context, not the task: the list of who owes
+            what comes first, and the movement card follows it. */}
+        {!loading && !attendant && <CreditActivity stationId={stationId} />}
       </div>
       {!loading && (
         <button
           type="button"
-          className="stock-fab"
+          className="stock-fab credit-fab"
           aria-label={t("credit.addCustomer")}
           aria-haspopup="dialog"
           onClick={() => setAddOpen(true)}
@@ -399,6 +426,28 @@ export default function CreditList() {
           <PlusIcon size={22} />
         </button>
       )}
+      <Sheet
+        open={sortOpen}
+        onClose={() => setSortOpen(false)}
+        title={t("credit.sortBy")}
+      >
+        <div className="stack">
+          <ChipRow label={t("credit.sortBy")}>
+            {SORT_OPTIONS.map(([value, key]) => (
+              <Chip
+                key={value}
+                label={t(key)}
+                selected={sort === value}
+                onClick={() => {
+                  setSort(value);
+                  setSortOpen(false);
+                }}
+              />
+            ))}
+          </ChipRow>
+        </div>
+      </Sheet>
+
       <Sheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
@@ -442,7 +491,6 @@ export default function CreditList() {
 function CreditHero({ insights, t }) {
   const { total, customers, owing, settled, archivedTotal, topShare, topCount, overdue } =
     insights;
-  const owingShare = customers > 0 ? Math.round((owing / customers) * 100) : 0;
   return (
     <section className="card credit-hero" aria-labelledby="credit-hero-label">
       <div className="credit-hero__top">
@@ -481,13 +529,12 @@ function CreditHero({ insights, t }) {
         </div>
       )}
 
+      {/* Three facts, not five: who owes, who is square, and money still on
+          the books from archived accounts. "Customers" only repeated the
+          denominator already stated above the bar. */}
       <div className="credit-hero__meta">
-        <span className="credit-pill">
-          {t("credit.customers")} <b>{customers}</b>
-        </span>
         <span className="credit-pill credit-pill--neg">
           {t("credit.outstanding")} <b>{owing}</b>
-          <small>{owingShare}%</small>
         </span>
         <span className="credit-pill credit-pill--pos">
           {t("credit.fullySettled")} <b>{settled}</b>
@@ -502,12 +549,30 @@ function CreditHero({ insights, t }) {
   );
 }
 
-/** One account: who, how much, and how long it has been sitting there. */
+/**
+ * One account: who, how much, and how long it has been sitting there.
+ *
+ * Three lines at most — name, the last thing that happened, and the age pill —
+ * with the balance on its own right-hand column. The old version joined the
+ * phone, the last credit and the last payment into one `white-space: nowrap`
+ * line, which on a 375px phone truncated all three into a single unreadable
+ * run of characters.
+ */
 function CustomerRow({ customer, attendant, busy, to, onRestore, t }) {
   const balance = Number(customer.outstandingBalance || 0);
   const { credit, payment } = lastMovement(customer);
   const age = accountAge(customer);
   const archived = Boolean(customer.archivedAt);
+  const last = payment || credit;
+  const meta = [
+    customer.phone || t("credit.noPhone"),
+    last &&
+      `${payment ? t("credit.lastPayment") : t("credit.lastCredit")} · ${formatDayLabel(
+        last.date || last.recordedAt
+      )}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const body = (
     <>
       <span
@@ -519,21 +584,7 @@ function CustomerRow({ customer, attendant, busy, to, onRestore, t }) {
       </span>
       <span className="customer-main">
         <b>{customer.name}</b>
-        <span className="customer-main__meta">
-          {[
-            customer.phone || t("credit.noPhone"),
-            credit &&
-              `${t("credit.lastCredit")} ₹${money(credit.amount)} · ${formatDayLabel(
-                credit.date || credit.recordedAt
-              )}`,
-            payment &&
-              `${t("credit.lastPayment")} ₹${money(payment.amount)} · ${formatDayLabel(
-                payment.date || payment.recordedAt
-              )}`,
-          ]
-            .filter(Boolean)
-            .join("  ·  ")}
-        </span>
+        <span className="customer-main__meta">{meta}</span>
         {!attendant && age.tone && (
           <span className={`credit-age credit-age--${age.tone}`}>
             {age.paid

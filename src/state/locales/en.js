@@ -942,6 +942,8 @@ const en = {
   "shifts.tabRunning": "Running",
   "shifts.searchEmployee": "Search employee",
   "shifts.searchEmployeeHint": "Search by employee name",
+  "shifts.clearSearch": "Clear search",
+  "shifts.showingCount": "Showing {shown} of {total} shifts",
   "shifts.presetToday": "Today",
   "shifts.presetYesterday": "Yesterday",
   "shifts.presetLast7": "Last 7 days",

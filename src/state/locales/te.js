@@ -928,6 +928,8 @@ const te = {
   "shifts.tabRunning": "నడుస్తోంది",
   "shifts.searchEmployee": "ఉద్యోగిని వెతకండి",
   "shifts.searchEmployeeHint": "ఉద్యోగి పేరుతో వెతకండి",
+  "shifts.clearSearch": "శోధనను తొలగించు",
+  "shifts.showingCount": "{total} షిఫ్ట్‌లలో {shown} చూపిస్తున్నారు",
   "shifts.presetToday": "ఈరోజు",
   "shifts.presetYesterday": "నిన్న",
   "shifts.presetLast7": "గత 7 రోజులు",

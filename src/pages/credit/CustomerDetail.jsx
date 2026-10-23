@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { ScreenHeader } from "../../components/Layout.jsx";
 import { Notice, Segmented } from "../../components/ui.jsx";
-import StickyCta from "../../components/StickyCta.jsx";
 import ListRow from "../../components/ListRow.jsx";
 import Money from "../../components/Money.jsx";
 import { CashIcon, CreditIcon } from "../../components/icons.jsx";
@@ -11,6 +10,7 @@ import { avatarHue, initials } from "../../lib/avatar.js";
 import { LoadingPanels } from "../../components/motion.jsx";
 import { BackIcon } from "../../components/icons.jsx";
 import Sheet from "../../components/Sheet.jsx";
+import OverflowMenu from "../../components/OverflowMenu.jsx";
 import ReportSheet from "../../components/ReportSheet.jsx";
 import { useAuth } from "../../state/AuthContext.jsx";
 import { useStation } from "../../state/useStation.js";
@@ -192,7 +192,6 @@ export default function CustomerDetail() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [sheet, setSheet] = useState(null),
-    [menu, setMenu] = useState(false),
     [success, setSuccess] = useState("");
   const [details, setDetails] = useState({}),
     [correct, setCorrect] = useState(null),
@@ -248,8 +247,30 @@ export default function CustomerDetail() {
   const [run, busy, runError] = useRunner(async () => {
     await load();
   });
+
+  /* The full statement covers the screen, so it also owns Escape and the
+     page scroll while it is open — otherwise a phone scrolls the page behind
+     the sheet and a keyboard user has no way out except the back arrow. */
+  useEffect(() => {
+    if (!fullOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape") setFullOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [fullOpen]);
   const customer = customers.find((c) => c.id === customerId);
   const balance = Number(customer?.outstandingBalance || 0);
+  // The newest payment, off the history already loaded — the sentence an owner
+  // reads before deciding whether to call about this account.
+  const lastPayment = (customer?.transactions || []).find(
+    (entry) => entry.type === "payment" && entry.status !== "voided"
+  );
   const payment = sheet === "payment";
   const amount = num(tx.amount),
     after = payment ? balance - amount : balance + amount,
@@ -284,7 +305,6 @@ export default function CustomerDetail() {
     "credit.noteSuggestionPetrol",
   ];
   const openSheet = (kind) => {
-    setMenu(false);
     setSheet(kind);
     setTx({ amount: "", note: "", date: todayISO(), showDate: false });
   };
@@ -316,7 +336,6 @@ export default function CustomerDetail() {
     Boolean(customer) &&
     (info.name.trim() !== customer.name || info.phone.trim() !== (customer.phone || ""));
   const openInfo = () => {
-    setMenu(false);
     setInfo({ name: customer?.name || "", phone: customer?.phone || "" });
     setInfoOpen(true);
   };
@@ -359,7 +378,6 @@ export default function CustomerDetail() {
     if (balance === 0 && !window.confirm(t("credit.archive"))) return;
     try {
       await archiveCustomer(customer.id);
-      setMenu(false);
       await load();
     } catch (e) {
       setError(readableError(e));
@@ -473,35 +491,32 @@ export default function CustomerDetail() {
     <div className="customer-screen">
       <ScreenHeader
         title={customer.name}
-        sub={customer.phone || "—"}
+        sub={station?.name || customer.phone}
         back={link(base)}
         actions={
-          <button
-            className="icon-btn"
-            aria-label={t("credit.moreActions")}
-            aria-expanded={menu}
-            onClick={() => setMenu((v) => !v)}
-          >
-            ⋯
-          </button>
+          <OverflowMenu
+            label={t("credit.moreActions")}
+            placement="down"
+            triggerClassName="icon-btn"
+            items={[
+              canEditInfo && {
+                key: "edit",
+                label: t("credit.editCustomer"),
+                onClick: openInfo,
+              },
+              {
+                key: "archive",
+                label: t("credit.archive"),
+                onClick: archive,
+                danger: true,
+              },
+            ]}
+          />
         }
       />
       <div className="customer-screen__body">
         {(error || runError) && <Notice kind="error">{error || runError}</Notice>}
         {success && <Notice kind="good">{success}</Notice>}
-        {menu && (
-          <div className="overflow-menu">
-            {canEditInfo && (
-              <button type="button" onClick={openInfo}>
-                {t("credit.editCustomer")}
-              </button>
-            )}
-            <button type="button" onClick={archive}>
-              {t("credit.archive")}
-            </button>
-          </div>
-        )}
-
         {/* Balance plus the only two actions on the screen, above the fold. */}
         <section className={`balance-card${balance > 0 ? " balance-card--due" : ""}`}>
           <div className="customer-hero__id">
@@ -533,6 +548,12 @@ export default function CustomerDetail() {
                 {t("credit.outstandingBalance")}
               </span>
               <span className="balance-card__value mono">₹{money(balance)}</span>
+              {lastPayment && (
+                <span className="balance-card__last small muted">
+                  {t("credit.lastPayment")} ₹{money(lastPayment.amount)} ·{" "}
+                  {formatDayLabel(lastPayment.date || lastPayment.recordedAt)}
+                </span>
+              )}
             </div>
             <span className={`tag ${balance > 0 ? "rust" : "green"}`}>
               {balance > 0 ? t("credit.outstanding") : t("credit.settled")}
@@ -684,14 +705,6 @@ export default function CustomerDetail() {
         </section>
       </div>
 
-      <StickyCta
-        summary={`₹${money(balance)} ${t("credit.outstanding")}`}
-        ctaLabel={t("credit.receivePayment")}
-        onCta={() => openSheet("payment")}
-        disabled={balance <= 0}
-        hint={balance <= 0 ? t("credit.settled") : undefined}
-      />
-
       {fullOpen &&
         typeof document !== "undefined" &&
         createPortal(
@@ -700,6 +713,7 @@ export default function CustomerDetail() {
               <button
                 type="button"
                 className="back-link"
+                autoFocus
                 aria-label={t("common.back")}
                 onClick={() => setFullOpen(false)}
               >
