@@ -103,6 +103,12 @@ marketer's logo.
 
 ## Responsive shell
 
+Owner, manager, and attendant home routes open on a three-column service
+launcher. Dashboard figures and operational lists stay hidden until the home
+tile is tapped; every other tile opens its existing role-scoped route. The
+**All services** button returns to the launcher without changing any routes or
+role permissions.
+
 The application intentionally uses the touch-first top bar and bottom tab bar
 at widths up to and including `860px`. That means an iPad in portrait at
 `768px` uses the tab-bar shell; there is not enough width to keep the full

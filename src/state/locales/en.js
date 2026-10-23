@@ -17,6 +17,9 @@ const en = {
   "nav.overview": "Overview",
   /* ---- home (banking-style home feed) ---- */
   "home.hello": "Hello, {name}!",
+  "home.services": "Services",
+  "home.servicesSubtitle": "Choose a service to view its workspace.",
+  "home.allServices": "All services",
   "home.hiddenAmount": "₹ ••••",
   "home.showAmount": "Show amount",
   "home.hideAmount": "Hide amount",
