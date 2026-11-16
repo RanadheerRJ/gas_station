@@ -1,7 +1,14 @@
 /**
  * Inline SVG icons, drawn on a 24-grid with 1.6px strokes to match the
- * hairline borders. Flat and monochrome by default — they inherit
- * currentColor so they sit inside headings and buttons without fuss.
+ * hairline borders. Icons inherit currentColor by default so they sit inside
+ * headings and buttons without fuss, and each one carries a semantic default
+ * colour drawn from the theme tokens (fuel, money, brand, muted) so the app
+ * reads as colourful rather than monochrome. Light and dark themes both work
+ * because every colour is a CSS variable from src/styles/tokens.css.
+ *
+ * `color` accepts a token name (e.g. "money-in", "accent", "petrav-nozzle")
+ * and is applied as an inline `var(--...)` colour, so it wins over inherited
+ * container colour and can always be overridden at the call site.
  *
  * Performance: each icon is memoized so a list of 100 rows doesn't re-render
  * all icons when only one row's data changes. `base()` is inlined as a
@@ -21,13 +28,17 @@ const base = (props) => ({
   strokeLinejoin: "round",
   "aria-hidden": "true",
   focusable: "false",
-  style: { flexShrink: 0, ...(props.style || {}) },
+  style: {
+    flexShrink: 0,
+    ...(props.color ? { color: `var(--${props.color})` } : {}),
+    ...(props.style || {}),
+  },
 });
 
 /** Fuel dispenser. */
 export const PumpIcon = memo(function PumpIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "petrav-pump" })}>
       <path d="M3 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
       <path d="M2 21h13" />
       <path d="M5 9h6" />
@@ -40,7 +51,7 @@ export const PumpIcon = memo(function PumpIcon(props) {
 /** Nozzle / hose. */
 export const NozzleIcon = memo(function NozzleIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "petrav-nozzle" })}>
       <path d="M7 21V7a3 3 0 0 1 3-3h1a3 3 0 0 1 3 3v14" />
       <path d="M5 21h11" />
       <path d="M14 10h4a2 2 0 0 1 2 2v3" />
@@ -52,7 +63,7 @@ export const NozzleIcon = memo(function NozzleIcon(props) {
 /** A clock face, for shifts. */
 export const ShiftIcon = memo(function ShiftIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
     </svg>
@@ -62,7 +73,7 @@ export const ShiftIcon = memo(function ShiftIcon(props) {
 /** Price tag, for rates. */
 export const RateIcon = memo(function RateIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "money-neutral" })}>
       <path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9z" />
       <circle cx="7.5" cy="7.5" r="1.4" />
     </svg>
@@ -72,7 +83,7 @@ export const RateIcon = memo(function RateIcon(props) {
 /** Stacked notes, for cash. */
 export const CashIcon = memo(function CashIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "money-in" })}>
       <rect x="2" y="6" width="20" height="12" rx="1.5" />
       <circle cx="12" cy="12" r="2.5" />
       <path d="M6 10v4M18 10v4" />
@@ -83,7 +94,7 @@ export const CashIcon = memo(function CashIcon(props) {
 /** Meter dial, for readings. */
 export const GaugeIcon = memo(function GaugeIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M4 18a8 8 0 1 1 16 0" />
       <path d="M12 18l4-5" />
       <path d="M4 18h16" />
@@ -93,7 +104,7 @@ export const GaugeIcon = memo(function GaugeIcon(props) {
 
 export const StationIcon = memo(function StationIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M4 21V4h10v17" />
       <path d="M2 21h20" />
       <path d="M7 8h4M7 12h4" />
@@ -104,7 +115,7 @@ export const StationIcon = memo(function StationIcon(props) {
 
 export const PeopleIcon = memo(function PeopleIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <circle cx="9" cy="8" r="3.2" />
       <path d="M3 20a6 6 0 0 1 12 0" />
       <path d="M16 5.5a3.2 3.2 0 0 1 0 5.6" />
@@ -115,7 +126,7 @@ export const PeopleIcon = memo(function PeopleIcon(props) {
 
 export const LedgerIcon = memo(function LedgerIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2z" />
       <path d="M5 17h14" />
       <path d="M9 7h6M9 11h6" />
@@ -125,7 +136,7 @@ export const LedgerIcon = memo(function LedgerIcon(props) {
 
 export const CreditIcon = memo(function CreditIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "money-credit" })}>
       <rect x="2" y="5" width="20" height="14" rx="2" />
       <path d="M2 10h20" />
       <path d="M6 15h4" />
@@ -136,7 +147,7 @@ export const CreditIcon = memo(function CreditIcon(props) {
 /** An underground storage tank, drawn side-on with a fill line. */
 export const TankIcon = memo(function TankIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <rect x="3" y="6" width="18" height="12" rx="5" ry="6" />
       <path d="M3 13c2.5 1.4 5 1.4 7.5 0s5 -1.4 7.5 0 2.5 1.4 3 1.1" />
     </svg>
@@ -151,7 +162,7 @@ export const TankIcon = memo(function TankIcon(props) {
 /** Home / today. */
 export const HomeIcon = memo(function HomeIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M4 11l8-7 8 7" />
       <path d="M6 9.5V20h12V9.5" />
       <path d="M10 20v-6h4v6" />
@@ -162,7 +173,7 @@ export const HomeIcon = memo(function HomeIcon(props) {
 /** A receipt with lines, for shift history. */
 export const HistoryIcon = memo(function HistoryIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z" />
       <path d="M9 8h6M9 12h6M9 16h4" />
     </svg>
@@ -172,7 +183,7 @@ export const HistoryIcon = memo(function HistoryIcon(props) {
 /** A person, for the account tab and account button. */
 export const UserIcon = memo(function UserIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <circle cx="12" cy="8" r="3.6" />
       <path d="M5 20a7 7 0 0 1 14 0" />
     </svg>
@@ -182,7 +193,7 @@ export const UserIcon = memo(function UserIcon(props) {
 /** Dots in a rounded square, for the "More" tab. */
 export const MoreIcon = memo(function MoreIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "muted" })}>
       <rect x="3" y="3" width="18" height="18" rx="5" />
       <circle cx="8.2" cy="12" r="0.9" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
@@ -194,7 +205,7 @@ export const MoreIcon = memo(function MoreIcon(props) {
 /** Right chevron, for tappable list rows. */
 export const ChevronIcon = memo(function ChevronIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "muted" })}>
       <path d="M9 5l7 7-7 7" />
     </svg>
   );
@@ -203,7 +214,7 @@ export const ChevronIcon = memo(function ChevronIcon(props) {
 /** Left chevron, for back buttons. */
 export const BackIcon = memo(function BackIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "muted" })}>
       <path d="M15 5l-7 7 7 7" />
     </svg>
   );
@@ -212,7 +223,7 @@ export const BackIcon = memo(function BackIcon(props) {
 /** Plus, for add actions. */
 export const PlusIcon = memo(function PlusIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
@@ -221,7 +232,7 @@ export const PlusIcon = memo(function PlusIcon(props) {
 /** Check, for selected states. */
 export const CheckIcon = memo(function CheckIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "money-in" })}>
       <path d="M5 12.5l4.5 4.5L19 7.5" />
     </svg>
   );
@@ -230,7 +241,7 @@ export const CheckIcon = memo(function CheckIcon(props) {
 /** Cross, for closing sheets. */
 export const CloseIcon = memo(function CloseIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "muted" })}>
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
@@ -239,7 +250,7 @@ export const CloseIcon = memo(function CloseIcon(props) {
 /** Trash / delete icon for destructive actions. */
 export const TrashIcon = memo(function TrashIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "money-out" })}>
       <path d="M4 7h16" />
       <path d="M10 11v6" />
       <path d="M14 11v6" />
@@ -252,7 +263,7 @@ export const TrashIcon = memo(function TrashIcon(props) {
 /** Pencil, for editing a record in place. */
 export const PencilIcon = memo(function PencilIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M4 20h4l10-10a2.1 2.1 0 0 0-3-3L5 17v3z" />
       <path d="M14.5 6.5l3 3" />
     </svg>
@@ -262,7 +273,7 @@ export const PencilIcon = memo(function PencilIcon(props) {
 /** Sign-out door. */
 export const LogOutIcon = memo(function LogOutIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "muted" })}>
       <path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8" />
       <path d="M10 12h11" />
       <path d="M17.5 8.5L21 12l-3.5 3.5" />
@@ -273,7 +284,7 @@ export const LogOutIcon = memo(function LogOutIcon(props) {
 /** Download tray, for exports. */
 export const DownloadIcon = memo(function DownloadIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M12 4v10" />
       <path d="M8 10.5l4 4 4-4" />
       <path d="M5 19h14" />
@@ -284,7 +295,7 @@ export const DownloadIcon = memo(function DownloadIcon(props) {
 /** Search magnifier, for list search actions. */
 export const SearchIcon = memo(function SearchIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <circle cx="11" cy="11" r="6" />
       <path d="M16 16l4.5 4.5" />
     </svg>
@@ -294,7 +305,7 @@ export const SearchIcon = memo(function SearchIcon(props) {
 /** A rising bar chart, for summaries. */
 export const ChartIcon = memo(function ChartIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M4 20h16" />
       <path d="M7 20v-6M12 20V8M17 20v-10" />
     </svg>
@@ -304,7 +315,7 @@ export const ChartIcon = memo(function ChartIcon(props) {
 /** Sun, for switching to the light theme. */
 export const SunIcon = memo(function SunIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M18.8 5.2l-1.7 1.7M6.9 17.1l-1.7 1.7" />
     </svg>
@@ -314,7 +325,7 @@ export const SunIcon = memo(function SunIcon(props) {
 /** Moon, for switching to the dark theme. */
 export const MoonIcon = memo(function MoonIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M20 13.5A8 8 0 0 1 10.5 4a8 8 0 1 0 9.5 9.5z" />
     </svg>
   );
@@ -323,7 +334,7 @@ export const MoonIcon = memo(function MoonIcon(props) {
 /** A globe, for the language control. */
 export const GlobeIcon = memo(function GlobeIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M3.5 12h17" />
       <path d="M12 3.5c2.6 2.3 3.9 5.1 3.9 8.5s-1.3 6.2-3.9 8.5c-2.6-2.3-3.9-5.1-3.9-8.5s1.3-6.2 3.9-8.5z" />
@@ -334,7 +345,7 @@ export const GlobeIcon = memo(function GlobeIcon(props) {
 /** Circular arrows / refresh icon. */
 export const RefreshIcon = memo(function RefreshIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M21 12a9 9 0 0 1-15.3 6.4L3 16" />
       <path d="M3 21v-5h5" />
       <path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" />
@@ -346,7 +357,7 @@ export const RefreshIcon = memo(function RefreshIcon(props) {
 /** An open eye, for revealing a PIN. */
 export const EyeIcon = memo(function EyeIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "accent" })}>
       <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -356,7 +367,7 @@ export const EyeIcon = memo(function EyeIcon(props) {
 /** A closed eye, for hiding a revealed PIN. */
 export const EyeOffIcon = memo(function EyeOffIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "muted" })}>
       <path d="M4 4l16 16" />
       <path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17.5 17.5 0 0 1-2.7 3.4" />
       <path d="M6.6 7.9A16.4 16.4 0 0 0 2.5 12s3.5 6 9.5 6a9.4 9.4 0 0 0 4.1-.9" />
@@ -368,7 +379,7 @@ export const EyeOffIcon = memo(function EyeOffIcon(props) {
 /** A warning triangle, for inline field errors. */
 export const AlertIcon = memo(function AlertIcon(props) {
   return (
-    <svg {...base(props)}>
+    <svg {...base({ ...props, color: props.color ?? "money-out" })}>
       <path d="M12 4.5L21 19.5H3z" />
       <path d="M12 10v4" />
       <path d="M12 16.8v.4" />
