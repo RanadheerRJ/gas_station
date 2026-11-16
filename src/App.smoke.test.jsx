@@ -88,7 +88,12 @@ async function boot(route, profile) {
   // Lazy route modules resolve asynchronously. Wait for the route marker
   // rather than relying on a fixed number of microtasks, so this remains a
   // useful smoke test if the split chunks or test runner get slower.
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  // A lazy route chunk plus first paint can take longer than a few ticks
+  // when the runner is under load; keep polling for a couple of seconds
+  // instead of a fixed 200ms budget. The assertion itself is unchanged: the
+  // route must render a screen header (or the login card) — a crashed or
+  // misrouted tree still fails here.
+  for (let attempt = 0; attempt < 200; attempt += 1) {
     if (container.querySelector(".login, .screen-head h1, .screen-head h2")) {
       return;
     }
