@@ -76,7 +76,7 @@ export default function StaffRoster({
               />
             ))}
           </ChipRow>
-          <section className="card">
+          <div className="list-stack">
             {visibleStaff.map((member) => {
               const isCurrentUser = member.uid === currentUserId;
               const station = stationName?.((member.stationIds || [])[0]);
@@ -99,7 +99,7 @@ export default function StaffRoster({
                 />
               );
             })}
-          </section>
+          </div>
         </>
       )}
 

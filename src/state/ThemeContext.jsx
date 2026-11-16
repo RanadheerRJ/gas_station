@@ -19,11 +19,11 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(preferredTheme);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    // The status bar above the app carries the brand blue in light mode and
-    // sinks into the dark surface at night.
+    // The status bar above the app carries Primary Navy in light mode and
+    // sinks into the dark navy-slate surface at night.
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#0b0f16" : "#063b8f");
+      ?.setAttribute("content", theme === "dark" ? "#0B1322" : "#10213F");
   }, [theme]);
   const value = useMemo(
     () => ({

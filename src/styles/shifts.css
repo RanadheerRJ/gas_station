@@ -6,8 +6,8 @@
   display: block;
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   padding: 18px 20px;
   color: var(--ink);
   text-decoration: none;
@@ -20,10 +20,10 @@
 }
 
 .status-card--live {
-  border-color: rgba(21, 163, 74, 0.35);
+  border-color: rgba(21, 148, 91, 0.35);
   box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px rgba(21, 163, 74, 0.08);
+    var(--shadow-card),
+    0 0 0 1px rgba(21, 148, 91, 0.1);
 }
 
 .status-card__top {
@@ -38,12 +38,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--green);
-  background: rgba(21, 163, 74, 0.1);
+  color: var(--money-in);
+  background: var(--money-in-soft);
   border-radius: var(--radius-pill);
   padding: 3px 10px;
 }
@@ -97,9 +97,9 @@
 .empty-card {
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 44px 24px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 40px 24px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -117,9 +117,9 @@
 }
 
 .empty-card__icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
   display: grid;
   place-items: center;
   background: var(--surface-sunken);
@@ -194,11 +194,11 @@
   align-items: flex-start;
   justify-content: space-between;
   min-height: 88px;
-  padding: 12px;
-  border: 1.5px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  padding: 13px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
 }
 
 .nozzle-row--tile:hover:not(:disabled) {
@@ -208,8 +208,8 @@
 
 .nozzle-row--tile.selected {
   background: var(--accent-soft);
-  border-color: var(--ink-strong);
-  box-shadow: inset 0 0 0 1px var(--ink-strong);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .nozzle-row--tile.busy {
@@ -298,8 +298,8 @@
 .pick-card {
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -688,9 +688,9 @@
 }
 
 .shift-tab--active {
-  background: var(--ink-strong);
-  border-color: var(--ink-strong);
-  color: var(--surface);
+  background: var(--chip-active-bg);
+  border-color: var(--chip-active-bg);
+  color: var(--chip-active-ink);
   box-shadow: var(--shadow-sm);
 }
 
@@ -740,9 +740,9 @@
   row-gap: 12px;
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 15px 17px;
   color: var(--ink);
   text-decoration: none;
   transition:
@@ -764,10 +764,10 @@ a.shift-card:active {
 }
 
 .shift-card--live {
-  border-color: rgba(21, 163, 74, 0.35);
+  border-color: rgba(21, 148, 91, 0.35);
   box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px rgba(21, 163, 74, 0.08);
+    var(--shadow-card),
+    0 0 0 1px rgba(21, 148, 91, 0.1);
 }
 
 /* Waiting on a sign-off is the one card state that asks the reader to do
@@ -805,7 +805,7 @@ a.shift-card:active {
 .shift-card__avatar--live {
   box-shadow:
     0 0 0 2px var(--surface),
-    0 0 0 4px rgba(21, 163, 74, 0.4);
+    0 0 0 4px rgba(21, 148, 91, 0.38);
 }
 
 .shift-card__main {
@@ -923,11 +923,11 @@ a.shift-card:active {
 .shift-card__act {
   min-height: 40px;
   padding: 0 14px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--hairline-strong);
   background: var(--surface);
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .shift-card__act:hover {
@@ -1001,9 +1001,9 @@ a.shift-card:active {
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--amber);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 15px 17px;
 }
 
 .open-card__head {
@@ -1219,8 +1219,8 @@ a.shift-card:active {
   align-items: center;
   gap: 8px;
   min-height: var(--tap-min, 44px);
-  padding: 0 6px 0 14px;
-  border-radius: var(--radius-pill, 999px);
+  padding: 0 6px 0 13px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--hairline-strong);
   background: var(--surface);
   color: var(--muted);
@@ -1306,7 +1306,7 @@ a.shift-card:active {
 }
 .shifts-show-more {
   min-height: var(--tap-min, 44px);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-sm);
   width: 100%;
 }
 .shift-hero__head {
@@ -1335,8 +1335,8 @@ a.shift-card:active {
 .shift-collapse {
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-card, 20px);
-  box-shadow: var(--shadow-card, var(--shadow-sm));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 .shift-collapse__summary {

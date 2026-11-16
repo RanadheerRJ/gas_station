@@ -64,9 +64,9 @@
 
 .dev-card {
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -221,14 +221,14 @@ button.quiet.danger-link:hover:not(:disabled) {
 }
 
 .icon-btn--danger {
-  color: var(--rust);
-  border-color: rgba(220, 38, 38, 0.28);
+  color: var(--money-out);
+  border-color: rgba(214, 69, 69, 0.3);
 }
 
 .icon-btn--danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.1);
-  border-color: rgba(220, 38, 38, 0.45);
-  color: var(--rust);
+  background: var(--money-out-soft);
+  border-color: rgba(214, 69, 69, 0.45);
+  color: var(--money-out);
 }
 
 /* ---------------- empty states ---------------- */

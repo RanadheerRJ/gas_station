@@ -9,26 +9,15 @@ export default function DangerZonePanel({ station, busy, onReset }) {
     <Panel
       className="danger-zone"
       title={
-        <span
-          className="row"
-          style={{ gap: 7, alignItems: "center", color: "var(--rust)" }}
-        >
+        <span className="inline-icon-label danger-zone__title">
           <TrashIcon size={16} /> {t("station.resetDangerZone")}
         </span>
       }
       note={t("station.resetDangerNote")}
     >
-      <div
-        className="row"
-        style={{
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 12,
-        }}
-      >
+      <div className="between danger-zone__row">
         <div>
-          <div style={{ fontWeight: 500 }}>{t("station.resetData")}</div>
+          <div className="danger-zone__label">{t("station.resetData")}</div>
           <div className="small muted">{t("station.resetWarningShort")}</div>
         </div>
         <button

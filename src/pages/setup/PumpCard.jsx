@@ -31,14 +31,8 @@ export default function PumpCard({
   const mine = nozzles.filter((n) => n.pumpId === pump.id);
 
   return (
-    <div style={{ borderBottom: "1px solid var(--hairline)" }}>
-      <div
-        className="between"
-        style={{
-          padding: "10px 14px",
-          background: "var(--surface-sunken)",
-        }}
-      >
+    <div className="pump-card">
+      <div className="between pump-card__head">
         <button
           type="button"
           className="quiet pump-card__toggle"
@@ -52,7 +46,7 @@ export default function PumpCard({
           </span>
           <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
         </button>
-        <span className="row" style={{ gap: 4 }}>
+        <span className="row pump-card__actions">
           <button
             type="button"
             className="quiet"
@@ -69,14 +63,8 @@ export default function PumpCard({
       </div>
 
       {expanded && nozzleFor === pump.id && (
-        <div
-          className="body"
-          style={{
-            background: "var(--surface-sunken)",
-            borderBottom: "1px solid var(--hairline)",
-          }}
-        >
-          <div className="form-grid" style={{ marginBottom: 10 }}>
+        <div className="body pump-card__form">
+          <div className="form-grid pump-card__form-grid">
             <Field label={t("setup.nozzleName")}>
               <input
                 value={nozzleForm.name}
@@ -100,9 +88,8 @@ export default function PumpCard({
             </Field>
             <Field label={t("setup.meterNow")} hint={t("setup.meterNowHint")}>
               <input
-                className="mono"
+                className="mono pump-card__meter-input"
                 inputMode="decimal"
-                style={{ textAlign: "right" }}
                 value={nozzleForm.openingReading}
                 onChange={(e) =>
                   setNozzleForm((f) => ({
@@ -141,13 +128,13 @@ export default function PumpCard({
             {mine.map((n) => (
               <tr key={n.id}>
                 <td>
-                  <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                  <span className="inline-icon-label">
                     <NozzleIcon size={15} />
                     {n.name}
                   </span>
                 </td>
                 <td>
-                  <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                  <span className="inline-icon-label">
                     <span className={`fuel-dot fuel-dot--${fuelClass(n.fuelType)}`} />
                     {n.fuelType}
                   </span>

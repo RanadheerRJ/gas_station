@@ -395,10 +395,10 @@ button:focus-visible {
 }
 .skeleton-panel {
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface);
   padding: 16px 18px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
 /* Anyone who has asked their system for less movement gets none of it. All

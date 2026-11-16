@@ -9,13 +9,21 @@
 .station-card {
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   /* Visible, not hidden: the footer's overflow menu opens above the card and
      would otherwise be clipped. The inner corners are rounded explicitly. */
   overflow: visible;
   display: flex;
   flex-direction: column;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.station-card:hover {
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .station-card__main {
@@ -24,7 +32,7 @@
   color: var(--ink);
   text-decoration: none;
   flex: 1;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
 }
 
 .station-card__main:hover {
@@ -121,7 +129,7 @@
   padding: 2px 8px 2px 18px;
   border-top: 1px solid var(--hairline);
   background: var(--surface-sunken);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
 /* Footer links meet the 44px touch target; the overflow menu sits at the end. */
@@ -200,13 +208,28 @@
 
 .login__hero {
   position: relative;
-  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 30px;
+  overflow: hidden;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 32px;
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
   background: var(--hero-bg);
   box-shadow: var(--hero-shadow);
 }
 
+.login__hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 88% 12%,
+    rgba(255, 255, 255, 0.14) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
 .login__hero-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -214,13 +237,14 @@
   color: var(--hero-ink);
 }
 
-/* The mark sits on a white tile so its blue pump stays legible on the
-   gradient, the way an app icon sits on a banking home header. */
+/* The mark sits on a clean app-icon tile so its blue pump stays legible
+   on the deep navy surface. */
 .login__hero-inner > svg:first-child {
   background: var(--surface);
-  border-radius: 22px;
-  padding: 8px;
+  border-radius: var(--radius-lg);
+  padding: 10px;
   box-sizing: content-box;
+  box-shadow: var(--shadow-md);
 }
 
 .login__hero-inner svg {
@@ -230,13 +254,14 @@
 .login__welcome {
   margin: 4px 0 0;
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 500;
   color: var(--hero-muted);
 }
 
 /* Theme and the support menu sit at the hero's top corner. */
 .login__tools {
   position: absolute;
+  z-index: 2;
   top: calc(14px + env(safe-area-inset-top, 0px));
   right: 14px;
   display: flex;
@@ -247,7 +272,7 @@
 .login__tool {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   background: var(--surface);
@@ -349,7 +374,7 @@
 .login-pin__reveal {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   background: transparent;
@@ -622,9 +647,9 @@
 .price-card {
   border: 1px solid var(--hairline);
   background: var(--surface);
-  padding: 14px 15px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  padding: 15px 16px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 .price-card__fuel {
@@ -638,11 +663,10 @@
 
 .price-card__value {
   font-family: var(--mono);
-  font-size: 24px;
-  font-weight: 650;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--ink-strong);
   font-variant-numeric: tabular-nums;
-  margin-top: 6px;
 }
 
 .price-card__since {
@@ -666,8 +690,8 @@
   padding: 16px;
   display: flex;
   gap: 16px;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   color: var(--ink);
   text-decoration: none;
   text-align: left;
@@ -678,6 +702,7 @@
 .tank-card:hover {
   text-decoration: none;
   color: var(--ink);
+  border-color: var(--hairline-strong);
   box-shadow: var(--shadow-md);
 }
 
@@ -805,16 +830,16 @@
 }
 
 .tank-fill--petrol {
-  background: rgba(22, 163, 74, 0.55);
+  background: rgba(13, 148, 104, 0.52);
 }
 .tank-fill--diesel {
-  background: rgba(37, 99, 235, 0.5);
+  background: rgba(30, 64, 175, 0.48);
 }
 .tank-fill--premium {
-  background: rgba(217, 119, 6, 0.55);
+  background: rgba(217, 119, 6, 0.52);
 }
 .tank-fill--cng {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(14, 116, 144, 0.48);
 }
 
 .tank-vessel.low {
@@ -822,7 +847,7 @@
 }
 .tank-vessel.critical {
   border-color: var(--rust);
-  background: rgba(220, 38, 38, 0.06);
+  background: var(--money-out-soft);
 }
 .tank-vessel.retired {
   opacity: 0.45;
@@ -856,13 +881,14 @@
   align-items: center;
   width: 100%;
   min-height: var(--tap-min, 44px);
-  padding: 10px 14px;
-  border-radius: var(--radius-card, 20px);
+  padding: 11px 15px;
+  border-radius: var(--radius-card);
   border: 1px solid var(--amber);
-  background: var(--surface);
-  color: var(--ink);
-  font-weight: 700;
+  background: var(--money-credit-soft);
+  color: var(--ink-strong);
+  font-weight: 650;
   text-align: left;
+  box-shadow: var(--shadow-xs);
 }
 .stock-low-banner:active {
   transform: scale(0.99);
@@ -879,7 +905,7 @@
   place-items: center;
   background: var(--cta-bg, var(--ink-strong));
   color: var(--cta-ink, var(--surface));
-  box-shadow: var(--shadow-sticky, var(--shadow-md));
+  box-shadow: var(--fab-shadow, var(--shadow-md));
 }
 .stock-fab:active {
   transform: scale(0.94);
@@ -891,15 +917,16 @@
 }
 .stock-fab-tile {
   min-height: 96px;
-  border-radius: var(--radius-card, 20px);
+  border-radius: var(--radius-card);
   border: 1px solid var(--hairline);
   background: var(--surface);
   color: var(--ink);
   display: grid;
   place-items: center;
   gap: 8px;
-  font-weight: 700;
+  font-weight: 650;
   padding: 16px;
+  box-shadow: var(--shadow-xs);
 }
 .stock-fab-tile:active {
   transform: scale(0.97);
@@ -989,11 +1016,18 @@
   gap: 6px;
   padding: 16px;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-card, 20px);
+  border-radius: var(--radius-card);
   background: var(--surface);
   color: var(--ink);
   text-decoration: none;
-  box-shadow: var(--shadow-card, var(--shadow-sm));
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+.report-tile:hover {
+  border-color: var(--hairline-strong);
+  box-shadow: var(--shadow-md);
 }
 .report-tile span {
   font-size: 12.5px;
@@ -1018,11 +1052,11 @@
   margin-top: 4px;
   padding: 8px 14px;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--surface-sunken);
   color: var(--ink);
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 600;
 }
 .report-tile--action:hover .report-tile__cta {
   border-color: var(--accent);
@@ -1039,9 +1073,68 @@
 }
 
 /* ---- Prompt 12: setup, staff, danger zone ---- */
+.inline-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.price-history__summary {
+  cursor: pointer;
+}
+
+.price-history__table {
+  margin-top: 10px;
+}
+
+.pump-card {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.pump-card:last-child {
+  border-bottom: none;
+}
+
+.pump-card__head {
+  padding: 10px 14px;
+  background: var(--surface-sunken);
+}
+
+.pump-card__actions {
+  gap: 6px;
+}
+
+.pump-card__form {
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.pump-card__form-grid {
+  margin-bottom: 10px;
+}
+
+.pump-card__meter-input {
+  text-align: right;
+}
+
 .danger-zone {
   border: 1.5px solid var(--rust) !important;
 }
+
+.danger-zone__title {
+  color: var(--rust);
+}
+
+.danger-zone__row {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.danger-zone__label {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
 .pump-card__toggle {
   display: inline-flex;
   gap: 7px;

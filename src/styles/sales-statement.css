@@ -34,7 +34,7 @@
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--hairline);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface);
 }
 .statement-table {
@@ -46,7 +46,7 @@
 }
 .statement-table th,
 .statement-table td {
-  padding: 8px 10px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--hairline);
   text-align: right;
 }
@@ -59,11 +59,11 @@
 .statement-table th {
   position: sticky;
   top: 0;
-  background: var(--surface);
+  background: var(--surface-sunken);
 }
 .statement-total {
   font-weight: 700;
-  background: rgba(127, 127, 127, 0.08);
+  background: var(--surface-sunken);
 }
 @media (max-width: 640px) {
   .statement-table th:not(.statement-core),

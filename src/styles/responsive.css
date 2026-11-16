@@ -461,20 +461,16 @@
   position: relative;
   padding: var(--space-5);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
 .sales-hero::after {
   content: "";
   position: absolute;
-  width: 112px;
-  height: 112px;
-  right: -42px;
-  top: -52px;
-  border-radius: 50%;
-  background: var(--accent-soft);
+  inset: 0;
+  background: radial-gradient(circle at 96% 8%, var(--accent-soft) 0%, transparent 48%);
   pointer-events: none;
 }
 
@@ -543,12 +539,12 @@
   gap: 9px;
   padding: 10px 12px;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-card);
   background: var(--surface);
   color: var(--ink-strong);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-card);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   text-align: left;
   text-decoration: none;
 }
@@ -556,7 +552,8 @@
 .quick-action:hover {
   color: var(--ink-strong);
   text-decoration: none;
-  border-color: var(--hairline-strong);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-action > span:nth-child(2) {
@@ -565,13 +562,13 @@
 }
 
 .quick-action__icon {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 10px;
-  color: var(--accent-strong);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
   background: var(--accent-soft);
 }
 
@@ -586,9 +583,9 @@
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
 .shift-empty__icon {
@@ -596,8 +593,8 @@
   height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
-  color: var(--accent-strong);
+  border-radius: var(--radius-md);
+  color: var(--accent);
   background: var(--accent-soft);
 }
 
@@ -660,8 +657,8 @@
   display: grid;
   gap: var(--space-3);
   padding: var(--space-5);
-  border-color: rgba(21, 163, 74, 0.35);
-  background: linear-gradient(var(--surface), var(--surface)), var(--surface);
+  border-color: rgba(21, 148, 91, 0.35);
+  background: var(--surface);
 }
 
 .run-hero__elapsed {
@@ -987,9 +984,9 @@
   color: var(--ink);
   text-decoration: none;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
 .history-card:hover {
@@ -1099,9 +1096,9 @@
   gap: var(--space-4);
   padding: var(--space-5);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
 }
 
 .account-profile .avatar {
@@ -1138,9 +1135,9 @@
 .account-section__card {
   overflow: hidden;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-card);
 }
 
 .account-section__card .account-panel__control {

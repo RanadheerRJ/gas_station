@@ -29,7 +29,7 @@ export default function PricesPanel({
   return (
     <Panel
       title={
-        <span className="row" style={{ gap: 7, alignItems: "center" }}>
+        <span className="inline-icon-label">
           <RateIcon /> {t("setup.fuelPrices")}
         </span>
       }
@@ -39,7 +39,7 @@ export default function PricesPanel({
         <Empty>{t("setup.addNozzleFirst")}</Empty>
       ) : (
         <>
-          <div className="stack">
+          <div className="list-stack">
             {activeFuels.map((fuel) => {
               const rec = active[fuel];
               return (
@@ -69,10 +69,10 @@ export default function PricesPanel({
             <>
               <div className="divider" />
               <details>
-                <summary className="small muted" style={{ cursor: "pointer" }}>
+                <summary className="small muted price-history__summary">
                   {t("setup.priceHistory")} ({priceRecords.length})
                 </summary>
-                <table style={{ marginTop: 10 }}>
+                <table className="price-history__table">
                   <thead>
                     <tr>
                       <th>{t("shifts.fuel")}</th>
@@ -86,7 +86,7 @@ export default function PricesPanel({
                     {priceRecords.slice(0, 15).map((h) => (
                       <tr key={h.id}>
                         <td>
-                          <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                          <span className="inline-icon-label">
                             <span
                               className={`fuel-dot fuel-dot--${fuelClass(h.fuelType)}`}
                             />

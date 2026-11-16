@@ -396,7 +396,7 @@ export default function StockList() {
                     {Object.entries(byProduct).map(([fuel, value]) => (
                       <tr key={fuel}>
                         <td data-label={t("stock.product")}>
-                          <span className="row" style={{ gap: 6, alignItems: "center" }}>
+                          <span className="inline-icon-label">
                             <span className={`fuel-dot fuel-dot--${fuelClass(fuel)}`} />
                             {fuel}
                           </span>
@@ -457,8 +457,7 @@ export default function StockList() {
                           </td>
                           <td
                             data-label={t("stock.change")}
-                            className="num mono"
-                            style={{ color: up ? "var(--green)" : "var(--rust)" }}
+                            className={`num mono ${up ? "v pos" : "v neg"}`}
                           >
                             {entry.change == null
                               ? "—"

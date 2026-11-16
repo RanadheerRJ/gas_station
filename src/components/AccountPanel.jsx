@@ -105,32 +105,17 @@ function AccountPanel({ onDone, stationName = "" }) {
         </section>
       )}
 
-      <div
-        className="small muted"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "4px 12px 0",
-        }}
-      >
+      <div className="account-panel__footer small muted">
         <span>App version {APP_VERSION_LABEL}</span>
         <button
           type="button"
-          className="tool-btn small"
-          style={{
-            fontSize: "12px",
-            padding: "4px 8px",
-            height: "auto",
-            minHeight: "28px",
-            gap: "5px",
-          }}
+          className="tool-btn account-panel__refresh"
           onClick={handleRefresh}
           disabled={refreshing}
           aria-busy={refreshing || undefined}
           title={t("chrome.hardRefreshHint")}
         >
-          <RefreshIcon size={13} className={refreshing ? "spin" : ""} />
+          <RefreshIcon size={14} className={refreshing ? "spin" : ""} />
           {refreshing ? t("chrome.refreshing") : t("chrome.hardRefresh")}
         </button>
       </div>

@@ -1,47 +1,42 @@
 /* =====================================================================
-   PÉTRAV — app-shell visual system
+   PÉTRAV — Enterprise SaaS Design System Tokens
    ---------------------------------------------------------------------
-   A consumer-delivery-app look, built for a phone held at a forecourt
-   counter: card-first layouts, one bold figure per card, a confident
-   brand-blue accent, a checkout-style primary action that is always in the
-   same place, and sheets for everything secondary.
-   Every colour, radius, shadow and motion value is a token so the two
-   themes (and any future one) stay in lockstep with the rest of the app.
+   Clean fuel-station operations & financial ledger system:
+   - Primary Navy (#10213F) & Primary Blue (#1769D2) brand authority
+   - Fuel Red (#E31B23) reserved strictly for brand accents & critical cues
+   - Crisp #F4F6F9 canvas, #FFFFFF surfaces, #E5E9F0 hairlines
+   - Cohesive navy-slate dark mode surfaces with calibrated AA+ contrast
    ===================================================================== */
 
 :root {
-  /* ---- brand + semantic colour, light theme ---- */
-  /* Surfaces are near-white rather than grey so the cards that sit on them
-     read as raised paper; separation comes from --shadow-card. */
-  --bg: #f7f8fa;
-  --paper: #f7f8fa;
+  /* ---- brand + surface hierarchy, light theme ---- */
+  --bg: #f4f6f9;
+  --paper: #f4f6f9;
   --surface: #ffffff;
   --panel: #ffffff;
   --surface-raised: #ffffff;
-  --surface-sunken: #f1f3f7;
-  --launcher-bg: #f6f3f8;
-  --ink: #101828;
-  --ink-strong: #0a1120;
+  --surface-sunken: #eef2f6;
+  --launcher-bg: #f4f6f9;
+  --ink: #172033;
+  --ink-strong: #10213f;
   --muted: #667085;
-  --hairline: #eef1f5;
-  --hairline-strong: #dfe4ec;
+  --hairline: #e5e9f0;
+  --hairline-strong: #d0d7e3;
 
-  --accent: #0b5bc6;
-  --accent-strong: #063b8f;
-  --accent-soft: rgba(11, 91, 198, 0.1);
-  --accent-soft-strong: rgba(11, 91, 198, 0.18);
+  --accent: #1769d2;
+  --accent-strong: #10213f;
+  --accent-soft: rgba(23, 105, 210, 0.09);
+  --accent-soft-strong: rgba(23, 105, 210, 0.17);
   --accent-ink: #ffffff;
 
-  /* Money always keeps the same meaning. Text shades are deliberately dark
-     enough for AA contrast on both the white surface and their soft tint;
-     markers and labels repeat the meaning without relying on hue. */
-  --money-in: #0f6b3c;
-  --money-in-soft: #e9f7ef;
-  --money-out: #b42318;
-  --money-out-soft: #fff0ee;
-  --money-credit: #8a4b0f;
-  --money-credit-soft: #fff6df;
-  --money-neutral: #175cd3;
+  /* ---- semantic financial & operational figures ---- */
+  --money-in: #15945b;
+  --money-in-soft: #eaf7f1;
+  --money-out: #d64545;
+  --money-out-soft: #fef1f1;
+  --money-credit: #b4690e;
+  --money-credit-soft: #fff7e6;
+  --money-neutral: #1769d2;
   --money-neutral-soft: #edf4ff;
   --money-ok: var(--money-in);
   --money-ok-soft: var(--money-in-soft);
@@ -49,109 +44,100 @@
   --money-short-soft: var(--money-out-soft);
   --money-over: var(--money-credit);
   --money-over-soft: var(--money-credit-soft);
-  --money-in-action: #166534;
-  --money-in-action-hover: #14532d;
+  --money-in-action: #15945b;
+  --money-in-action-hover: #117a4b;
   --money-action-ink: #ffffff;
 
-  /* PÉTRAV brand palette. The logo artwork (src/components/branding.jsx)
-     reads these directly, so the mark re-themes with the app rather than
-     shipping a second dark asset. */
-  --petrav-pump: #063b8f;
+  /* ---- PÉTRAV brand mark & fuel family tokens ---- */
+  --petrav-pump: #10213f;
   --petrav-display: #ffffff;
-  --petrav-rupee: #063b8f;
-  --petrav-base: #082b5c;
+  --petrav-rupee: #10213f;
+  --petrav-base: #0a1730;
   --petrav-nozzle: #e31b23;
-  --petrav-drop: #f5a623;
+  --petrav-drop: #d99018;
   --petrav-clock-face: #ffffff;
-  --petrav-clock-ring: #0b5bc6;
-  --petrav-clock-hour: #063b8f;
+  --petrav-clock-ring: #1769d2;
+  --petrav-clock-hour: #10213f;
   --petrav-red: #e31b23;
-  --fuel-petrol-dot: #16a34a;
-  --fuel-diesel-dot: #2563eb;
-  --fuel-premium-dot: #d97706;
-  --fuel-cng-dot: #8b5cf6;
 
-  /* The checkout button. Deliberately its own pair of tokens: it must stay
-     legible and confident in both themes whatever happens to --accent.
-     Near-black on white in the light theme, white on near-black in the dark
-     one — the neutral, final "place order" of a delivery app, not a brand
-     statement. */
-  --cta-bg: #111827;
-  --cta-bg-hover: #1f2937;
+  --fuel-petrol: #117a4b;
+  --fuel-petrol-soft: #eaf7f1;
+  --fuel-diesel: #1458b3;
+  --fuel-diesel-soft: #edf4ff;
+  --fuel-premium: #b4690e;
+  --fuel-premium-soft: #fff7e6;
+  --fuel-cng: #5b45b8;
+  --fuel-cng-soft: #f2f0ff;
+  --fuel-petrol-dot: #15945b;
+  --fuel-diesel-dot: #1769d2;
+  --fuel-premium-dot: #d99018;
+  --fuel-cng-dot: #6366f1;
+
+  /* ---- primary CTA & executive hero surfaces ---- */
+  --cta-bg: #10213f;
+  --cta-bg-hover: #1769d2;
   --cta-ink: #ffffff;
-  --cta-shadow: 0 10px 24px -10px rgba(17, 24, 39, 0.45);
+  --cta-shadow: 0 8px 20px -8px rgba(16, 33, 63, 0.42);
 
-  /* Banking-style home hero: a deep brand-blue → violet gradient card (the
-     layout pattern of a consumer banking home, in PÉTRAV's own colours —
-     not any bank's). Text on it is always --hero-ink; the soft/line tokens
-     keep secondary text and hairlines legible on the gradient. */
-  --hero-bg: linear-gradient(128deg, #063b8f 0%, #0b5bc6 52%, #6d28d9 108%);
+  --hero-bg: linear-gradient(135deg, #10213f 0%, #1769d2 100%);
   --hero-ink: #ffffff;
-  --hero-muted: rgba(255, 255, 255, 0.78);
-  --hero-line: rgba(255, 255, 255, 0.38);
-  --hero-chip: rgba(255, 255, 255, 0.16);
-  --hero-shadow: 0 18px 34px -16px rgba(6, 59, 143, 0.55);
-  /* The raised centre button of the bottom bar. */
-  --fab-bg: linear-gradient(145deg, #7c3aed 0%, #0b5bc6 130%);
-  --fab-ink: #ffffff;
-  --fab-shadow: 0 10px 22px -8px rgba(109, 40, 217, 0.65);
+  --hero-muted: rgba(255, 255, 255, 0.8);
+  --hero-line: rgba(255, 255, 255, 0.24);
+  --hero-chip: rgba(255, 255, 255, 0.14);
+  --hero-shadow: 0 14px 30px -14px rgba(16, 33, 63, 0.45);
 
-  /* Filter chips: the horizontal scrollers every list is filtered with.
-     Selected echoes the checkout button (near-black here, white in dark
-     mode) so "this is the active filter" reads the same as "this is the
-     action". Tinted status chips use the money/accent soft colours. */
-  --chip-bg: #eef1f6;
-  --chip-ink: #364152;
-  --chip-border: transparent;
-  --chip-active-bg: #111827;
+  --fab-bg: linear-gradient(145deg, #10213f 0%, #1769d2 100%);
+  --fab-ink: #ffffff;
+  --fab-shadow: 0 10px 22px -8px rgba(16, 33, 63, 0.48);
+
+  /* ---- filter chips ---- */
+  --chip-bg: #eaeff5;
+  --chip-ink: #344054;
+  --chip-border: #e5e9f0;
+  --chip-active-bg: #10213f;
   --chip-active-ink: #ffffff;
   --chip-count-bg: #ffffff;
-  --chip-count-ink: #111827;
-  --chip-active-count-bg: rgba(255, 255, 255, 0.18);
+  --chip-count-ink: #172033;
+  --chip-active-count-bg: rgba(255, 255, 255, 0.2);
   --chip-active-count-ink: #ffffff;
 
-  /* legacy names kept so component code and inline styles do not need to
-     change — they resolve to the system's semantic colours. */
-  --graphite: #0f1526;
+  /* ---- semantic aliases ---- */
+  --graphite: #10213f;
   --petrol: var(--accent);
-  --amber: #b45309;
-  --green: #15803d;
-  --rust: #dc2626;
+  --amber: #d99018;
+  --green: #15945b;
+  --rust: #d64545;
 
+  /* ---- navigation chrome ---- */
   --sidebar-bg: #ffffff;
-  --sidebar-ink: #47526b;
-  --sidebar-ink-strong: #10172a;
-  --sidebar-border: #e7eaf1;
-  --sidebar-active-bg: var(--accent-soft);
-  --sidebar-active-ink: var(--accent-strong);
-  --topbar-bg: rgba(255, 255, 255, 0.88);
-  --actionbar-bg: rgba(255, 255, 255, 0.92);
-  --scrim: rgba(8, 13, 21, 0.45);
+  --sidebar-ink: #475467;
+  --sidebar-ink-strong: #10213f;
+  --sidebar-border: #e5e9f0;
+  --sidebar-active-bg: rgba(23, 105, 210, 0.1);
+  --sidebar-active-ink: #1769d2;
+  --topbar-bg: rgba(255, 255, 255, 0.92);
+  --actionbar-bg: rgba(255, 255, 255, 0.94);
+  --scrim: rgba(16, 33, 63, 0.48);
 
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 10px -3px rgba(16, 24, 40, 0.07);
+  /* ---- elevation & focus ---- */
+  --shadow-xs: 0 1px 2px rgba(16, 33, 63, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 33, 63, 0.06), 0 1px 2px rgba(16, 33, 63, 0.04);
   --shadow-md:
-    0 4px 12px -3px rgba(16, 24, 40, 0.09), 0 2px 5px -2px rgba(16, 24, 40, 0.05);
+    0 6px 16px -4px rgba(16, 33, 63, 0.08), 0 2px 6px -2px rgba(16, 33, 63, 0.04);
   --shadow-lg:
-    0 16px 34px -10px rgba(16, 24, 40, 0.2), 0 6px 14px -6px rgba(16, 24, 40, 0.1);
-  /* The resting and pinned-card shadows of the card-first layout: a card is
-     separated from the near-white page by --shadow-card alone, and a sticky
-     bar lifts its content off the page with --shadow-sticky. */
-  --shadow-card:
-    0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -14px rgba(16, 24, 40, 0.14);
-  --shadow-sticky: 0 -12px 32px -16px rgba(16, 24, 40, 0.28);
-  /* A solid two-tone ring: the surface gap keeps it visible on any
-     background and the accent band clears 3:1 against it. */
+    0 18px 36px -12px rgba(16, 33, 63, 0.22), 0 6px 14px -6px rgba(16, 33, 63, 0.08);
+  --shadow-card: 0 1px 2px rgba(16, 33, 63, 0.04), 0 4px 12px -4px rgba(16, 33, 63, 0.06);
+  --shadow-sticky: 0 -10px 28px -14px rgba(16, 33, 63, 0.2);
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  /* The card-first radius: every list card, row and sheet-sized surface. */
-  --radius-card: 20px;
+  /* ---- geometry & layout metrics ---- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-card: 16px;
   --radius-pill: 999px;
-  /* Nothing a thumb is meant to hit is smaller than this. */
   --tap-min: 44px;
 
   --space-1: 4px;
@@ -169,15 +155,12 @@
   --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* ---- shell metrics ---- */
-  --sidebar-w: 236px;
-  --appbar-h: 52px;
+  --sidebar-w: 240px;
+  --appbar-h: 54px;
   --tabbar-h: 62px;
   --actionbar-h: 78px;
 
-  /* Motion tokens. Every duration and curve in this file comes from here, so
-     the whole app can be retimed in one place. The curves are deliberately
-     unbouncy: nothing overshoots, because a gauge that wobbles past its
-     value reads as imprecise. */
+  /* ---- motion timings ---- */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
@@ -185,110 +168,109 @@
   --duration-fast: 140ms;
   --duration-base: 180ms;
   --duration-slow: 220ms;
-  --duration-page: 260ms;
+  --duration-page: 240ms;
   --duration-loop: 1100ms;
   --duration-skeleton: 1400ms;
-  --duration-fill: 760ms;
+  --duration-fill: 720ms;
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b0f16;
-  --paper: #0b0f16;
-  --surface: #131a24;
-  --panel: #131a24;
-  --surface-raised: #182130;
-  --surface-sunken: #0e141d;
-  --launcher-bg: #0e121b;
-  --ink: #e8edf4;
-  --ink-strong: #f6f8fb;
-  --muted: #8f9cb0;
-  --hairline: #202b3b;
-  --hairline-strong: #2b3850;
+  --bg: #0b1322;
+  --paper: #0b1322;
+  --surface: #121d33;
+  --panel: #121d33;
+  --surface-raised: #172542;
+  --surface-sunken: #0e172a;
+  --launcher-bg: #0b1322;
+  --ink: #e6ecf5;
+  --ink-strong: #f8fafc;
+  --muted: #94a3b8;
+  --hairline: #1e2c47;
+  --hairline-strong: #2b3d5e;
 
-  --accent: #4e8ef5;
-  --accent-strong: #74a9f8;
-  --accent-soft: rgba(78, 142, 245, 0.14);
-  --accent-soft-strong: rgba(78, 142, 245, 0.26);
+  --accent: #4d94f0;
+  --accent-strong: #7ab4ff;
+  --accent-soft: rgba(77, 148, 240, 0.16);
+  --accent-soft-strong: rgba(77, 148, 240, 0.28);
   --accent-ink: #ffffff;
 
-  --money-in: #6ce9a6;
-  --money-in-soft: #163a2b;
-  --money-out: #fda29b;
-  --money-out-soft: #41211f;
-  --money-credit: #fec84b;
-  --money-credit-soft: #3d3219;
-  --money-neutral: #84adff;
-  --money-neutral-soft: #182e50;
+  --money-in: #4ade80;
+  --money-in-soft: #113325;
+  --money-out: #f87171;
+  --money-out-soft: #3a1a1f;
+  --money-credit: #f5b942;
+  --money-credit-soft: #362912;
+  --money-neutral: #7ab4ff;
+  --money-neutral-soft: #162b4f;
   --money-ok: var(--money-in);
   --money-ok-soft: var(--money-in-soft);
   --money-short: var(--money-out);
   --money-short-soft: var(--money-out-soft);
   --money-over: var(--money-credit);
   --money-over-soft: var(--money-credit-soft);
-  --money-in-action: #15803d;
-  --money-in-action-hover: #16a34a;
+  --money-in-action: #15945b;
+  --money-in-action-hover: #19ad6b;
   --money-action-ink: #ffffff;
 
-  --fuel-petrol: #6ce9a6;
-  --fuel-petrol-soft: #14301f;
-  --fuel-diesel: #93b4ff;
-  --fuel-diesel-soft: #16294d;
-  --fuel-premium: #fdba60;
-  --fuel-premium-soft: #3a2a14;
-  --fuel-cng: #c4b0f5;
-  --fuel-cng-soft: #2c2450;
-  --fuel-petrol-dot: #6ce9a6;
-  --fuel-diesel-dot: #93b4ff;
-  --fuel-premium-dot: #fdba60;
-  --fuel-cng-dot: #c4b0f5;
+  --fuel-petrol: #4ade80;
+  --fuel-petrol-soft: #113325;
+  --fuel-diesel: #7ab4ff;
+  --fuel-diesel-soft: #162b4f;
+  --fuel-premium: #f5b942;
+  --fuel-premium-soft: #362912;
+  --fuel-cng: #a78bfa;
+  --fuel-cng-soft: #28204a;
+  --fuel-petrol-dot: #4ade80;
+  --fuel-diesel-dot: #7ab4ff;
+  --fuel-premium-dot: #f5b942;
+  --fuel-cng-dot: #a78bfa;
 
-  /* Dark-mode brand artwork: the pump brightens so it holds its shape on a
-     dark surface, and the secondary strokes lift with it. Not a simple
-     invert — the white display, ₹ and clock face stay light, the red
-     accents stay red, exactly as on the light theme. */
-  --petrav-pump: #1567d2;
-  --petrav-base: #3e6fbf;
-  --petrav-clock-ring: #5b9bf0;
+  --petrav-pump: #1769d2;
+  --petrav-base: #3f76c7;
+  --petrav-clock-ring: #60a5fa;
+  --petrav-drop: #f5b942;
 
-  --cta-bg: #f2f5fa;
-  --cta-bg-hover: #ffffff;
-  --cta-ink: #0b0f16;
-  --cta-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65);
+  --cta-bg: #1769d2;
+  --cta-bg-hover: #2d7ee6;
+  --cta-ink: #ffffff;
+  --cta-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.65);
 
-  --hero-bg: linear-gradient(128deg, #082c66 0%, #0a4496 52%, #4c1d95 108%);
-  --hero-shadow: 0 18px 34px -16px rgba(0, 0, 0, 0.7);
+  --hero-bg: linear-gradient(135deg, #0e1d3a 0%, #1552a8 100%);
+  --hero-shadow: 0 16px 32px -14px rgba(0, 0, 0, 0.65);
+  --fab-bg: linear-gradient(145deg, #133e82 0%, #1d70dc 100%);
+  --fab-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.7);
 
-  --chip-bg: #1c2635;
-  --chip-ink: #c6cfdd;
-  --chip-border: transparent;
-  --chip-active-bg: #eef2f8;
-  --chip-active-ink: #0b0f16;
-  --chip-count-bg: #0e141d;
-  --chip-count-ink: #e8edf4;
-  --chip-active-count-bg: rgba(11, 15, 22, 0.14);
-  --chip-active-count-ink: #0b0f16;
+  --chip-bg: #18253e;
+  --chip-ink: #cbd5e1;
+  --chip-border: #243452;
+  --chip-active-bg: #1769d2;
+  --chip-active-ink: #ffffff;
+  --chip-count-bg: #0e172a;
+  --chip-count-ink: #e6ecf5;
+  --chip-active-count-bg: rgba(255, 255, 255, 0.2);
+  --chip-active-count-ink: #ffffff;
 
-  --graphite: #0a0e17;
+  --graphite: #0b1322;
   --petrol: var(--accent);
-  --amber: #f2b750;
+  --amber: #f5b942;
   --green: #4ade80;
   --rust: #f87171;
 
-  --sidebar-bg: #0d1320;
-  --sidebar-ink: #a7b1c6;
-  --sidebar-ink-strong: #f4f6fb;
-  --sidebar-border: #1c2438;
-  --sidebar-active-bg: var(--accent-soft);
-  --sidebar-active-ink: var(--accent-strong);
-  --topbar-bg: rgba(11, 15, 22, 0.86);
-  --actionbar-bg: rgba(11, 15, 22, 0.92);
-  --scrim: rgba(2, 5, 10, 0.6);
+  --sidebar-bg: #0e172a;
+  --sidebar-ink: #94a3b8;
+  --sidebar-ink-strong: #f8fafc;
+  --sidebar-border: #1c2944;
+  --sidebar-active-bg: rgba(77, 148, 240, 0.16);
+  --sidebar-active-ink: #7ab4ff;
+  --topbar-bg: rgba(11, 19, 34, 0.88);
+  --actionbar-bg: rgba(14, 23, 42, 0.94);
+  --scrim: rgba(4, 9, 18, 0.65);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px -2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 18px 36px -10px rgba(0, 0, 0, 0.55), 0 6px 14px -6px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -16px rgba(0, 0, 0, 0.55);
-  --shadow-sticky: 0 -12px 34px -14px rgba(0, 0, 0, 0.7);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.34), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 8px 20px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.6), 0 6px 14px -6px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.32), 0 6px 16px -8px rgba(0, 0, 0, 0.48);
+  --shadow-sticky: 0 -12px 32px -14px rgba(0, 0, 0, 0.68);
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }

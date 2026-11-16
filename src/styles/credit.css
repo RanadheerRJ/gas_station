@@ -16,7 +16,7 @@
    ===================================================================== */
 
 .credit-screen {
-  --credit-row-radius: var(--radius-md);
+  --credit-row-radius: var(--radius-card);
 }
 
 /* ---------------- header actions ---------------- */
@@ -246,7 +246,7 @@
   min-height: var(--tap-min, 44px);
   padding: 0 6px 0 13px;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--muted);
   box-shadow: var(--shadow-xs);
