@@ -1,14 +1,13 @@
 /* =====================================================================
-   Banking-style home feed (owner + attendant homes)
+   Home Feed & Workspace Service Launcher (owner + attendant homes)
    ---------------------------------------------------------------------
-   The pattern of a consumer banking home, in PÉTRAV's own brand: a
-   greeting row in the app bar, one big gradient "balance" card whose
-   next cards peek in from the edge, a tabbed sheet of quick actions
-   rendered as an icon grid, and a raised centre button in the tab bar.
-   Colours are all tokens (--hero-*, --fab-*) so both themes work.
+   Enterprise operational home: greeting appbar, primary KPI hero card
+   plus peeking metrics on mobile (3-up grid on desktop), tabbed quick
+   actions, and a workspace service launcher grid. All colours resolve
+   via semantic tokens (--hero-*, --fab-*, --surface, --accent).
    ===================================================================== */
 
-/* ---- service launcher: nothing but circular actions until one is chosen ---- */
+/* ---- service launcher ---- */
 
 .main--launcher {
   background: var(--launcher-bg);
@@ -22,15 +21,15 @@
 
 .service-launcher {
   width: 100%;
-  max-width: 720px;
+  max-width: 760px;
   margin-inline: auto;
-  padding: 18px var(--content-gutter) 48px;
+  padding: 16px var(--content-gutter) 48px;
 }
 
 .service-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px 8px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -46,39 +45,44 @@
   flex: 1;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 11px;
   min-width: 0;
-  min-height: 122px;
-  padding: 8px 2px 10px;
-  border: 0;
-  border-radius: var(--radius-lg);
-  background: transparent;
-  box-shadow: none;
+  min-height: 118px;
+  padding: 16px 8px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.35;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
 }
 
 .service-tile__icon {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 68px;
-  height: 68px;
-  border: 1px solid var(--hairline);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--accent-strong);
-  box-shadow: var(--shadow-sm);
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--accent-soft-strong);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent);
   transition:
     transform var(--duration-fast) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out);
 }
 
 .service-tile__label {
@@ -87,20 +91,22 @@
 }
 
 .service-tile:hover {
-  border: 0;
-  background: transparent;
+  border-color: var(--accent);
+  background: var(--surface);
   color: var(--ink-strong);
   text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .service-tile:hover .service-tile__icon {
-  transform: translateY(-2px);
-  background: var(--accent-soft);
-  box-shadow: var(--shadow-md);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
-.service-tile:active .service-tile__icon {
-  transform: scale(0.93);
+.service-tile:active {
+  transform: scale(0.97);
 }
 
 .service-tile:focus-visible {
@@ -127,12 +133,12 @@
   min-height: var(--tap-min);
   padding: 8px 15px 8px 11px;
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: var(--shadow-xs);
   color: var(--ink);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -152,16 +158,21 @@
 
 @media (min-width: 861px) {
   .service-launcher {
-    padding-top: 26px;
+    padding-top: 24px;
   }
 
   .service-grid {
-    gap: 32px 16px;
+    gap: 16px;
+  }
+
+  .service-tile {
+    min-height: 128px;
+    padding: 20px 12px 16px;
   }
 
   .service-tile__icon {
-    width: 76px;
-    height: 76px;
+    width: 52px;
+    height: 52px;
   }
 }
 
@@ -171,34 +182,36 @@
   }
 
   .service-grid {
-    gap: 16px 4px;
+    gap: 8px;
   }
 
   .service-tile {
-    gap: 9px;
-    min-height: 110px;
+    gap: 8px;
+    min-height: 104px;
+    padding: 12px 6px;
     font-size: 12px;
   }
 
   .service-tile__icon {
-    width: 60px;
-    height: 60px;
+    width: 42px;
+    height: 42px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .service-tile,
   .service-tile__icon {
     transition: none;
   }
 
-  .service-tile:hover .service-tile__icon,
-  .service-tile:active .service-tile__icon,
+  .service-tile:hover,
+  .service-tile:active,
   .home-return__button:active:not(:disabled) {
     transform: none;
   }
 }
 
-/* ---- hero carousel: lead card + peeking cards ---- */
+/* ---- hero carousel: lead KPI card + companion metric cards ---- */
 
 .hero-carousel {
   display: flex;
@@ -222,6 +235,7 @@
   border-radius: var(--radius-xl);
   background: var(--hero-bg);
   color: var(--hero-ink);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: var(--hero-shadow);
   padding: 20px;
   display: flex;
@@ -230,32 +244,22 @@
   min-height: 178px;
 }
 
-/* Decorative rings, echoing the circles on a banking card — pure CSS,
-   clipped by the card, never interactive. */
-.hero-card::before,
-.hero-card::after {
+/* Crisp radial highlight in the top-right corner instead of flat circles. */
+.hero-card::before {
   content: "";
   position: absolute;
-  border-radius: 50%;
-  border: 34px solid var(--hero-chip);
+  inset: 0;
+  background: radial-gradient(
+    circle at 96% 8%,
+    rgba(255, 255, 255, 0.14) 0%,
+    transparent 52%
+  );
   pointer-events: none;
 }
 
-.hero-card::before {
-  width: 190px;
-  height: 190px;
-  right: -64px;
-  bottom: -84px;
-}
-
-.hero-card::after {
-  width: 120px;
-  height: 120px;
-  right: 42px;
-  bottom: -72px;
-}
-
 .hero-card__top {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -264,19 +268,24 @@
 
 .hero-card__eyebrow {
   font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.09em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--hero-muted);
 }
 
 .hero-card__label {
-  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
   font-size: 13px;
+  font-weight: 500;
   color: var(--hero-muted);
 }
 
 .hero-card__amount-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -284,22 +293,24 @@
 
 .hero-card__amount {
   font-family: var(--mono);
-  font-size: 31px;
-  font-weight: 750;
-  letter-spacing: -0.01em;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .hero-card__meta {
+  position: relative;
+  z-index: 1;
   font-size: 12.5px;
   color: var(--hero-muted);
 }
 
 .hero-card__icon-btn {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   flex: 0 0 auto;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   padding: 0;
@@ -310,7 +321,7 @@
 }
 
 .hero-card__icon-btn:hover {
-  filter: brightness(1.15);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .hero-card__icon-btn:focus-visible {
@@ -319,42 +330,52 @@
 }
 
 .hero-card__icon-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.95);
 }
 
 .hero-card__links {
   position: relative;
   z-index: 1;
   display: flex;
-  gap: 26px;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: auto;
   padding-top: 14px;
 }
 
 .hero-card__links a {
   color: var(--hero-ink);
-  font-weight: 650;
-  font-size: 14px;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
   min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  background: var(--hero-chip);
+  border: 1px solid var(--hero-line);
   display: inline-flex;
   align-items: center;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.hero-card__links a:hover {
+  background: rgba(255, 255, 255, 0.22);
+  text-decoration: none;
 }
 
 .hero-card__links a:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
-  border-radius: var(--radius-sm);
 }
 
-/* The peeking companion cards: plain surface, one figure, one link. */
+/* Companion KPI cards: unified clean surface matching the bento grid. */
 .hero-mini {
   flex: 0 0 min(64%, 260px);
   scroll-snap-align: start;
   border-radius: var(--radius-xl);
-  background: var(--surface-sunken);
+  background: var(--surface);
   border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-card);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -364,16 +385,17 @@
 
 .hero-mini__label {
   font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.09em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .hero-mini__amount {
   font-family: var(--mono);
-  font-size: 25px;
-  font-weight: 750;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--ink-strong);
   font-variant-numeric: tabular-nums;
 }
@@ -398,14 +420,14 @@
   min-height: 44px;
   display: inline-flex;
   align-items: center;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 /* ---- tabbed quick actions ---- */
 
 .home-tabs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
   border-bottom: 1px solid var(--hairline);
@@ -420,11 +442,11 @@
   min-height: 44px;
   padding: 8px 14px;
   border: none;
-  border-bottom: 2.5px solid transparent;
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--muted);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13.5px;
   white-space: nowrap;
   cursor: pointer;
   box-shadow: none;
@@ -439,9 +461,9 @@
 }
 
 .home-tab.active {
-  color: var(--accent-strong);
+  color: var(--accent);
   border-bottom-color: var(--accent);
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .home-tab:focus-visible {
@@ -450,12 +472,10 @@
   border-radius: var(--radius-sm);
 }
 
-/* The icon grid: outlined icon tile over a two-line label, 4-up on a
-   phone, widening with the screen. Every tile is a real link/button. */
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px 4px;
+  gap: 8px 6px;
 }
 
 .quick-tile {
@@ -463,9 +483,9 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  min-height: 96px;
-  padding: 12px 4px 8px;
-  border: none;
+  min-height: 92px;
+  padding: 10px 4px 8px;
+  border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
   color: var(--ink);
@@ -480,13 +500,13 @@
 
 .quick-tile:hover {
   background: var(--surface-sunken);
+  border-color: var(--hairline);
   color: var(--ink-strong);
   text-decoration: none;
-  border: none;
 }
 
 .quick-tile:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .quick-tile:focus-visible {
@@ -495,30 +515,29 @@
 }
 
 .quick-tile__icon {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
-  border-radius: 17px;
-  border: 1.5px solid var(--hairline-strong);
-  background: var(--surface);
-  color: var(--accent-strong);
-  box-shadow: var(--shadow-xs);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: var(--surface-sunken);
+  color: var(--accent);
 }
 
 @media (min-width: 700px) {
   .quick-grid {
-    grid-template-columns: repeat(4, minmax(0, 130px));
+    grid-template-columns: repeat(4, minmax(0, 136px));
     justify-content: start;
-    gap: 12px;
+    gap: 10px;
   }
 }
 
-/* ---- attendant live-shift card on the same gradient ---- */
+/* ---- attendant live-shift card ---- */
 
 .status-card--live {
   background: var(--hero-bg);
-  border-color: transparent;
+  border-color: rgba(255, 255, 255, 0.08);
   color: var(--hero-ink);
   box-shadow: var(--hero-shadow);
 }

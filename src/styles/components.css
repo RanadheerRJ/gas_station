@@ -64,8 +64,8 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  border-color: rgba(220, 38, 38, 0.28);
-  background: rgba(220, 38, 38, 0.045);
+  border-color: rgba(214, 69, 69, 0.3);
+  background: var(--money-out-soft);
 }
 
 .correction-card h2 {
@@ -83,7 +83,7 @@
   justify-content: center;
   width: auto;
   min-height: 40px;
-  border-radius: 11px;
+  border-radius: var(--radius-sm);
   padding: 9px 14px;
   font-size: 13px;
   text-decoration: none;
@@ -641,13 +641,14 @@
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 15px 17px;
   color: var(--ink);
   text-decoration: none;
   cursor: pointer;
   transition:
+    border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     transform var(--duration-instant) var(--ease-out);
 }
@@ -655,6 +656,7 @@
 .list-card:hover {
   text-decoration: none;
   color: var(--ink);
+  border-color: var(--hairline-strong);
   box-shadow: var(--shadow-md);
 }
 
@@ -821,23 +823,25 @@ input[inputmode="numeric"] {
 
 /* ---------------- buttons ---------------- */
 
-/* The delivery-app button set: pill-shaped, at least --tap-min tall, one
-   obvious primary. The default button is the secondary (white, hairline);
-   .primary and .cta are the checkout actions in near-black. */
+/* Enterprise SaaS control set: crisp 8px–12px rounded rectangles for
+   buttons/toolbars/CTAs, leaving pill radii strictly for status badges
+   and filter chips. */
 button {
   font-family: var(--sans);
   font-size: 13.5px;
-  font-weight: 650;
-  border-radius: var(--radius-pill);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--hairline-strong);
   background: var(--surface);
   color: var(--ink);
-  padding: 11px 18px;
+  padding: 9px 16px;
+  min-height: 40px;
   cursor: pointer;
   box-shadow: var(--shadow-xs);
   transition:
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
 
@@ -861,13 +865,12 @@ button:disabled {
   box-shadow: none;
 }
 
-/* The primary action: the same near-black pill as the checkout button, so
-   "the thing to press" has exactly one look wherever it appears. */
+/* The primary action: brand navy/blue authority instead of pure black. */
 button.primary {
   background: var(--cta-bg);
   border-color: var(--cta-bg);
   color: var(--cta-ink);
-  font-weight: 700;
+  font-weight: 650;
   box-shadow: var(--shadow-sm);
 }
 
@@ -896,41 +899,42 @@ button.quiet:hover:not(:disabled) {
 }
 
 button.danger {
-  color: var(--rust);
-  border-color: rgba(220, 38, 38, 0.35);
-  background: rgba(220, 38, 38, 0.06);
+  color: var(--money-out);
+  border-color: rgba(214, 69, 69, 0.35);
+  background: var(--money-out-soft);
 }
 
 button.danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.12);
+  background: rgba(214, 69, 69, 0.16);
 }
 
 button.small {
-  padding: 6px 14px;
+  padding: 6px 12px;
   min-height: 36px;
   font-size: 12.5px;
 }
 
-/* The checkout button: hard to miss, always the same shape. */
+/* The main form / workflow submission CTA. */
 .cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 54px;
+  min-height: 50px;
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: var(--cta-bg);
   color: var(--cta-ink);
-  font-size: 16px;
-  font-weight: 750;
-  letter-spacing: 0.01em;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.005em;
   box-shadow: var(--cta-shadow);
-  padding: 12px 24px;
+  padding: 12px 22px;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
 
@@ -959,12 +963,12 @@ button.small {
   justify-content: center;
   gap: 7px;
   min-height: var(--tap-min);
-  padding: 0 16px;
-  border-radius: var(--radius-pill);
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   border: 1px solid var(--hairline-strong);
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 600;
   font-size: 13px;
   box-shadow: var(--shadow-xs);
   white-space: nowrap;
@@ -998,8 +1002,8 @@ button.small {
   gap: 8px;
   background: var(--surface);
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-pill);
-  padding: 0 6px 0 13px;
+  border-radius: var(--radius-sm);
+  padding: 0 6px 0 12px;
   color: var(--muted);
   min-height: 40px;
   box-shadow: var(--shadow-xs);
@@ -1010,7 +1014,7 @@ button.small {
   background: transparent;
   box-shadow: none;
   padding: 8px 4px 8px 0;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink);
   min-height: 36px;
   width: auto;
@@ -1027,19 +1031,19 @@ button.small {
   grid-auto-columns: 1fr;
   background: var(--surface-sunken);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-pill);
-  padding: 4px;
-  gap: 2px;
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
 }
 
 .segmented button {
   border: none;
   background: transparent;
   box-shadow: none;
-  min-height: 40px;
-  font-weight: 650;
+  min-height: 38px;
+  font-weight: 600;
   color: var(--muted);
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   padding: 6px 14px;
 }
 
@@ -1052,6 +1056,7 @@ button.small {
 .segmented button.active {
   background: var(--surface);
   color: var(--ink-strong);
+  font-weight: 650;
   box-shadow: var(--shadow-xs);
 }
 
@@ -1257,7 +1262,7 @@ a.list-row {
 .list-row__icon {
   width: 42px;
   height: 42px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   display: grid;
   place-items: center;
   background: var(--accent-soft);
@@ -1313,13 +1318,13 @@ a.list-row {
 }
 
 .empty-state__icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
   display: grid;
   place-items: center;
   background: var(--accent-soft);
-  color: var(--accent-strong);
+  color: var(--accent);
   margin-bottom: 6px;
 }
 
@@ -1343,11 +1348,11 @@ a.list-row {
   align-items: center;
   justify-content: center;
   min-height: var(--tap-min);
-  padding: 0 22px;
-  border-radius: var(--radius-pill);
+  padding: 0 20px;
+  border-radius: var(--radius-sm);
   background: var(--cta-bg);
   color: var(--cta-ink);
-  font-weight: 700;
+  font-weight: 650;
   font-size: 14px;
   text-decoration: none;
   cursor: pointer;
@@ -1802,14 +1807,14 @@ tbody tr.money-row--variance:hover > td {
 
 .tag.green {
   color: var(--green);
-  border-color: rgba(21, 128, 61, 0.3);
-  background: rgba(21, 128, 61, 0.1);
+  border-color: rgba(21, 148, 91, 0.3);
+  background: var(--money-in-soft);
 }
 
 .tag.rust {
   color: var(--rust);
-  border-color: rgba(220, 38, 38, 0.3);
-  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(214, 69, 69, 0.3);
+  background: var(--money-out-soft);
 }
 
 .status-tag {
@@ -1871,13 +1876,13 @@ tbody tr.money-row--variance:hover > td {
 
 .notice.error {
   border-left-color: var(--rust);
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--money-out-soft);
   color: var(--rust);
 }
 
 .notice.good {
   border-left-color: var(--green);
-  background: rgba(21, 128, 61, 0.08);
+  background: var(--money-in-soft);
   color: var(--green);
 }
 
@@ -1995,8 +2000,8 @@ tbody tr.money-row--variance:hover > td {
 }
 
 .temp-chip.warm {
-  border-color: rgba(220, 38, 38, 0.3);
-  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(214, 69, 69, 0.3);
+  background: var(--money-out-soft);
   color: var(--rust);
 }
 
@@ -2307,7 +2312,7 @@ tbody tr.money-row--variance:hover > td {
   border-color: transparent;
   box-shadow: none;
   color: var(--muted);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
 }
 
 .overflow-menu__trigger:hover:not(:disabled),
