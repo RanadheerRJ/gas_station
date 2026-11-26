@@ -258,8 +258,13 @@ a svg {
     padding-right: max(4px, var(--safe-right));
   }
 
+  .tab,
   .tabbar__fab {
-    flex-basis: 56px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0;
+    font-size: 10px;
+    letter-spacing: -0.02em;
   }
 
   .sticky-cta__inner {
@@ -548,6 +553,10 @@ a svg {
     overflow: visible;
     scroll-snap-type: none;
   }
+
+  .service-launcher .quick-stat-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 /* Large monitors get more breathing room, not endlessly long text lines. */
@@ -635,8 +644,8 @@ a svg {
   }
 
   .tabbar__fab-circle {
-    width: 44px;
-    height: 44px;
-    margin-top: -16px;
+    width: 42px;
+    height: 27px;
+    margin-top: 0;
   }
 }

@@ -16,7 +16,7 @@ import { useStations } from "./useStations";
  * screens inherit the station their list was showing.
  */
 export function useStation() {
-  const { stations, loading, reload } = useStations();
+  const { stations, loading, error, reload } = useStations();
   const [params, setParams] = useSearchParams();
 
   const wanted = params.get("station");
@@ -43,5 +43,5 @@ export function useStation() {
     [stationId]
   );
 
-  return { stations, station, stationId, setStation, link, loading, reload };
+  return { stations, station, stationId, setStation, link, loading, error, reload };
 }

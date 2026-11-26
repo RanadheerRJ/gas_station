@@ -338,19 +338,19 @@ export default function TodayHome() {
                     {myShift ? t("today.continueShift") : t("shifts.startShift")}
                   </span>
                 </Link>
-                <Link to={paths.list} className="quick-tile">
+                <Link to={paths.list} className="quick-tile quick-tile--red">
                   <span className="quick-tile__icon" aria-hidden="true">
-                    <HistoryIcon size={23} />
+                    <HistoryIcon size={23} style={{ color: "inherit" }} />
                   </span>
                   <span>{t("nav.history")}</span>
                 </Link>
-                <Link to="/today/credit" className="quick-tile">
+                <Link to="/today/credit" className="quick-tile quick-tile--amber">
                   <span className="quick-tile__icon" aria-hidden="true">
                     <CreditIcon size={23} />
                   </span>
                   <span>{t("nav.creditCustomers")}</span>
                 </Link>
-                <Link to="/today/stock" className="quick-tile">
+                <Link to="/today/stock" className="quick-tile quick-tile--green">
                   <span className="quick-tile__icon" aria-hidden="true">
                     <TankIcon size={23} />
                   </span>
@@ -364,7 +364,12 @@ export default function TodayHome() {
               <div className="section-label">
                 <h2 id="today-numbers-title">{t("today.sales")}</h2>
               </div>
-              <div className="quick-stat-row">
+              <div
+                className="quick-stat-row"
+                tabIndex={0}
+                role="region"
+                aria-labelledby="today-numbers-title"
+              >
                 <Card className="quick-stat">
                   <Stat
                     label={t("today.sales")}

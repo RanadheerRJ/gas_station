@@ -19,7 +19,8 @@ import { useTheme } from "../state/ThemeContext";
 import { LanguageSelect, useLanguage } from "../state/LanguageContext.jsx";
 import { useStation } from "../state/useStation.js";
 import { routeDirection, useRouteTransition } from "./motion.jsx";
-import { PetravLockup } from "./branding.jsx";
+import { PetravLockup, PetravMark, PetravWordmark } from "./branding.jsx";
+import { formatDate, todayISO } from "../lib/format";
 import Sheet from "./Sheet.jsx";
 import { avatarHue, initials } from "../lib/avatar.js";
 import AccountPanel from "./AccountPanel.jsx";
@@ -37,6 +38,7 @@ import {
   HomeIcon,
   LedgerIcon,
   LogOutIcon,
+  MenuIcon,
   MoonIcon,
   MoreIcon,
   PeopleIcon,
@@ -129,30 +131,30 @@ export function destinationsFor(role) {
 
 /* ---- memoized sub-components for speed ---- */
 
-const SidebarLink = memo(function SidebarLink({ item, translate }) {
+const SidebarLink = memo(function SidebarLink({ item, translate, stationTarget }) {
   const Icon = item.Icon;
   return (
-    <NavLink to={item.to} end={item.end}>
-      <Icon size={17} />
+    <NavLink to={stationTarget(item.to)} end={item.end}>
+      <Icon size={17} style={{ color: "inherit" }} />
       <span>{translate(item.label)}</span>
     </NavLink>
   );
 });
 
-const TabButton = memo(function TabButton({ tab, translate }) {
+const TabButton = memo(function TabButton({ tab, translate, stationTarget }) {
   const Icon = tab.Icon;
   const fullLabel = translate(tab.label);
   const mobileLabel = translate(MOBILE_NAV_LABEL[tab.label] || tab.label);
   return (
     <NavLink
       key={tab.to}
-      to={tab.to}
+      to={stationTarget(tab.to)}
       end={tab.end}
       aria-label={fullLabel}
       className={({ isActive }) => `tab${isActive ? " active" : ""}`}
     >
       <span className="tab__glyph" aria-hidden="true">
-        <Icon size={22} />
+        <Icon size={22} style={{ color: "inherit" }} />
       </span>
       <span>{mobileLabel}</span>
     </NavLink>
@@ -210,8 +212,27 @@ export default function Layout() {
   // order between renders and React throws.
   const { online, restored } = useConnection();
   const install = useInstallPrompt();
-  const { pathname, key: locationKey } = useLocation();
-  const { stations, station, stationId, setStation } = useStation();
+  const { pathname, search, key: locationKey } = useLocation();
+  const {
+    stations,
+    station,
+    stationId,
+    setStation,
+    loading: stationsLoading,
+    error: stationsError,
+    reload: reloadStations,
+  } = useStation();
+  // Carry an explicitly selected station through shell navigation. Without a
+  // query the screens still use their normal first-station fallback; an
+  // invalid or inaccessible id is never propagated to the next destination.
+  const selectedStation = new URLSearchParams(search).get("station");
+  const stationTarget = useCallback(
+    (to) =>
+      selectedStation && selectedStation === stationId
+        ? { pathname: to, search: `?station=${encodeURIComponent(stationId)}` }
+        : to,
+    [selectedStation, stationId]
+  );
   const [accountOpen, setAccountOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   // A home route opens as a launcher on each new history entry. Revealing its
@@ -312,25 +333,27 @@ export default function Layout() {
     <div
       className={`shell shell--${profile.role}${tabs.length > 0 ? " shell--tabs" : ""}`}
     >
-      {/* Mobile top bar, banking-home style: your initials avatar and a
-          greeting on the left (the avatar opens Account; the station line
-          under the greeting is the switcher where switching is allowed),
-          then theme, language and sign-out — every icon a working control. */}
+      {/* Mobile top bar, dealer-app style: the menu (More sheet), the brand
+          tile and wordmark with the station line beneath, then theme,
+          language and your avatar — every icon a working control. */}
       <header className="appbar">
         <div className="appbar__lead">
           <button
             type="button"
-            className="appbar__avatar"
-            style={{ "--avatar-hue": avatarHue(profile.name) }}
-            onClick={openAccount}
-            aria-label={t("nav.account")}
+            className="appbar__tool appbar__menu"
+            onClick={openMoreTiles}
+            aria-label={t("nav.more")}
             aria-haspopup="dialog"
+            aria-expanded={moreOpen}
           >
-            {initials(profile.name)}
+            <MenuIcon size={20} />
           </button>
+          <span className="appbar__logo" aria-hidden="true">
+            <PetravMark size={26} />
+          </span>
           <div className="appbar__greeting">
-            <span className="appbar__hello">
-              {t("home.hello", { name: String(profile.name || "").split(" ")[0] })}
+            <span className="appbar__title" role="img" aria-label="PÉTRAV">
+              <PetravWordmark height={12} />
             </span>
             {canSwitchStation ? (
               <button
@@ -338,6 +361,7 @@ export default function Layout() {
                 className="appbar__station"
                 onClick={openStation}
                 aria-haspopup="dialog"
+                aria-label={`${t("chrome.switchStation")}: ${station?.name || ""}`}
                 title={station?.name}
               >
                 <span className="appbar__station-name">{station?.name}</span>
@@ -366,7 +390,7 @@ export default function Layout() {
         <div className="appbar__tools">
           <button
             type="button"
-            className="appbar__tool"
+            className="appbar__tool appbar__tool--theme"
             onClick={toggleThemeCb}
             aria-label={theme === "dark" ? t("chrome.lightMode") : t("chrome.darkMode")}
           >
@@ -383,11 +407,13 @@ export default function Layout() {
           </button>
           <button
             type="button"
-            className="appbar__tool"
-            onClick={logout}
-            aria-label={t("chrome.signOut")}
+            className="appbar__avatar"
+            style={{ "--avatar-hue": avatarHue(profile.name) }}
+            onClick={openAccount}
+            aria-label={`${initials(profile.name)} ${t("nav.account")}`}
+            aria-haspopup="dialog"
           >
-            <LogOutIcon size={18} />
+            <span aria-hidden="true">{initials(profile.name)}</span>
           </button>
         </div>
       </header>
@@ -420,11 +446,21 @@ export default function Layout() {
         </div>
         <nav>
           {tabs.map((tab) => (
-            <SidebarLink key={tab.to} item={tab} translate={t} />
+            <SidebarLink
+              key={tab.to}
+              item={tab}
+              translate={t}
+              stationTarget={stationTarget}
+            />
           ))}
           {more.length > 0 && <div className="sidebar__group">{t("nav.more")}</div>}
           {more.map((item) => (
-            <SidebarLink key={item.to} item={item} translate={t} />
+            <SidebarLink
+              key={item.to}
+              item={item}
+              translate={t}
+              stationTarget={stationTarget}
+            />
           ))}
         </nav>
         <div className="foot">
@@ -459,13 +495,25 @@ export default function Layout() {
         <div className={transitionClass} key={pathname}>
           {showLauncher ? (
             <>
-              <ScreenHeader title={t("home.services")} sub={t("home.servicesSubtitle")} />
+              <ScreenHeader
+                title={t("home.hello", {
+                  name: String(profile.name || "").split(" ")[0],
+                })}
+                sub={formatDate(todayISO())}
+              />
               <ServiceLauncher
                 tabs={tabs}
                 more={more}
                 startPath={startPath}
                 homePath={homePath}
                 onOpenHome={openHomePanel}
+                station={station}
+                stationsLoading={stationsLoading}
+                stationsError={stationsError}
+                reloadStations={reloadStations}
+                stationTarget={stationTarget}
+                canSwitchStation={canSwitchStation}
+                onOpenStation={openStation}
               />
             </>
           ) : (
@@ -497,26 +545,34 @@ export default function Layout() {
       {tabs.length > 0 && (
         <nav className="tabbar" aria-label={t("chrome.navigation")}>
           {tabs.slice(0, 2).map((tab) => (
-            <TabButton key={tab.to} tab={tab} translate={t} />
+            <TabButton
+              key={tab.to}
+              tab={tab}
+              translate={t}
+              stationTarget={stationTarget}
+            />
           ))}
-          {/* The raised centre button: starting a shift is the one action
-              every role reaches for, so it sits in the middle of the bar,
-              lifted out of it — the banking-app scan-button position, doing
-              PÉTRAV's primary job instead. */}
+          {/* Start shift stays a prominent action, presented as the centre
+              pill in the six-slot bottom navigation. */}
           {startPath && (
             <NavLink
-              to={startPath}
+              to={stationTarget(startPath)}
               className={({ isActive }) => `tabbar__fab${isActive ? " active" : ""}`}
               aria-label={t("shifts.startShift")}
             >
               <span className="tabbar__fab-circle" aria-hidden="true">
-                <PlusIcon size={26} />
+                <PlusIcon size={18} style={{ color: "inherit" }} />
               </span>
               <span className="tabbar__fab-label">{t("shifts.startShift")}</span>
             </NavLink>
           )}
           {tabs.slice(2).map((tab) => (
-            <TabButton key={tab.to} tab={tab} translate={t} />
+            <TabButton
+              key={tab.to}
+              tab={tab}
+              translate={t}
+              stationTarget={stationTarget}
+            />
           ))}
           {more.length > 0 && (
             <button
@@ -528,7 +584,7 @@ export default function Layout() {
               aria-label={t("nav.more")}
             >
               <span className="tab__glyph" aria-hidden="true">
-                <MoreIcon size={22} />
+                <MoreIcon size={22} style={{ color: "inherit" }} />
               </span>
               <span>{t("nav.more")}</span>
             </button>
@@ -566,7 +622,7 @@ export default function Layout() {
                   {more.map((item) => (
                     <NavLink
                       key={item.to}
-                      to={item.to}
+                      to={stationTarget(item.to)}
                       end
                       className="more-tile"
                       onClick={closeMore}

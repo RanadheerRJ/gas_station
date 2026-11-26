@@ -361,6 +361,64 @@ describe("the station switcher", () => {
     expect(document.body.querySelector(".sheet")).toBeNull();
   });
 
+  it("preserves an explicit station across launcher, sidebar, tab and More navigation", async () => {
+    stationsMock.list = [
+      { id: "s1", name: "Station One" },
+      { id: "s&2", name: "Station Two" },
+    ];
+    await renderLayout(
+      { uid: "u-owner", role: "owner", name: "Owner User", username: "owner" },
+      "/owner?station=s%262"
+    );
+
+    expect(container.querySelector(".buddy-id__name").textContent).toBe("Station Two");
+    expect(
+      container
+        .querySelector('.service-grid a[href^="/owner/stock"]')
+        .getAttribute("href")
+    ).toBe("/owner/stock?station=s%262");
+    expect(
+      container.querySelector('.sidebar a[href^="/owner/shifts"]').getAttribute("href")
+    ).toBe("/owner/shifts?station=s%262");
+    expect(
+      container.querySelector('.tabbar a[aria-label="Ground stock"]').getAttribute("href")
+    ).toBe("/owner/stock?station=s%262");
+    expect(container.querySelector(".tabbar__fab").getAttribute("href")).toBe(
+      "/owner/shifts/start?station=s%262"
+    );
+
+    await act(async () =>
+      container.querySelector('.tabbar button[aria-label="Others"]').click()
+    );
+    const ledger = [...document.body.querySelectorAll(".more-tile")].find(
+      (tile) => tile.textContent.trim() === "Daily ledger"
+    );
+    expect(ledger.getAttribute("href")).toBe("/owner/ledger?station=s%262");
+    await act(async () => ledger.click());
+    expect(lastLocation.current.pathname).toBe("/owner/ledger");
+    expect(lastLocation.current.search).toBe("?station=s%262");
+  });
+
+  it("falls back to the first accessible station without propagating an invalid id", async () => {
+    stationsMock.list = [
+      { id: "s1", name: "Station One" },
+      { id: "s2", name: "Station Two" },
+    ];
+    await renderLayout(
+      { uid: "u-owner", role: "owner", name: "Owner User", username: "owner" },
+      "/owner?station=not-permitted"
+    );
+    expect(container.querySelector(".buddy-id__name").textContent).toBe("Station One");
+    expect(container.querySelector(".tabbar__fab").getAttribute("href")).toBe(
+      "/owner/shifts/start"
+    );
+    expect(
+      container
+        .querySelector('.service-grid a[href^="/owner/stock"]')
+        .getAttribute("href")
+    ).toBe("/owner/stock");
+  });
+
   it("shows a single-station attendant their station as a plain label, not a control", async () => {
     stationsMock.list = [{ id: "s1", name: "Sri Balaji Fuels" }];
     await renderLayout(
@@ -382,16 +440,19 @@ describe("the station switcher", () => {
       "/owner"
     );
     expect(container.querySelector(".appbar__station")).toBeNull();
-    // The banking-style greeting row replaces the brand lockup: initials
-    // avatar + "Hello, <first name>!", station named underneath as text.
+    // The compact brand bar retains the account avatar and station name;
+    // the personalised greeting now introduces the launcher below it.
     const avatar = container.querySelector(".appbar__avatar");
     expect(avatar).toBeTruthy();
     expect(avatar.textContent).toBe("OU");
-    expect(container.querySelector(".appbar__hello").textContent).toBe("Hello, Owner!");
+    expect(container.querySelector(".appbar__title").getAttribute("aria-label")).toBe(
+      "PÉTRAV"
+    );
+    expect(container.querySelector(".screen-head h1").textContent).toBe("Hello, Owner!");
     expect(container.querySelector(".appbar__sub").textContent).toBe("Station One");
   });
 
-  it("raises a centre Start-shift button in the tab bar for every working role", async () => {
+  it("keeps a centre Start-shift action in the tab bar for every working role", async () => {
     await renderLayout(
       { uid: "u-owner", role: "owner", name: "Owner User", username: "owner" },
       "/owner"
@@ -468,7 +529,9 @@ describe("the role-home service launcher", () => {
     async (role, route, homeLabel, serviceCount) => {
       await renderHome(role, route);
 
-      expect(container.querySelector(".screen-head h1").textContent).toBe("Services");
+      expect(container.querySelector(".screen-head h1").textContent).toBe(
+        `Hello, ${role}!`
+      );
       expect(container.querySelector('[data-testid="home-workspace"]')).toBeNull();
       expect(container.querySelectorAll(".service-grid .service-tile")).toHaveLength(
         serviceCount
@@ -476,7 +539,9 @@ describe("the role-home service launcher", () => {
 
       const homeTile = Array.from(
         container.querySelectorAll(".service-grid .service-tile")
-      ).find((tile) => tile.textContent.trim() === homeLabel);
+      ).find(
+        (tile) => tile.querySelector(".service-tile__label")?.textContent === homeLabel
+      );
       expect(homeTile.tagName).toBe("BUTTON");
 
       container.querySelector(".main").scrollTop = 180;

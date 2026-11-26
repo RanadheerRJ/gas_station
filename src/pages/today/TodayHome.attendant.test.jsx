@@ -223,6 +223,9 @@ describe("attendant Today: shift running", () => {
     const expenses = container.querySelector(".status-card__figures .money");
     expect(expenses.className).toContain("money--out");
     expect(expenses.textContent).toContain("40.00");
+    expect(
+      container.querySelector('.quick-stat-row[role="region"]').getAttribute("tabindex")
+    ).toBe("0");
   });
 });
 
