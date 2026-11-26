@@ -211,6 +211,40 @@ export const ChevronIcon = memo(function ChevronIcon(props) {
   );
 });
 
+/** Hamburger menu — the top bar's door to the More sheet. */
+export const MenuIcon = memo(function MenuIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h10" />
+    </svg>
+  );
+});
+
+/** Wallet — the balance card's lead glyph. */
+export const WalletIcon = memo(function WalletIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="6" width="18" height="13" rx="3" />
+      <path d="M3 10h18" />
+      <path d="M15.5 14.5H18" />
+    </svg>
+  );
+});
+
+/** Storefront with awning — the dealership identity card. */
+export const StoreIcon = memo(function StoreIcon(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.2 8.5 5.4 4.5h13.2l1.2 4" />
+      <path d="M3.6 8.5a2.1 2.1 0 0 0 4.2 0 2.1 2.1 0 0 0 4.2 0 2.1 2.1 0 0 0 4.2 0 2.1 2.1 0 0 0 4.2 0" />
+      <path d="M5 12.5v7h14v-7" />
+      <path d="M10 19.5v-4.5h4v4.5" />
+    </svg>
+  );
+});
+
 /** Left chevron, for back buttons. */
 export const BackIcon = memo(function BackIcon(props) {
   return (

@@ -132,13 +132,36 @@
   background: var(--accent-soft-strong);
 }
 
-/* Banking-home greeting row: initials avatar (opens Account), then
-   "Hello, Name!" with the station as a small line underneath. The station
+/* Dealer-app brand block: the menu tool, the mark on a white app-icon
+   tile, then the wordmark with the station line underneath. The station
    line keeps the switcher's behaviour — a button where switching is
-   allowed, plain text where it is a fact — without the old pill chrome. */
+   allowed, plain text where it is a fact. */
+.appbar__menu {
+  flex: 0 0 auto;
+}
+
+.appbar__logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.appbar__title {
+  display: flex;
+  align-items: center;
+  min-height: 18px;
+  color: var(--ink-strong);
+}
+
 .appbar__avatar {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   border-radius: 50%;
   display: grid;
@@ -175,18 +198,8 @@
   gap: 1px;
 }
 
-.appbar__hello {
-  font-size: 15.5px;
-  font-weight: 700;
-  color: var(--ink-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
 .appbar__greeting .appbar__station {
-  min-height: 24px;
+  min-height: 44px;
   padding: 0;
   background: transparent;
   border: none;
@@ -215,21 +228,31 @@
   max-width: 44vw;
 }
 
-/* The raised centre button of the bottom bar: a gradient circle lifted
-   above the bar with its label underneath, between the second and third
-   tabs. Not a `.tab`, so tab order and counts stay as they were. */
+/* Theme remains available in Others; on small phones, keeping it there
+   leaves enough room for the brand and station without clipping controls. */
+@media (max-width: 480px) {
+  .appbar__tool--theme {
+    display: none;
+  }
+}
+
+/* The centre Start-shift entry of the bottom bar: a flat sixth tab in the
+   dealer-app bar, distinguished by a filled accent pill behind its plus —
+   the primary action reads at a glance without lifting out of the bar.
+   Not a `.tab`, so tab order and counts stay as they were. */
 .tabbar__fab {
-  flex: 0 0 64px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 3px;
   min-height: 52px;
-  padding: 0 2px 5px;
+  padding: 5px 2px 5px;
   color: var(--muted);
   font-size: 10.5px;
   font-weight: 650;
+  letter-spacing: 0.01em;
   text-decoration: none;
   border-radius: var(--radius-md);
 }
@@ -245,17 +268,19 @@
 }
 
 .tabbar__fab-circle {
-  width: 52px;
-  height: 52px;
-  margin-top: -26px;
-  border-radius: 50%;
+  width: 42px;
+  height: 27px;
+  border-radius: var(--radius-pill);
   display: grid;
   place-items: center;
-  background: var(--fab-bg);
-  color: var(--fab-ink);
-  border: 3px solid var(--surface);
-  box-shadow: var(--fab-shadow);
+  background: var(--accent);
+  color: var(--accent-ink);
   transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.tabbar__fab-circle svg {
+  width: 16px;
+  height: 16px;
 }
 
 .tabbar__fab:active .tabbar__fab-circle {
@@ -267,9 +292,22 @@
   font-weight: 750;
 }
 
+.tabbar__fab.active .tabbar__fab-circle {
+  background: var(--accent-strong);
+}
+
 .tabbar__fab-label {
+  display: -webkit-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: break-word;
   line-height: 1.2;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -673,7 +711,7 @@
   font-weight: 750;
 }
 
-.tab span {
+.tab > span:not(.tab__glyph) {
   display: -webkit-box;
   width: 100%;
   max-width: 100%;
@@ -683,6 +721,7 @@
   line-clamp: 2;
   overflow-wrap: break-word;
   line-height: 1.2;
+  text-align: center;
   white-space: normal;
 }
 

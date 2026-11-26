@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const scaling = readFileSync(new URL("./styles/scaling.css", import.meta.url), "utf8");
 const perf = readFileSync(new URL("./styles/perf.css", import.meta.url), "utf8");
+const views = readFileSync(new URL("./styles/views.css", import.meta.url), "utf8");
 const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 function mediaBlock(query) {
@@ -35,6 +36,12 @@ describe("device scaling contract", () => {
     const coarse = mediaBlock("(pointer: coarse)");
     expect(coarse).toMatch(/input,[\s\S]*?textarea\s*{[^}]*font-size:\s*16px/);
     expect(coarse).toMatch(/min-height:\s*44px/);
+  });
+
+  it("lets the login form shrink to fit narrow phone viewports", () => {
+    expect(views).toMatch(
+      /\.login__body\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/
+    );
   });
 
   it("uses two columns on tablets only where the width supports them", () => {

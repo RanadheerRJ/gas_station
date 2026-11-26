@@ -429,6 +429,11 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.quick-stat-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .quick-stat-row::-webkit-scrollbar {
   display: none;
 }

@@ -18,9 +18,10 @@ import {
   RateIcon,
   RefreshIcon,
   ShiftIcon,
+  StoreIcon,
   TankIcon,
 } from "../components/icons.jsx";
-import { avatarHue, initials } from "../lib/avatar.js";
+import StationScene from "../components/StationScene.jsx";
 import Sheet from "../components/Sheet.jsx";
 import ResetStationSheet from "../components/ResetStationSheet.jsx";
 import OverflowMenu from "../components/OverflowMenu.jsx";
@@ -129,20 +130,35 @@ export default function OwnerHome() {
 
   const quickGroups = {
     operations: [
-      { to: "/owner/shifts/start", label: "shifts.startShift", Icon: PlusIcon },
-      { to: "/owner/shifts", label: "nav.shifts", Icon: ShiftIcon },
-      { to: "/owner/stock", label: "nav.groundStock", Icon: TankIcon },
-      { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon },
+      {
+        to: "/owner/shifts/start",
+        label: "shifts.startShift",
+        Icon: PlusIcon,
+        tone: "accent",
+      },
+      { to: "/owner/shifts", label: "nav.shifts", Icon: ShiftIcon, tone: "neutral" },
+      { to: "/owner/stock", label: "nav.groundStock", Icon: TankIcon, tone: "green" },
+      { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon, tone: "blue" },
     ],
     money: [
-      { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon },
-      { to: "/owner/credit", label: "nav.creditCustomers", Icon: CreditIcon },
-      { to: "/owner/shifts", label: "owner.reviewShifts", Icon: ShiftIcon },
-      { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon },
+      { to: "/owner/ledger", label: "nav.dailyLedger", Icon: LedgerIcon, tone: "purple" },
+      {
+        to: "/owner/credit",
+        label: "nav.creditCustomers",
+        Icon: CreditIcon,
+        tone: "amber",
+      },
+      {
+        to: "/owner/shifts",
+        label: "owner.reviewShifts",
+        Icon: ShiftIcon,
+        tone: "neutral",
+      },
+      { to: "/owner/reports", label: "nav.reports", Icon: ChartIcon, tone: "blue" },
     ],
     station: [
-      { to: "/owner/setup", label: "nav.pumpsRates", Icon: RateIcon },
-      { to: "/owner/staff", label: "nav.staffAccess", Icon: PeopleIcon },
+      { to: "/owner/setup", label: "nav.pumpsRates", Icon: RateIcon, tone: "blue" },
+      { to: "/owner/staff", label: "nav.staffAccess", Icon: PeopleIcon, tone: "purple" },
     ],
   };
   const mask = (amount) => (showAmounts ? `₹ ${money(amount)}` : t("home.hiddenAmount"));
@@ -189,6 +205,7 @@ export default function OwnerHome() {
                 the eye is tapped); the next cards peek in from the edge. ---- */}
             <div className="hero-carousel">
               <section className="hero-card" aria-label={t("owner.combinedToday")}>
+                <StationScene className="hero-card__scene" />
                 <div className="hero-card__top">
                   <span className="hero-card__eyebrow">{t("owner.combinedToday")}</span>
                   <button
@@ -294,10 +311,14 @@ export default function OwnerHome() {
                 ))}
               </div>
               <div className="quick-grid">
-                {quickGroups[quickTab].map(({ to, label, Icon }) => (
-                  <Link key={`${to}-${label}`} to={to} className="quick-tile">
+                {quickGroups[quickTab].map(({ to, label, Icon, tone }) => (
+                  <Link
+                    key={`${to}-${label}`}
+                    to={to}
+                    className={`quick-tile${tone ? ` quick-tile--${tone}` : ""}`}
+                  >
                     <span className="quick-tile__icon" aria-hidden="true">
-                      <Icon size={23} />
+                      <Icon size={23} style={{ color: "inherit" }} />
                     </span>
                     <span>{t(label)}</span>
                   </Link>
@@ -320,12 +341,8 @@ export default function OwnerHome() {
                         className="station-card__main"
                       >
                         <div className="station-card__head">
-                          <span
-                            className="station-card__avatar"
-                            style={{ "--avatar-hue": avatarHue(stationRef.name) }}
-                            aria-hidden="true"
-                          >
-                            {initials(stationRef.name)}
+                          <span className="station-card__avatar" aria-hidden="true">
+                            <StoreIcon size={20} />
                           </span>
                           <div>
                             <div className="station-card__name">

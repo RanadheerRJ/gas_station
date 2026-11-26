@@ -1,25 +1,26 @@
 /* =====================================================================
-   PÉTRAV — Enterprise SaaS Design System Tokens
+   PÉTRAV — Buddy-style Design System Tokens
    ---------------------------------------------------------------------
-   Clean fuel-station operations & financial ledger system:
+   Fuel-station operations & financial ledger, dealer-app style:
    - Primary Navy (#10213F) & Primary Blue (#1769D2) brand authority
    - Fuel Red (#E31B23) reserved strictly for brand accents & critical cues
-   - Crisp #F4F6F9 canvas, #FFFFFF surfaces, #E5E9F0 hairlines
+   - Airy blue-tinted #F2F5FB canvas, #FFFFFF cards, #E5E9F0 hairlines
+   - Light "sky" hero surfaces (balance-card style) in the light theme
    - Cohesive navy-slate dark mode surfaces with calibrated AA+ contrast
    ===================================================================== */
 
 :root {
   /* ---- brand + surface hierarchy, light theme ---- */
-  --bg: #f4f6f9;
-  --paper: #f4f6f9;
+  --bg: #f2f5fb;
+  --paper: #f2f5fb;
   --surface: #ffffff;
   --panel: #ffffff;
   --surface-raised: #ffffff;
-  --surface-sunken: #eef2f6;
-  --launcher-bg: #f4f6f9;
+  --surface-sunken: #e9eef7;
+  --launcher-bg: #f2f5fb;
   --ink: #172033;
   --ink-strong: #10213f;
-  --muted: #667085;
+  --muted: #5d677a;
   --hairline: #e5e9f0;
   --hairline-strong: #d0d7e3;
 
@@ -30,9 +31,9 @@
   --accent-ink: #ffffff;
 
   /* ---- semantic financial & operational figures ---- */
-  --money-in: #15945b;
+  --money-in: #117a4b;
   --money-in-soft: #eaf7f1;
-  --money-out: #d64545;
+  --money-out: #bf3333;
   --money-out-soft: #fef1f1;
   --money-credit: #b4690e;
   --money-credit-soft: #fff7e6;
@@ -79,12 +80,17 @@
   --cta-ink: #ffffff;
   --cta-shadow: 0 8px 20px -8px rgba(16, 33, 63, 0.42);
 
-  --hero-bg: linear-gradient(135deg, #10213f 0%, #1769d2 100%);
-  --hero-ink: #ffffff;
-  --hero-muted: rgba(255, 255, 255, 0.8);
-  --hero-line: rgba(255, 255, 255, 0.24);
-  --hero-chip: rgba(255, 255, 255, 0.14);
-  --hero-shadow: 0 14px 30px -14px rgba(16, 33, 63, 0.45);
+  /* Light sky hero: the dealer-app balance card — pale blue gradient,
+     navy figures, white pill chips. Dark mode keeps the deep gradient. */
+  --hero-bg: linear-gradient(135deg, #eaf3fe 0%, #d9eafc 48%, #c6def7 100%);
+  --hero-ink: #10213f;
+  --hero-muted: #47597a;
+  --hero-accent: #1458b3;
+  --hero-money-out: #a82e2e;
+  --hero-line: rgba(16, 33, 63, 0.14);
+  --hero-chip: rgba(255, 255, 255, 0.72);
+  --hero-chip-hover: rgba(255, 255, 255, 0.94);
+  --hero-shadow: 0 14px 30px -18px rgba(23, 105, 210, 0.38);
 
   --fab-bg: linear-gradient(145deg, #10213f 0%, #1769d2 100%);
   --fab-ink: #ffffff;
@@ -105,8 +111,8 @@
   --graphite: #10213f;
   --petrol: var(--accent);
   --amber: #d99018;
-  --green: #15945b;
-  --rust: #d64545;
+  --green: var(--money-in);
+  --rust: var(--money-out);
 
   /* ---- navigation chrome ---- */
   --sidebar-bg: #ffffff;
@@ -236,6 +242,13 @@
   --cta-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.65);
 
   --hero-bg: linear-gradient(135deg, #0e1d3a 0%, #1552a8 100%);
+  --hero-ink: #ffffff;
+  --hero-muted: rgba(255, 255, 255, 0.8);
+  --hero-accent: #a9cdff;
+  --hero-money-out: #ffc6c6;
+  --hero-line: rgba(255, 255, 255, 0.24);
+  --hero-chip: rgba(255, 255, 255, 0.14);
+  --hero-chip-hover: rgba(255, 255, 255, 0.22);
   --hero-shadow: 0 16px 32px -14px rgba(0, 0, 0, 0.65);
   --fab-bg: linear-gradient(145deg, #133e82 0%, #1d70dc 100%);
   --fab-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.7);
